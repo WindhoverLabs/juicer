@@ -7,6 +7,7 @@
 #include "catch.hpp"
 #include "Juicer.h"
 #include "IDataContainer.h"
+#include "SQLiteDB.h"
 
 TEST_CASE("Test Juicer at the highest level with SQLiteDB" ,"[Juicer]")
 {
@@ -22,6 +23,12 @@ TEST_CASE("Test Juicer at the highest level with SQLiteDB" ,"[Juicer]")
     std::string inputFile{"../obj/test_file.o"};
 
     juicer.parse(moduleName, inputFile);
+
+    /**
+     *Clean up our database handle and objects in memory.
+     */
+    ((SQLiteDB*)(idc))->close();
+    delete idc;
 
     REQUIRE(true);
 }
