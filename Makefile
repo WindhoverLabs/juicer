@@ -68,7 +68,7 @@ $(UT_OBJ_DIR):
 	mkdir -p $@
 
 run-tests: | $(UT_EXE)
-	(cd $(BUILD_DIR); $(UT_EXE))
+	-(cd $(BUILD_DIR); $(UT_EXE))
 
 coverage: $(COVERAGE_DIR)/index.html
 
