@@ -20,4 +20,4 @@
 
 Square sq = {};
 Circle ci = {};
-Color rainbow  = RED;
+enum Color rainbow  = RED;

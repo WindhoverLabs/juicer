@@ -1569,6 +1569,8 @@ int Juicer::getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die,
     Dwarf_Die cur_die = in_die;
     Dwarf_Die child = 0;
     Dwarf_Error error = 0;
+    char        *dieName;
+    Dwarf_Attribute attr_struct;
     int return_value = JUICER_OK;
 
     printDieData(dbg, in_die, in_level);
@@ -1602,6 +1604,40 @@ int Juicer::getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die,
                 break;
             }
 
+            case DW_TAG_structure_type:
+            {
+                res = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
+                if(res == DW_DLV_OK)
+                {
+                    res = dwarf_formstring(attr_struct, &dieName, &error);
+                    if(res != DW_DLV_OK)
+                    {
+                        logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
+                                dwarf_errmsg(error));
+                    }
+
+                    else
+                    {
+                    	/**
+                    	 *@todo We can add the Symbol here!
+                    	 */
+                        printf("We have a name!:%s\n", dieName);
+                        Symbol* outSymbol = process_DW_TAG_typedef(module, dbg, cur_die);
+                        std::string cName = dieName;
+//                        outSymbol = module.addSymbol(cName, byteSize);
+                        process_DW_TAG_typedef(module, dbg, cur_die);
+                    }
+                }
+                else
+                {
+                    printf("\n");
+                }
+
+            	DisplayDie(cur_die);
+            	//process_DW_TAG_structure_type(module, *outSymbol, dbg, typeDie);
+
+            	break;
+            }
 //            case DW_TAG_typedef:
 //            {
 //                /* This is a new symbol. Get the name and the byte size. */
