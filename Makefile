@@ -1,17 +1,19 @@
-BUILD_DIR  := build
+ROOT_DIR     :=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+BUILD_DIR    := $(ROOT_DIR)/build
+COVERAGE_DIR := $(BUILD_DIR)/coverage
 
 # Target directories
-SRC_DIR    := src
+SRC_DIR    := $(ROOT_DIR)/src
 OBJ_DIR    := $(BUILD_DIR)/obj
 BIN_DIR    := $(BUILD_DIR)
 
 # Unit test directories
-UT_SRC_DIR := unit-test
+UT_SRC_DIR := $(ROOT_DIR)/unit-test
 UT_OBJ_DIR := $(BUILD_DIR)/ut_obj
 UT_BIN_DIR := $(BUILD_DIR)
 
 # External directories
-CATCH2_DIR := Catch2
+CATCH2_DIR := $(ROOT_DIR)/Catch2
 
 # Target files
 EXE        := $(BIN_DIR)/juicer
@@ -22,6 +24,7 @@ OBJ        := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 UT_EXE     := $(UT_BIN_DIR)/juicer-ut
 UT_SRC     := $(wildcard $(UT_SRC_DIR)/*.cpp) $(filter-out $(SRC_DIR)/main.cpp, $(SRC))
 UT_OBJ     := $(UT_SRC:$(UT_SRC_DIR)/%.cpp=$(UT_OBJ_DIR)/%.o)
+UT_OBJ     := $(UT_OBJ:$(SRC_DIR)/%.cpp=$(UT_OBJ_DIR)/%.o)
 
 # Set target flags
 CPPFLAGS    := -MMD -MP -std=c++14 -fmessage-length=0
@@ -30,21 +33,22 @@ LDFLAGS     := -Llib
 LDLIBS      := -lm -ldwarf -lsqlite3 -lelf
 
 # Set unit test flags
-UT_CPPFLAGS := $(CPPFLAGS) -I$(CATCH2_DIR)/single_include/catch2 -I$(SRC_DIR) --coverage
-UT_CFLAGS   := $(CFLAGS)
+UT_CPPFLAGS := $(CPPFLAGS) -I$(CATCH2_DIR)/single_include/catch2 -I$(SRC_DIR)
+UT_CFLAGS   := $(CFLAGS) --coverage
 UT_LDFLAGS  := $(LDFLAGS)
 UT_LDLIBS   := $(LDLIBS) -lgcov
 
-# Set compiler
+# Set tools
 CC          := g++
+LD          := g++
 
-.PHONY: all clean run-tests
+.PHONY: all clean run-tests coverage
 
 # Target recipes
 $(EXE): $(OBJ)
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(OBJ_DIR)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR): 
@@ -52,29 +56,31 @@ $(OBJ_DIR):
 
 # Unit test recipes
 $(UT_EXE): $(UT_OBJ)
-	$(CC) $(UT_LDFLAGS) $^ $(UT_LDLIBS) -o $@
+	$(LD) $(UT_LDFLAGS) $^ $(UT_LDLIBS) -o $@
 
-$(UT_OBJ_DIR)/%.o: $(UT_SRC_DIR)/%.cpp $(UT_OBJ_DIR)
+$(UT_OBJ_DIR)/%.o: $(UT_SRC_DIR)/%.cpp | $(UT_OBJ_DIR)
+	$(CC) $(UT_CPPFLAGS) $(UT_CFLAGS) -c $< -o $@
+
+$(UT_OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(UT_OBJ_DIR)
 	$(CC) $(UT_CPPFLAGS) $(UT_CFLAGS) -c $< -o $@
 
 $(UT_OBJ_DIR): 
 	mkdir -p $@
 
-run-tests: $(UT_EXE)
-	$(UT_EXE)
+run-tests: | $(UT_EXE)
+	(cd $(BUILD_DIR); $(UT_EXE))
 
-#coverage: run_test
-#	#lcov -c --directory $(GCOV_DIR) --output-file $(GCOV_DIR)/main_coverage.info
-#	#lcov --remove $(JUICER_DIR)/../Catch2/single_include/catch2
-#	
-#	#genhtml $(GCOV_DIR)/main_coverage.info --output-directory $(GCOV_DIR)/report
-#
-#
+coverage: $(COVERAGE_DIR)/index.html
+
+$(COVERAGE_DIR)/index.html: | run-tests
+	mkdir -p $(COVERAGE_DIR)
+	(cd $(COVERAGE_DIR); gcovr $(ROOT_DIR) --root $(ROOT_DIR) --object-directory $(UT_OBJ_DIR) --filter $(ROOT_DIR)/src/ --html --html-details -o index.html)
 
 all: $(EXE) $(UT_EXE)
 
 clean:
 	@$(RM) -Rf $(BUILD_DIR)
 
-#-include $(OBJ:.o=.d)
+-include $(UT_OBJ:.o=.d)
+-include $(OBJ:.o=.d)
 
