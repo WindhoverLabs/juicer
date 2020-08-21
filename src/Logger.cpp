@@ -91,31 +91,7 @@ void Logger::logError(const char *spec, ...)
     if(Logger::instance != 0)
     {
         std::string result;
-        va_list args, args_copy;
-
-        va_start(args, spec);
-        va_copy(args_copy, args);
-
-        int len = vsnprintf(nullptr, 0, spec, args);
-        if (len < 0)
-        {
-            va_end(args_copy);
-            va_end(args);
-            throw std::runtime_error("vsnprintf error");
-        }
-
-        if (len > 0)
-        {
-            result.resize(len);
-            // note: &result[0] is *guaranteed* only in C++11 and later
-            // to point to a buffer of contiguous memory with room for a
-            // null-terminator, but this "works" in earlier versions
-            // in *most* common implementations as well...
-            vsnprintf(&result[0], len+1, spec, args_copy); // or result.data() in C++17 and later...
-        }
-
-        va_end(args_copy);
-        va_end(args);
+        result = vstring(spec);
 
         Logger::instance->LogEvent(LOGGER_EVENT_ERROR, result);
     }
@@ -128,31 +104,8 @@ void Logger::logWarning(const char *spec, ...)
     if(Logger::instance != 0)
     {
         std::string result;
-        va_list args, args_copy;
 
-        va_start(args, spec);
-        va_copy(args_copy, args);
-
-        int len = vsnprintf(nullptr, 0, spec, args);
-        if (len < 0)
-        {
-            va_end(args_copy);
-            va_end(args);
-            throw std::runtime_error("vsnprintf error");
-        }
-
-        if (len > 0)
-        {
-            result.resize(len);
-            // note: &result[0] is *guaranteed* only in C++11 and later
-            // to point to a buffer of contiguous memory with room for a
-            // null-terminator, but this "works" in earlier versions
-            // in *most* common implementations as well...
-            vsnprintf(&result[0], len+1, spec, args_copy); // or result.data() in C++17 and later...
-        }
-
-        va_end(args_copy);
-        va_end(args);
+        result = vstring(spec);
 
         Logger::instance->LogEvent(LOGGER_EVENT_WARNING, result);
     }
@@ -165,31 +118,7 @@ void Logger::logInfo(const char *spec, ...)
     if(Logger::instance != 0)
     {
         std::string result;
-        va_list args, args_copy;
-
-        va_start(args, spec);
-        va_copy(args_copy, args);
-
-        int len = vsnprintf(nullptr, 0, spec, args);
-        if (len < 0)
-        {
-            va_end(args_copy);
-            va_end(args);
-            throw std::runtime_error("vsnprintf error");
-        }
-
-        if (len > 0)
-        {
-            result.resize(len);
-            // note: &result[0] is *guaranteed* only in C++11 and later
-            // to point to a buffer of contiguous memory with room for a
-            // null-terminator, but this "works" in earlier versions
-            // in *most* common implementations as well...
-            vsnprintf(&result[0], len+1, spec, args_copy); // or result.data() in C++17 and later...
-        }
-
-        va_end(args_copy);
-        va_end(args);
+        result = vstring(spec);
 
         Logger::instance->LogEvent(LOGGER_EVENT_INFO, result);
     }
@@ -202,31 +131,7 @@ void Logger::logDebug(const char *spec, ...)
     if(Logger::instance != 0)
     {
         std::string result;
-        va_list args, args_copy;
-
-        va_start(args, spec);
-        va_copy(args_copy, args);
-
-        int len = vsnprintf(nullptr, 0, spec, args);
-        if (len < 0)
-        {
-            va_end(args_copy);
-            va_end(args);
-            throw std::runtime_error("vsnprintf error");
-        }
-
-        if (len > 0)
-        {
-            result.resize(len);
-            // note: &result[0] is *guaranteed* only in C++11 and later
-            // to point to a buffer of contiguous memory with room for a
-            // null-terminator, but this "works" in earlier versions
-            // in *most* common implementations as well...
-            vsnprintf(&result[0], len+1, spec, args_copy); // or result.data() in C++17 and later...
-        }
-
-        va_end(args_copy);
-        va_end(args);
+        result = vstring(spec);
 
         Logger::instance->LogEvent(LOGGER_EVENT_DEBUG, result);
     }

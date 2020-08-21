@@ -50,7 +50,7 @@
 /*
  * Macros for error values of Juicer methods and functions.
  */
-#define JUICER_OK 1
+#define JUICER_OK 0
 #define JUICER_ERROR -1
 
 typedef enum

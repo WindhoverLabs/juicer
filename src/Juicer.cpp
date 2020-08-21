@@ -1928,7 +1928,7 @@ int Juicer::parse(std::string moduleName, std::string& elfFilePath)
         {
             /* All done.  Write it out. */
             logger.logDebug("Parsing of module '%s' is complete.  Writing to data container.", moduleName.c_str());
-            idc->write(*module.get());
+            return_value  = idc->write(*module.get());
         }
     }
 

@@ -20,8 +20,11 @@ ElfFile::ElfFile(Module& inModule) :
     logger.logDebug("ELF %s@%s  checksum:0x%08x  date:%s  endian:%s  created.", name.c_str(), module.getName().c_str(), checksum, date.c_str(), little_endian ? "LE" : "BE");
 }
 
-
-
+/**
+ *@todo Matt, not sure we talked about this but we could just delete this
+ *constructor and the error of using a copy constructor will be caught by the
+ *compiler before even running juicer.
+ */
 ElfFile::ElfFile(Module& inModule, std::string &inName, uint32_t inChecksum,
 		std::string &inDate, bool inLittleEndian) :
 		    module{inModule}, // @suppress("Symbol is not resolved")
