@@ -43,9 +43,9 @@ run_test: $(EXE)
 
 coverage: run_test
 	lcov -c --directory $(GCOV_DIR) --output-file $(GCOV_DIR)/main_coverage.info
-	lcov --remove $(JUICER_DIR)/../Catch2/single_include/catch2
+	#lcov --remove $(JUICER_DIR)/../Catch2/single_include/catch2
 	
-	genhtml $(GCOV_DIR)/main_coverage.info --output-directory $(GCOV_DIR)/report
+	#genhtml $(GCOV_DIR)/main_coverage.info --output-directory $(GCOV_DIR)/report
 
 
 clean:
