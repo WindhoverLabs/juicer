@@ -98,7 +98,7 @@ To track our test coverage we use `gcov`.
 
 In order to set up gcove we need to pass the `--coverage` flag to gcc and then pass `lgcov` and  `--coverage` and compile and run your the tests.
 
-###Generating Coverage Report
+### Generating Coverage Report
 After you compile *and* run the test suite with gcov, generating an html report is very easy! All you need  is two commands.
 
 *Make sure you are in the directory that has all of the `gcda ` and `gcno ` files*
