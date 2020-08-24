@@ -237,7 +237,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     REQUIRE(rc == SQLITE_OK);
 
     /**
-     * Check the correctness of Circle struct.
+     * Check the correctness of Square struct.
      */
 
     REQUIRE(circleMap["12"].at(0) == "1");
@@ -245,7 +245,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     REQUIRE(circleMap["12"].at(2) == "20");
 
     /**
-     *Check the fields of the Circle struct.
+     *Check the fields of the Square struct.
      */
 
     std::string getCircleFields{"SELECT * FROM fields WHERE symbol = 12;"};
@@ -254,12 +254,12 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     rc = sqlite3_exec(database, getCircleFields.c_str(), callback, &fieldsMap,
                              &errorMessage);
-//
-//    REQUIRE(rc == SQLITE_OK);
-//
-//    /**
-//     *Check the correctness of the fields
-//     */
+
+    REQUIRE(rc == SQLITE_OK);
+
+    /**
+     *Check the correctness of the fields
+     */
     REQUIRE(fieldsMap.at("1").at(0) == "12");
     REQUIRE(fieldsMap.at("1").at(1) == "width");
     REQUIRE(fieldsMap.at("1").at(2) == "0");
@@ -296,10 +296,10 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     REQUIRE(fieldsMap["5"].at(3) == "11");
     REQUIRE(fieldsMap["5"].at(4) == "0");
     REQUIRE(fieldsMap["5"].at(5) == "1");
-//
-//    /**
-//     *Check the correctness of the types
-//     */
+
+    /**
+     *Check the correctness of the types
+     */
     std::string getFieldsSymbols{"SELECT * FROM symbols WHERE id = 4;"
     						     "SELECT * FROM symbols WHERE id = 7;"
 		 	 	 	 	 	 	 "SELECT * FROM symbols WHERE id = 11;"};
