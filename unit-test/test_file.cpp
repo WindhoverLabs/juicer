@@ -20,4 +20,6 @@
 
 Square sq = {};
 Circle ci = {};
+//struct Triangle tri{};
+
 enum Color rainbow  = RED;

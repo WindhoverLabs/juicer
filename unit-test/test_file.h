@@ -11,13 +11,14 @@
 
 #ifndef TEST_FILE_H_
 #define TEST_FILE_H_
+#include "stdint.h"
 
 typedef struct
 {
-    int width = 101;
-    char stuff;
-    int length;
-    char more_stuff;
+    int32_t width = 101;
+    uint8_t stuff;
+    int32_t length;
+    uint8_t more_stuff;
     float floating_stuff;
 }Square;
 
@@ -30,6 +31,11 @@ struct Circle
     float diameter = 7;
     float radius;
 };
+
+struct
+{
+	float area;
+} Triangle;
 
 enum Color
 {
