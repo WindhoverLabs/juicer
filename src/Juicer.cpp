@@ -361,6 +361,9 @@ Symbol * Juicer::getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &mu
 
     /* Get the type attribute. */
     res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
+
+    DisplayDie(inDie);
+
     if(res != DW_DLV_OK)
     {
         logger.logWarning("Cannot find data type.  Skipping.  %u  errno=%u %s ", __LINE__, dwarf_errno(error),
@@ -390,8 +393,11 @@ Symbol * Juicer::getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &mu
     }
 
     /* Get the tag so we know how to process it. */
+
     if(res == DW_DLV_OK)
     {
+    	DisplayDie(typeDie);
+
         res = dwarf_tag(typeDie, &tag, &error);
         if(res != DW_DLV_OK)
         {
@@ -1351,7 +1357,7 @@ Symbol * Juicer::process_DW_TAG_typedef(Module& module, Dwarf_Debug dbg, Dwarf_D
     {
         uint32_t multiplicity;
 
-        baseTypeSymbol = getBaseTypeSymbol(module, inDie, multiplicity);
+        baseTypeSymbol = getBaseTypeSymbol(module ,inDie, multiplicity);
         if(baseTypeSymbol == 0)
         {
             /* Set the error code so we don't do anymore processing. */
@@ -1370,11 +1376,11 @@ Symbol * Juicer::process_DW_TAG_typedef(Module& module, Dwarf_Debug dbg, Dwarf_D
     {
         std::string sDieName = dieName;
         outSymbol = module.addSymbol(sDieName, byteSize);
+        logger.logDebug("name for this Symbol-->%s\n",outSymbol->getName().c_str());
     }
 
     return outSymbol;
 }
-
 
 /**
  * @brief Inspects the data on the die and its own children recursively.
@@ -1573,6 +1579,7 @@ int Juicer::getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die,
     Dwarf_Attribute attr_struct;
     int return_value = JUICER_OK;
 
+
     printDieData(dbg, in_die, in_level);
 
     for(;;)
@@ -1615,17 +1622,16 @@ int Juicer::getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die,
                         logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
                                 dwarf_errmsg(error));
                     }
-
                     else
                     {
-                    	/**
-                    	 *@todo We can add the Symbol here!
-                    	 */
-                        printf("We have a name!:%s\n", dieName);
-                        Symbol* outSymbol = process_DW_TAG_typedef(module, dbg, cur_die);
-                        std::string cName = dieName;
-//                        outSymbol = module.addSymbol(cName, byteSize);
-                        process_DW_TAG_typedef(module, dbg, cur_die);
+                    	Dwarf_Unsigned bytesize;
+                    	res = dwarf_bytesize(cur_die, &bytesize, &error);
+                    	std::string stdString{dieName};
+
+                        Symbol* outSymbol = module.addSymbol(stdString,(uint32_t) bytesize);
+
+                        process_DW_TAG_structure_type(module, *outSymbol, dbg, cur_die);
+
                     }
                 }
                 else
