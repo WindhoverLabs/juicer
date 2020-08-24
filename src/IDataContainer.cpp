@@ -33,7 +33,27 @@ IDataContainer* IDataContainer::Create(IDataContainer_Type_t containerType, cons
     va_start(args, initSpec);
     va_copy(args_copy, args);
 
-    initString = vstring(initSpec);
+    int len = vsnprintf(nullptr, 0, initSpec, args);
+    if (len < 0)
+    {
+        va_end(args_copy);
+        va_end(args);
+        throw std::runtime_error("vsnprintf error");
+    }
+
+    if (len > 0)
+    {
+    	initString.resize(len);
+        // note: &result[0] is *guaranteed* only in C++11 and later
+        // to point to a buffer of contiguous memory with room for a
+        // null-terminator, but this "works" in earlier versions
+        // in *most* common implementations as well...
+        vsnprintf(&initString[0], len+1, initSpec, args_copy); // or result.data() in C++17 and later...
+    }
+
+    va_end(args_copy);
+    va_end(args);
+
 
 	logger.logDebug("IDC initialization string = '%s'", initString.c_str());
 

@@ -55,7 +55,6 @@ public:
 private:
     static LoggerInstance *instance;
     static unsigned int referenceCount;
-    static std::string vstring(const char * format, ...);
 };
 
 #endif /* LOGGER_H_ */
