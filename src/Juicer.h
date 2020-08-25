@@ -101,6 +101,7 @@ private:
     void process_DW_TAG_structure_type(Module& module, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
     Symbol * process_DW_TAG_pointer_type(Module& module, Dwarf_Debug dbg, Dwarf_Die inDie);
     void process_DW_TAG_enumeration_type(Module& module, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    int process_DW_TAG_array_type(Module& module, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
     char * getFirstAncestorName(Dwarf_Die inDie);
 	int printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
 	char * dwarfStringToChar(char *dwarfString);
