@@ -37,7 +37,7 @@
                                   id INTEGER PRIMARY KEY,\
                                   module INTEGER NOT NULL,\
                                   name TEXT UNIQUE NOT NULL,\
-                                  byte_size BOOLEAN NOT NULL,\
+                                  byte_size INTEGER NOT NULL,\
                                   FOREIGN KEY(module) REFERENCES modules(id)\
                                   UNIQUE(module,name));"
 
