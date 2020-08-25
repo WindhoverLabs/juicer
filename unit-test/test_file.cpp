@@ -21,7 +21,13 @@
 Square sq = {};
 Circle ci = {};
 
+int vector_x = 100;
+
 int flat_array[] = {1,2,3,4,5,6};
+
+int vector_y = 30;
+
+char alphabet[] = {'a', 'b', 'c'};
 
 enum Color rainbow  = RED;
 
