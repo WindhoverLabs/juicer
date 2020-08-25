@@ -22,20 +22,12 @@ typedef struct
     float floating_stuff;
 }Square;
 
-/**
- *@note structs that are not typedef'd seem to not be processed by Juicer.
- *Not sure why.
- */
 struct Circle
 {
     float diameter = 7;
     float radius;
+    int points[128];
 };
-
-struct
-{
-	float area;
-} Triangle;
 
 enum Color
 {

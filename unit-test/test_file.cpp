@@ -20,6 +20,9 @@
 
 Square sq = {};
 Circle ci = {};
-//struct Triangle tri{};
+
+int flat_array[] = {1,2,3,4,5,6};
 
 enum Color rainbow  = RED;
+
+int another_array[] = {20,21,22,34};
