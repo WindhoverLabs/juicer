@@ -1644,31 +1644,119 @@ int Juicer::getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die,
 
             	break;
             }
-//            case DW_TAG_typedef:
-//            {
-//                /* This is a new symbol. Get the name and the byte size. */
-//                res = dwarf_diename(cur_die, &name, &error);
-//                if(res != DW_DLV_OK)
-//                {
-//                    logger.logError("Error in dwarf_diename , level %d", in_level);
-//                    return_value = JUICER_ERROR;
-//                }
-//
-//                res = dwarf_bytesize(cur_die, &bytesize, &error);
-//                if(DW_DLV_OK == res)
-//                {
-//                    logger.logDebug(" byte size for %s is %u", name, bytesize);
-//                }
-//
-//                res = dwarf_bitsize(cur_die, &bitsize, &error);
-//                if(DW_DLV_OK == res)
-//                {
-//                    logger.logDebug(" bit size for %s is %u", name, bitsize);
-//                }
-//                module.addSymbol(name, bytesize);
-//
-//                break;
-//            }
+            case DW_TAG_array_type:
+            {
+                Dwarf_Die dieSubrangeType;
+                Dwarf_Unsigned dwfUpperBound = 0;
+                uint32_t multiplicity = 0;
+                char* arrayName;
+
+                Symbol* s = getBaseTypeSymbol(module, cur_die, multiplicity);
+
+                if(s != nullptr)
+                {
+                	logger.logDebug("name of symbol %s", s->getName().c_str() );
+                }
+
+                /* First get the base type itself. */
+//                outSymbol = getBaseTypeSymbol(module, typeDie, multiplicity);
+
+                /* Now lets get the array size.  Get the array size by getting
+                 * the first child, which should be the subrange_type. */
+                if(res == DW_DLV_OK)
+                {
+                    res = dwarf_child(cur_die, &dieSubrangeType, &error);
+                    if(res == DW_DLV_ERROR)
+                    {
+                        logger.logError("Error in dwarf_child. errno=%u %s", dwarf_errno(error),
+                                dwarf_errmsg(error));
+                    }
+                }
+
+                /* Make sure this is the subrange_type tag. */
+                if(res == DW_DLV_OK)
+                {
+                    Dwarf_Half childTag;
+
+                    res = dwarf_tag(dieSubrangeType, &childTag, &error);
+                    if(res != DW_DLV_OK)
+                    {
+                        logger.logError("Error in dwarf_tag.  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                            dwarf_errmsg(error));
+                    }
+                    else
+                    {
+                        if(childTag != DW_TAG_subrange_type)
+                        {
+                            logger.logError("Unexpected child in array.  tag=%u", tag);
+
+                            res = DW_DLV_ERROR;
+                        }
+                    }
+                }
+
+                /* Get the upper bound. */
+                if(res == DW_DLV_OK)
+                {
+                    res = dwarf_attr(dieSubrangeType, DW_AT_upper_bound, &attr_struct, &error);
+                    if(res != DW_DLV_OK)
+                    {
+                        logger.logError("Error in dwarf_attr(DW_AT_upper_bound).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                            dwarf_errmsg(error));
+                    }
+
+                    if(res == DW_DLV_OK)
+                    {
+                        res = dwarf_formudata(attr_struct, &dwfUpperBound, &error);
+                        if(res != DW_DLV_OK)
+                        {
+                            logger.logError("Error in dwarf_formudata.  errno=%u %s", dwarf_errno(error),
+                                    dwarf_errmsg(error));
+                        }
+                    }
+
+                    /* Set the multiplicity argument. */
+                    if(res == DW_DLV_OK)
+                    {
+                        multiplicity = dwfUpperBound + 1;
+                        logger.logInfo("size of array:%d", multiplicity);
+
+                        if(6 == multiplicity)
+                        {
+                            res = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
+                            if(res != DW_DLV_OK)
+                            {
+                                logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                                    dwarf_errmsg(error));
+                            }
+
+                            if(res == DW_DLV_OK)
+                            {
+                                res = dwarf_formstring(attr_struct, &arrayName, &error);
+                                if(res != DW_DLV_OK)
+                                {
+
+                                    logger.logError("Error in dwarf_formudata.  errno=%u %s", dwarf_errno(error),
+                                            dwarf_errmsg(error));
+                                }
+                                else
+                                {
+                                	logger.logDebug("Found an array with the name of \"arrayName\"");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                break;
+            }
+            /**
+             *@todo I think we should handle arrays and enums here.
+             */
+            case DW_TAG_variable:
+            {
+
+            }
         }
 
 
