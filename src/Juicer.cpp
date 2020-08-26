@@ -144,14 +144,15 @@ char * Juicer::dwarfStringToChar(char *dwarfString)
  */
 int Juicer::process_DW_TAG_array_type(Module& module, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
-	Dwarf_Die dieSubrangeType;
-	Dwarf_Unsigned dwfUpperBound = 0;
-	uint32_t multiplicity = 0;
-	Dwarf_Error error;
+	Dwarf_Die 		dieSubrangeType;
+	Dwarf_Unsigned 	dwfUpperBound = 0;
+	uint32_t 		multiplicity = 0;
+	Dwarf_Error 	error;
 	Dwarf_Attribute attr_struct;
-	char* arrayName;
-	int res;
-	Dwarf_Die sib_die = 0;
+	char* 			arrayName = nullptr;
+	int 			res;
+	Dwarf_Die 		sib_die = 0;
+	Symbol* 		outSymbol  = nullptr;
 
 	/* Now lets get the array size.  Get the array size by getting
 	 * the first child, which should be the subrange_type. */
@@ -161,6 +162,8 @@ int Juicer::process_DW_TAG_array_type(Module& module, Symbol &symbol, Dwarf_Debu
 			logger.logError("Error in dwarf_child. errno=%u %s", dwarf_errno(error),
 					dwarf_errmsg(error));
 		}
+
+     DisplayDie(inDie);
 
 	/* Make sure this is the subrange_type tag. */
 	if(res == DW_DLV_OK)
@@ -204,13 +207,14 @@ int Juicer::process_DW_TAG_array_type(Module& module, Symbol &symbol, Dwarf_Debu
 			}
 		}
 
-		/* Set the multiplicity argument. */
+		/* Set the multiplicity, the array's size. */
 		if(res == DW_DLV_OK)
 		{
 			multiplicity = dwfUpperBound + 1;
 			logger.logInfo("size of array:%d", multiplicity);
 		}
 	}
+
     res = dwarf_siblingof(dbg, inDie, &sib_die, &error);
      if(res == DW_DLV_ERROR)
      {
@@ -227,15 +231,29 @@ int Juicer::process_DW_TAG_array_type(Module& module, Symbol &symbol, Dwarf_Debu
 		}
 		else
 		{
+			/**
+			 *@todo Logic needs to be cleaned up.
+			 *I think we need to handle the case when arraySymbol is nullptr.
+			 */
+			std::string stdString{arrayName};
+
+			Symbol* 	arraySymbol =  getBaseTypeSymbol(module, inDie, multiplicity);
+
+			std::string arrayBaseType{arraySymbol->getName().c_str()};
+
+			outSymbol = module.getSymbol(arrayBaseType);
+
+			if(nullptr != arraySymbol)
+			{
+				outSymbol->addField(stdString, 0, *outSymbol, multiplicity, module.isLittleEndian());
+			}
+
 			logger.logInfo("Name for array-->%s", arrayName);
 		}
      }
 
      return res;
 }
-
-
-
 
 char * Juicer::getFirstAncestorName(Dwarf_Die inDie)
 {
