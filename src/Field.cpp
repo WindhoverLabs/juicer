@@ -32,6 +32,7 @@ Field::Field(Symbol& inSymbol, std::string &inName, uint32_t inByteOffset,
     		id{0}
 
 {
+
     logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset, type.getName().c_str(), multiplicity, little_endian ? "LE" : "BE");
 }
 

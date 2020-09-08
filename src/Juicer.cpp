@@ -224,7 +224,7 @@ int Juicer::process_DW_TAG_array_type(Module& module, Symbol &symbol, Dwarf_Debu
      else
      {
 		res = dwarf_diename(sib_die, &arrayName, &error);
-		if(DW_DLV_ERROR == res)
+		if(DW_DLV_ERROR == res || DW_DLV_NO_ENTRY == res )
 		{
 			logger.logError("Error in dwarf_diename , function process_DW_TAG_array_type.  errno=%u %s", dwarf_errno(error),
 						dwarf_errmsg(error));
@@ -546,7 +546,10 @@ Symbol * Juicer::getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &mu
                     std::string cName = dieName;
                     outSymbol = module.addSymbol(cName, byteSize);
 
-                    process_DW_TAG_structure_type(module, *outSymbol, dbg, typeDie);
+                    if(nullptr != outSymbol)
+                    {
+                    	process_DW_TAG_structure_type(module, *outSymbol, dbg, typeDie);
+                    }
                 }
                 break;
             }
@@ -1380,7 +1383,7 @@ Symbol * Juicer::process_DW_TAG_typedef(Module& module, Dwarf_Debug dbg, Dwarf_D
     Symbol          *baseTypeSymbol = 0;
     char            *dieName = 0;
     Dwarf_Attribute attr_struct;
-    Symbol          *outSymbol;
+    Symbol          *outSymbol = nullptr;
 
     /* Get the name attribute of this Die. */
     res = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
@@ -1554,6 +1557,7 @@ void Juicer::process_DW_TAG_structure_type(Module& module, Symbol& symbol, Dwarf
                                 /* Set the error code so we don't do anymore processing. */
                                 res = DW_DLV_ERROR;
                             }
+                            logger.logDebug("memberBaseTypeSymbol=%d", memberBaseTypeSymbol);
                         }
 
                         /* We have everything we need.  Add this field. */
