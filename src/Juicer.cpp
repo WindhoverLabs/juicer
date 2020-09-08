@@ -1938,7 +1938,7 @@ int Juicer::parse(std::string moduleName, std::string& elfFilePath)
         JuicerEndianness_t      endianness;
         int                     dwarf_value = DW_DLV_OK;
         /**@note module's lifetime is tied to parser's scope. */
-        std::unique_ptr<Module> module = std::make_unique<Module>(elfFilePath);
+        std::unique_ptr<Module> module = std::make_unique<Module>(moduleName);
 
         elfFile = open(elfFilePath.c_str(), O_RDONLY);
         if(elfFile < 0)
