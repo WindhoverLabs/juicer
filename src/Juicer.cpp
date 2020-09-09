@@ -114,6 +114,11 @@ int Juicer::readCUList(Module& module, Dwarf_Debug dbg)
             return_value = getDieAndSiblings(module, dbg, cu_die, 0);
         }
 
+        if(JUICER_OK != return_value)
+        {
+        	logger.logError("Error on siblings func");
+        }
+
         dwarf_dealloc(dbg, cu_die, DW_DLA_DIE);
     }
     return return_value;
@@ -138,9 +143,20 @@ char * Juicer::dwarfStringToChar(char *dwarfString)
 }
 
 /**
+ * @brief Processes an array that belongs to the die inDie.
+ *
+ *@param module The module to write the new array symbol to.
+ *@param dbg the Dwarf Debug section structure
+ *@param inDie the die that contains the array.
+ *
  * @todo Store the array data(its name, size, etc) in the module for the
  * database to store it. Make sure to add a "multiplicity" column to the
  * symbols table.
+ *
+ * @return If the array symbol is added successfully to the module, then DW_DLV_OK is returned.
+ * Otherwise, DW_DLV_ERROR is returned. Please note that just because DW_DLV_ERROR is returned
+ * it does NOT mean that no array was found. There are cases where an array is found on the die,
+ * however, because it has no name we decide to not add it to the module at all.
  */
 int Juicer::process_DW_TAG_array_type(Module& module, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
@@ -237,14 +253,20 @@ int Juicer::process_DW_TAG_array_type(Module& module, Symbol &symbol, Dwarf_Debu
 			 */
 			std::string stdString{arrayName};
 
+			logger.logInfo("Name for array-->%s", arrayName);
+
 			Symbol* 	arraySymbol =  getBaseTypeSymbol(module, inDie, multiplicity);
 
-			std::string arrayBaseType{arraySymbol->getName().c_str()};
-
-			outSymbol = module.getSymbol(arrayBaseType);
-
-			if(nullptr != arraySymbol)
+			if(nullptr == arraySymbol)
 			{
+				res = DW_DLV_ERROR;
+
+				logger.logError("Base type not found for %s", arrayName);
+			}
+			else
+			{
+				std::string arrayBaseType{arraySymbol->getName().c_str()};
+				outSymbol = module.getSymbol(arrayBaseType);
 				outSymbol->addField(stdString, 0, *outSymbol, multiplicity, module.isLittleEndian());
 			}
 
@@ -260,7 +282,7 @@ char * Juicer::getFirstAncestorName(Dwarf_Die inDie)
     Dwarf_Attribute attr_struct;
     Dwarf_Off       typeOffset = 0;
     Dwarf_Die       typeDie;
-    char            *outName;
+    char            *outName = nullptr;
     Dwarf_Bool      hasName = false;
 
     /* Get the type attribute. */
@@ -457,11 +479,14 @@ Symbol * Juicer::getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &mu
 
     if(res == DW_DLV_OK)
     {
+    	logger.logDebug("res == DW_DLV_OK");
         switch(tag)
         {
+
             case DW_TAG_pointer_type:
             {
                 outSymbol = process_DW_TAG_pointer_type(module, dbg, typeDie);
+                logger.logDebug("DW_TAG_pointer_type");
                 break;
             }
 
@@ -470,6 +495,8 @@ Symbol * Juicer::getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &mu
                 Dwarf_Bool     structHasName = false;
                 Dwarf_Bool     parentHasName = false;
                 Dwarf_Unsigned byteSize = 0;
+
+                logger.logDebug("DW_TAG_structure_type");
 
                 /* Does the structure type itself have the name? */
                 res = dwarf_hasattr(typeDie, DW_AT_name, &structHasName, &error);
@@ -557,12 +584,14 @@ Symbol * Juicer::getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &mu
             case DW_TAG_base_type:
             {
                 outSymbol = process_DW_TAG_base_type(module, dbg, typeDie);
+                logger.logDebug("DW_TAG_base_type");
                 break;
             }
 
             case DW_TAG_typedef:
             {
                 outSymbol = process_DW_TAG_typedef(module, dbg, typeDie);
+                logger.logDebug("DW_TAG_typedef");
                 break;
             }
 
@@ -571,6 +600,8 @@ Symbol * Juicer::getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &mu
                 Dwarf_Bool     structHasName = false;
                 Dwarf_Bool     parentHasName = false;
                 Dwarf_Unsigned byteSize = 0;
+
+                logger.logDebug("DW_TAG_enumeration_type");
 
                 /* Does the structure type itself have the name? */
                 res = dwarf_hasattr(typeDie, DW_AT_name, &structHasName, &error);
@@ -656,6 +687,8 @@ Symbol * Juicer::getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &mu
                 Dwarf_Die dieSubrangeType;
                 Dwarf_Unsigned dwfUpperBound = 0;
 
+                logger.logDebug("DW_TAG_array_type");
+
                 /* First get the base type itself. */
                 outSymbol = getBaseTypeSymbol(module, typeDie, multiplicity);
 
@@ -726,33 +759,46 @@ Symbol * Juicer::getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &mu
             case DW_TAG_class_type:
             {
                 /* TODO */
+            	logger.logDebug("DW_TAG_class_type");
                 break;
             }
 
             case DW_TAG_const_type:
             {
                 /* TODO */
+                /* Get the type attribute. */
+                res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
+
+                getBaseTypeSymbol(module, typeDie, multiplicity);
+
                 break;
             }
 
             case DW_TAG_reference_type:
             {
                 /* TODO */
+            	logger.logDebug("DW_TAG_reference_type");
                 break;
             }
 
             case DW_TAG_union_type:
             {
                 /* TODO */
+            	logger.logDebug("DW_TAG_union_type");
                 break;
             }
 
 
             /* Fallthru */
             case DW_TAG_unspecified_type:
+            {
+            	logger.logDebug("DW_TAG_unspecified_type");
+            	break;
+            }
             case DW_TAG_rvalue_reference_type:
             {
                 /* Ignore these tags. */
+            	logger.logDebug("DW_TAG_rvalue_reference_type");
                 break;
             }
 
@@ -763,6 +809,11 @@ Symbol * Juicer::getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &mu
                 break;
             }
         }
+    }
+
+    if(nullptr == outSymbol)
+    {
+    	logger.logDebug("outSymbol is null!");
     }
 
     return outSymbol;
@@ -1632,7 +1683,6 @@ int Juicer::getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die,
     Dwarf_Attribute attr_struct;
     int return_value = JUICER_OK;
 
-
     printDieData(dbg, in_die, in_level);
 
     for(;;)
@@ -1699,7 +1749,7 @@ int Juicer::getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die,
             case DW_TAG_array_type:
             {
 				Symbol s{module};
-            	process_DW_TAG_array_type(module,s, dbg ,cur_die);
+            	res = process_DW_TAG_array_type(module,s, dbg ,cur_die);
 
                 break;
             }
@@ -1712,6 +1762,12 @@ int Juicer::getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die,
             }
         }
 
+        if(DW_DLV_OK != res)
+        {
+        	return_value = JUICER_ERROR;
+        	break;
+        }
+
         res = dwarf_child(cur_die, &child, &error);
         if(res == DW_DLV_ERROR)
         {
@@ -1722,7 +1778,7 @@ int Juicer::getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die,
         else if(res == DW_DLV_OK)
         {
         	logger.logInfo("CHILD");
-            getDieAndSiblings(module, dbg, child, in_level + 1);
+        	getDieAndSiblings(module, dbg, child, in_level + 1);
         }
 
         /* res == DW_DLV_NO_ENTRY */
