@@ -1,0 +1,17 @@
+language: C++
+dist: xenial
+
+before_install:
+  - sudo apt update
+  - sudo apt-get update -qq
+
+install:
+  - sudo apt-get -y install libelf-dev
+  - sudo apt-get -y install libdwarf-dev
+  - sudo apt-get -y install libsqlite3-dev
+  - sudo apt-get -y install --reinstall make
+  - sudo apt install build-essential
+
+script:
+  - make
+
