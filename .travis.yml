@@ -13,5 +13,5 @@ install:
   - sudo apt install build-essential
 
 script:
-  - make
+  - make run-tests
 
