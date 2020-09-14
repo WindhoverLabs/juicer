@@ -14,7 +14,7 @@
 #include <stddef.h>
 
 
-#define TEST_FILE_DIR "./unit-test/obj"
+#define TEST_FILE_DIR "ut_obj"
 
 /**
  *Checks if the platform is little endian.
@@ -67,6 +67,7 @@ TEST_CASE("Test Juicer at the highest level with SQLiteDB" ,"[Juicer]")
     inputFile += "/test_file.o";
 
     idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+
     REQUIRE(idc!=nullptr);
     logger.logInfo("IDataContainer was constructed successfully for unit test.");
 

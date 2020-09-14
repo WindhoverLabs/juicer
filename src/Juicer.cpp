@@ -1762,12 +1762,6 @@ int Juicer::getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die,
             }
         }
 
-        if(DW_DLV_OK != res)
-        {
-        	return_value = JUICER_ERROR;
-        	break;
-        }
-
         res = dwarf_child(cur_die, &child, &error);
         if(res == DW_DLV_ERROR)
         {
