@@ -23,7 +23,39 @@ Circle ci = {};
 
 int vector_x = 100;
 
+unsigned int some_unsiged_int = 12;
+
+int8_t precise_int8 = 110;
+
+int16_t precise_int16 = 110;
+
+int32_t precise_int32 = 110;
+
+int64_t precise_int64 = 110;
+
+uint8_t precise_unsigned_int8 = 112;
+
+uint16_t precise_unsigned_int16 = 112;
+
+uint32_t precise_unsigned_int32 = 112;
+
+uint64_t precise_unsigned_int64 = 112;
+
+char character = '2';
+
 int flat_array[] = {1,2,3,4,5,6};
+
+float some_float = 1.5;
+
+short some_short = 20;
+
+unsigned short some_signed_short = 14;
+
+long a_long_value = 0;
+
+long long a_very_long_value = 0;
+
+double some_double = 4.5;
 
 int vector_y = 30;
 
