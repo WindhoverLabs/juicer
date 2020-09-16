@@ -138,15 +138,15 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
      * Check the correctness of Circle struct.
      */
 
-    REQUIRE(circleMap["13"].at(0) == "1");
-    REQUIRE(circleMap["13"].at(1) == "Circle");
-    REQUIRE(circleMap["13"].at(2) == std::to_string(sizeof(Circle)));
+    REQUIRE(circleMap["19"].at(0) == "1");
+    REQUIRE(circleMap["19"].at(1) == "Circle");
+    REQUIRE(circleMap["19"].at(2) == std::to_string(sizeof(Circle)));
 
     /**
      *Check the fields of the Circle struct.
      */
 
-    std::string getCircleFields{"SELECT * FROM fields WHERE symbol = 13;"};
+    std::string getCircleFields{"SELECT * FROM fields WHERE symbol = 19;"};
 
     std::map<std::string, std::vector<std::string>> fieldsMap{};
 
@@ -159,24 +159,24 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
      *Check the correctness of the fields
      */
 
-    REQUIRE(fieldsMap["9"].at(0) == "13");
+    REQUIRE(fieldsMap["9"].at(0) == "19");
     REQUIRE(fieldsMap["9"].at(1) == "diameter");
     REQUIRE(fieldsMap["9"].at(2) == std::to_string(offsetof(Circle, diameter)));
-    REQUIRE(fieldsMap["9"].at(3) == "11");
+    REQUIRE(fieldsMap["9"].at(3) == "17");
     REQUIRE(fieldsMap["9"].at(4) == "0");
     REQUIRE(fieldsMap["9"].at(5) == little_endian);
 
-    REQUIRE(fieldsMap["10"].at(0) == "13");
+    REQUIRE(fieldsMap["10"].at(0) == "19");
     REQUIRE(fieldsMap["10"].at(1) == "radius");
     REQUIRE(fieldsMap["10"].at(2) == std::to_string(offsetof(Circle, radius)));
-    REQUIRE(fieldsMap["10"].at(3) == "11");
+    REQUIRE(fieldsMap["10"].at(3) == "17");
     REQUIRE(fieldsMap["10"].at(4) == "0");
     REQUIRE(fieldsMap["10"].at(5) == little_endian);
 
     /**
      *Check the correctness of the types
      */
-    std::string getFieldsSymbols{"SELECT * FROM symbols WHERE id = 11;"};
+    std::string getFieldsSymbols{"SELECT * FROM symbols WHERE id = 17;"};
 
     std::map<std::string, std::vector<std::string>> typesMap{};
 
@@ -185,9 +185,9 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(rc == SQLITE_OK);
 
-    REQUIRE(typesMap["11"].at(0) == "1");
-    REQUIRE(typesMap["11"].at(1) == "float");
-    REQUIRE(typesMap["11"].at(2) == std::to_string(sizeof(float)));
+    REQUIRE(typesMap["17"].at(0) == "1");
+    REQUIRE(typesMap["17"].at(1) == "float");
+    REQUIRE(typesMap["17"].at(2) == std::to_string(sizeof(float)));
 
     /**
      * *Clean up our database handle and objects in memory.
@@ -252,14 +252,14 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     /**
      * Check the correctness of Square struct.
      */
-    REQUIRE(circleMap["12"].at(0) == "1");
-    REQUIRE(circleMap["12"].at(1) == "Square");
-    REQUIRE(circleMap["12"].at(2) == std::to_string(sizeof(Square)));
+    REQUIRE(circleMap["18"].at(0) == "1");
+    REQUIRE(circleMap["18"].at(1) == "Square");
+    REQUIRE(circleMap["18"].at(2) == std::to_string(sizeof(Square)));
 
     /**
      *Check the fields of the Square struct.
      */
-    std::string getCircleFields{"SELECT * FROM fields WHERE symbol = 12;"};
+    std::string getCircleFields{"SELECT * FROM fields WHERE symbol = 18;"};
 
     std::map<std::string, std::vector<std::string>> fieldsMap{};
 
@@ -271,49 +271,49 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     /**
      *Check the correctness of the fields
      */
-    REQUIRE(fieldsMap.at("4").at(0) == "12");
+    REQUIRE(fieldsMap.at("4").at(0) == "18");
     REQUIRE(fieldsMap.at("4").at(1) == "width");
     REQUIRE(fieldsMap.at("4").at(2) == std::to_string(offsetof(Square, width)));
-    REQUIRE(fieldsMap.at("4").at(3) == "4");
+    REQUIRE(fieldsMap.at("4").at(3) == "6");
     REQUIRE(fieldsMap.at("4").at(4) == "0");
     REQUIRE(fieldsMap.at("4").at(5) == little_endian);
 
-    REQUIRE(fieldsMap["5"].at(0) == "12");
+    REQUIRE(fieldsMap["5"].at(0) == "18");
     REQUIRE(fieldsMap["5"].at(1) == "stuff");
     REQUIRE(fieldsMap["5"].at(2) == std::to_string(offsetof(Square, stuff)));
-    REQUIRE(fieldsMap["5"].at(3) == "7");
+    REQUIRE(fieldsMap["5"].at(3) == "10");
     REQUIRE(fieldsMap["5"].at(4) == "0");
     REQUIRE(fieldsMap["5"].at(5) == little_endian);
 
 
-    REQUIRE(fieldsMap["6"].at(0) == "12");
+    REQUIRE(fieldsMap["6"].at(0) == "18");
     REQUIRE(fieldsMap["6"].at(1) == "length");
     REQUIRE(fieldsMap["6"].at(2) == std::to_string(offsetof(Square, length)));
-    REQUIRE(fieldsMap["6"].at(3) == "4");
+    REQUIRE(fieldsMap["6"].at(3) == "6");
     REQUIRE(fieldsMap["6"].at(4) == "0");
     REQUIRE(fieldsMap["6"].at(5) == little_endian);
 
-    REQUIRE(fieldsMap["7"].at(0) == "12");
+    REQUIRE(fieldsMap["7"].at(0) == "18");
     REQUIRE(fieldsMap["7"].at(1) == "more_stuff");
     REQUIRE(fieldsMap["7"].at(2) == std::to_string(offsetof(Square, more_stuff)));
-    REQUIRE(fieldsMap["7"].at(3) == "7");
+    REQUIRE(fieldsMap["7"].at(3) == "10");
     REQUIRE(fieldsMap["7"].at(4) == "0");
     REQUIRE(fieldsMap["7"].at(5) == little_endian);
 
 
-    REQUIRE(fieldsMap["8"].at(0) == "12");
+    REQUIRE(fieldsMap["8"].at(0) == "18");
     REQUIRE(fieldsMap["8"].at(1) == "floating_stuff");
     REQUIRE(fieldsMap["8"].at(2) == std::to_string(offsetof(Square, floating_stuff)));
-    REQUIRE(fieldsMap["8"].at(3) == "11");
+    REQUIRE(fieldsMap["8"].at(3) == "17");
     REQUIRE(fieldsMap["8"].at(4) == "0");
     REQUIRE(fieldsMap["8"].at(5) == little_endian);
 
     /**
      *Check the correctness of the types
      */
-    std::string getFieldsSymbols{"SELECT * FROM symbols WHERE id = 4;"
-    						     "SELECT * FROM symbols WHERE id = 7;"
-		 	 	 	 	 	 	 "SELECT * FROM symbols WHERE id = 11;"};
+    std::string getFieldsSymbols{"SELECT * FROM symbols WHERE id = 6;"
+    						     "SELECT * FROM symbols WHERE id = 10;"
+		 	 	 	 	 	 	 "SELECT * FROM symbols WHERE id = 17;"};
 
     std::map<std::string, std::vector<std::string>> typesMap{};
 
@@ -322,17 +322,17 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     REQUIRE(rc == SQLITE_OK);
 
-    REQUIRE(typesMap["4"].at(0) == "1");
-    REQUIRE(typesMap["4"].at(1) == "int32_t");
-    REQUIRE(typesMap["4"].at(2) == std::to_string(sizeof(int32_t)));
+    REQUIRE(typesMap["6"].at(0) == "1");
+    REQUIRE(typesMap["6"].at(1) == "int32_t");
+    REQUIRE(typesMap["6"].at(2) == std::to_string(sizeof(int32_t)));
 
-    REQUIRE(typesMap["7"].at(0) == "1");
-    REQUIRE(typesMap["7"].at(1) == "uint8_t");
-    REQUIRE(typesMap["7"].at(2) == std::to_string(sizeof(uint8_t)));
+    REQUIRE(typesMap["10"].at(0) == "1");
+    REQUIRE(typesMap["10"].at(1) == "uint8_t");
+    REQUIRE(typesMap["10"].at(2) == std::to_string(sizeof(uint8_t)));
 
-    REQUIRE(typesMap["11"].at(0) == "1");
-    REQUIRE(typesMap["11"].at(1) == "float");
-    REQUIRE(typesMap["11"].at(2) == std::to_string(sizeof(float)));
+    REQUIRE(typesMap["17"].at(0) == "1");
+    REQUIRE(typesMap["17"].at(1) == "float");
+    REQUIRE(typesMap["17"].at(2) == std::to_string(sizeof(float)));
 
     REQUIRE(remove("./test_db.sqlite")==0);
     delete idc;
@@ -391,18 +391,17 @@ TEST_CASE("Test the correctness of the flat_array array after Juicer has process
      * Check the correctness of Circle struct.
      */
 
-    REQUIRE(flatArrayMap["2"].at(0) == "3");
+    REQUIRE(flatArrayMap["2"].at(0) == "5");
     REQUIRE(flatArrayMap["2"].at(1) == "flat_array");
     REQUIRE(flatArrayMap["2"].at(2) == "0");
-
-    REQUIRE(flatArrayMap["2"].at(3) == "3");
+    REQUIRE(flatArrayMap["2"].at(3) == "5");
     REQUIRE(flatArrayMap["2"].at(4) == "6");
     REQUIRE(flatArrayMap["2"].at(5) == little_endian);
 
     /**
      *Check the correctness of the type
      */
-    std::string getFieldsSymbols{"SELECT * FROM symbols WHERE id = 3;"};
+    std::string getFieldsSymbols{"SELECT * FROM symbols WHERE id = 5;"};
 
     std::map<std::string, std::vector<std::string>> typesMap{};
 
@@ -411,9 +410,9 @@ TEST_CASE("Test the correctness of the flat_array array after Juicer has process
 
     REQUIRE(rc == SQLITE_OK);
 
-    REQUIRE(typesMap["3"].at(0) == "1");
-    REQUIRE(typesMap["3"].at(1) == "int");
-    REQUIRE(typesMap["3"].at(2) == std::to_string(sizeof(int)));
+    REQUIRE(typesMap["5"].at(0) == "1");
+    REQUIRE(typesMap["5"].at(1) == "int");
+    REQUIRE(typesMap["5"].at(2) == std::to_string(sizeof(int)));
 
     /**
      * *Clean up our database handle and objects in memory.
@@ -506,8 +505,6 @@ TEST_CASE("Write Elf File to database with verbosity set to INFO")
 
 	juicer.setIDC(idc);
 	juicer.parse(moduleName, inputFile);
-
-//	juicer.parse(moduleName, inputFile);
 
 	/**
 	*Clean up our database handle and objects in memory.
