@@ -5,7 +5,7 @@
  *      Author: vagrant
  */
 
-#include "Module.h"
+#include "ElfObj.h"
 #include "ElfFile.h"
 #include "Symbol.h"
 #include "Field.h"
@@ -13,15 +13,14 @@
 #include "Enumeration.h"
 
 
-
-Module::Module(std::string &inName) :
+ElfObj::ElfObj(std::string &inName) :
     name{inName}, // @suppress("Symbol is not resolved")
     id{0}
 {
     logger.logDebug("Module '%s' created.", getName().c_str());
 }
 
-Module::Module():
+ElfObj::ElfObj():
     name{""},
     id{0}
 {
@@ -30,7 +29,7 @@ Module::Module():
 
 
 
-Module::Module(const Module& module) :
+ElfObj::ElfObj(const ElfObj& module) :
     name{module.name}, // @suppress("Symbol is not resolved")
     id{0}
 {
@@ -39,20 +38,20 @@ Module::Module(const Module& module) :
 
 
 
-Module::~Module()
+ElfObj::~ElfObj()
 {
 }
 
 
 
-std::string Module::getName() const
+std::string ElfObj::getName() const
 {
 	return name;
 }
 
 
 
-void Module::setName(std::string &inName)
+void ElfObj::setName(std::string &inName)
 {
     logger.logDebug("Module %s renamed to %s.", name.c_str(), inName.c_str());
 
@@ -60,50 +59,67 @@ void Module::setName(std::string &inName)
 }
 
 
-uint32_t Module::getId(void) const
+uint32_t ElfObj::getId(void) const
 {
     return id;
 }
 
 
 
-void Module::setId(uint32_t newId)
+void ElfObj::setId(uint32_t newId)
 {
     id = newId;
 
 }
 
-void Module::addElfFile(ElfFile &inElfFile)
-{
-	logger.logDebug("Adding ELF %s to Module %s.", inElfFile.getName().c_str(), name.c_str());
+//bool ElfObj::isLittleEndian(void)
+//{
+//    bool rc = false;
+//
+//    /* Just read the endianness from the first ELF file.  They should all be the same. */
+//    if(elfFiles.size() > 0)
+//    {
+//        rc = elfFiles.front()->isLittleEndian();
+//    }
+//
+//    return rc;
+//}
 
+void ElfObj::isLittleEndian(bool inLittleEndian)
+{
+    logger.logDebug("ELF %s endian changed from %s to %s.", name.c_str(), little_endian ? "LE" : "BE", inLittleEndian ? "LE" : "BE");
+
+	little_endian = inLittleEndian;
 }
 
-void Module::addElfFile(std::string& name,
-		                uint32_t checksum,
-						std::string& date,
-		                bool little_endian)
+bool ElfObj::isLittleEndian(void) const
 {
-	ElfFile newElfFile{*this, name, checksum, date, little_endian};
-	elfFiles.push_back(std::make_unique<ElfFile>(*this, name, checksum, date, little_endian));
-
-	addElfFile(newElfFile);
+	return little_endian;
 }
 
-bool Module::isLittleEndian(void)
+void ElfObj::setDate(const std::string& inDate)
 {
-    bool rc = false;
+    logger.logDebug("ELF %s date changed from %s to %s.", name.c_str(), date.c_str(), inDate.c_str());
 
-    /* Just read the endianness from the first ELF file.  They should all be the same. */
-    if(elfFiles.size() > 0)
-    {
-        rc = elfFiles.front()->isLittleEndian();
-    }
-
-    return rc;
+	this->date = inDate;
 }
 
+const std::string& ElfObj::getDate() const
+{
+	return date;
+}
 
+void ElfObj::setChecksum(uint32_t inChecksum)
+{
+    logger.logDebug("ELF %s checksum changed from 0x%08x to 0x%08x.", name.c_str(), checksum, inChecksum);
+
+	this->checksum = inChecksum;
+}
+
+uint32_t ElfObj::getChecksum() const
+{
+	return checksum;
+}
 
 /**
  *@note IF there is the possibility that this method cannot find the symbol
@@ -114,8 +130,7 @@ bool Module::isLittleEndian(void)
  *nonetheless. Will re-evaluate. Visit https://en.cppreference.com/w/cpp/utility/optional
  *and https://en.cppreference.com/w/cpp/utility/tuple for details.
  */
-
-Symbol* Module::getSymbol(std::string &name)
+Symbol* ElfObj::getSymbol(std::string &name)
 {
     Symbol* returnSymbol = nullptr;
 
@@ -131,7 +146,7 @@ Symbol* Module::getSymbol(std::string &name)
 	return returnSymbol;
 }
 
-bool Module::isSymbolUnique(std::string &name)
+bool ElfObj::isSymbolUnique(std::string &name)
 {
 	bool    rc = false;
 	Symbol* symbol = getSymbol(name);
@@ -150,7 +165,7 @@ bool Module::isSymbolUnique(std::string &name)
 	return rc;
 }
 
-Symbol * Module::addSymbol(std::unique_ptr<Symbol> inSymbol)
+Symbol * ElfObj::addSymbol(std::unique_ptr<Symbol> inSymbol)
 {
     logger.logDebug("Adding Symbol %s to Module %s.", inSymbol->getName().c_str(), name.c_str());
 
@@ -159,7 +174,7 @@ Symbol * Module::addSymbol(std::unique_ptr<Symbol> inSymbol)
     return symbols.back().get();
 }
 
-Symbol * Module::addSymbol(std::string& inName,
+Symbol * ElfObj::addSymbol(std::string& inName,
 		                uint32_t inByteSize)
 {
     Symbol *symbol = getSymbol(inName);
@@ -176,17 +191,12 @@ Symbol * Module::addSymbol(std::string& inName,
     return symbol;
 }
 
-std::vector<std::unique_ptr<ElfFile>>& Module::getElfFiles()
-{
-	return elfFiles;
-}
-
-std::vector<std::unique_ptr<Symbol>>& Module::getSymbols()
+std::vector<std::unique_ptr<Symbol>>& ElfObj::getSymbols()
 {
 	return symbols;
 }
 
-std::vector<Field*> Module::getFields()
+std::vector<Field*> ElfObj::getFields()
 {
 	std::vector<Field*> outFields = std::vector<Field*>();
 	/**
@@ -210,7 +220,7 @@ std::vector<Field*> Module::getFields()
 	return outFields;
 }
 
-std::vector<Enumeration*> Module::getEnumerations()
+std::vector<Enumeration*> ElfObj::getEnumerations()
 {
 	std::vector<Enumeration*> outEnumerations = std::vector<Enumeration*>();
 
@@ -225,7 +235,7 @@ std::vector<Enumeration*> Module::getEnumerations()
 	return outEnumerations;
 }
 
-std::vector<BitField*> Module::getBitFields()
+std::vector<BitField*> ElfObj::getBitFields()
 {
 	std::vector<BitField*> outBitFields;
 	std::vector< Field*> fields = getFields();

@@ -18,7 +18,7 @@
 TEST_CASE("Test module correctness", "[ElfFile]")
 {
     std::string newModuleName{"ABC"};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
     ElfFile        elffy{myModule};
 
     /**
@@ -78,7 +78,7 @@ TEST_CASE( "Test constructor   ElfFile(Module &module,\
                                                    bool little_endian);\
                                                      correctness", "[ElfFile] " ) {
     std::string newModuleName{"ABC"};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
     std::string elfName = "Elffy.o";
    uint32_t     checksum = 93;
    bool           littleEndian = true;
@@ -105,7 +105,7 @@ TEST_CASE( "Test constructor   ElfFile(Module &module,\
  */
 TEST_CASE( "Test constructor  ElfFile(Module &module) correctness", "[ElfFile] " ) {
     std::string newModuleName{"ABC"};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
 
     ElfFile        elffy{myModule };
 

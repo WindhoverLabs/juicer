@@ -43,8 +43,9 @@
 #include <sys/types.h> /* For open() */
 #include <sys/stat.h>  /* For open() */
 #include <fcntl.h>
+
+#include "ElfObj.h"
 #include "Logger.h"
-#include "Module.h"
 #include "Symbol.h"
 
 /*
@@ -69,7 +70,7 @@ typedef enum
 
 
 class IDataContainer;
-class Module;
+class ElfObj;
 class Symbol;
 
 /**
@@ -94,14 +95,14 @@ private:
 	Dwarf_Error error = 0;
 	Dwarf_Handler errhand = 0;
 	Dwarf_Ptr errarg = 0;
-	int readCUList(Module& module, Dwarf_Debug dbg);
-	int getDieAndSiblings(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level);
-    Symbol * process_DW_TAG_typedef(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die);
-    Symbol * process_DW_TAG_base_type(Module& module, Dwarf_Debug dbg, Dwarf_Die in_die);
-    void process_DW_TAG_structure_type(Module& module, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    Symbol * process_DW_TAG_pointer_type(Module& module, Dwarf_Debug dbg, Dwarf_Die inDie);
-    void process_DW_TAG_enumeration_type(Module& module, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    int process_DW_TAG_array_type(Module& module, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+	int readCUList(ElfObj& module, Dwarf_Debug dbg);
+	int getDieAndSiblings(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level);
+    Symbol * process_DW_TAG_typedef(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die in_die);
+    Symbol * process_DW_TAG_base_type(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die in_die);
+    void process_DW_TAG_structure_type(ElfObj& module, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    Symbol * process_DW_TAG_pointer_type(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die inDie);
+    void process_DW_TAG_enumeration_type(ElfObj& module, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    int process_DW_TAG_array_type(ElfObj& module, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
     char * getFirstAncestorName(Dwarf_Die inDie);
 	int printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
 	char * dwarfStringToChar(char *dwarfString);
@@ -109,7 +110,7 @@ private:
 	Logger logger;
 	IDataContainer *idc = 0;
 	bool isIDCSet(void);
-	Symbol * getBaseTypeSymbol(Module &module, Dwarf_Die inDie, uint32_t &multiplicity);
+	Symbol * getBaseTypeSymbol(ElfObj &module, Dwarf_Die inDie, uint32_t &multiplicity);
 	void DisplayDie(Dwarf_Die inDie);
 
 

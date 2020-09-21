@@ -5,8 +5,8 @@
  *      Author: vagrant
  */
 
+#include <ElfObj.h>
 #include "catch.hpp"
-#include "Module.h"
 #include "Field.h"
 #include "Enumeration.h"
 /**
@@ -17,7 +17,7 @@ TEST_CASE( "Test the correctness of name", "[Symbol]" )
 {
     std::string newModuleName{"ABC"};
     std::string newSymbolName{"string"};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
     Symbol newSymbol{myModule};
 
     newSymbol.setName(newSymbolName);
@@ -29,7 +29,7 @@ TEST_CASE( "Test the correctness of byte_size ", "[Symbol]" )
 {
     std::string newModuleName{"ABC"};;
     uint32_t    byteSize{8};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
     Symbol      newSymbol{myModule};
 
     newSymbol.setByteSize(byteSize);
@@ -42,7 +42,7 @@ TEST_CASE( "Test the correctness of id ", "[Symbol]" )
     std::string newModuleName{"ABC"};
     std::string newSymbolName{"string"};
     uint32_t    id{123};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
     Symbol newSymbol{myModule};
 
     newSymbol.setId(id);
@@ -55,7 +55,7 @@ TEST_CASE( "Test addField(Field &inField) method", "[Symbol]" )
     std::string newModuleName{"ABC"};
     std::string newSymbolName{"string"};
     const std::string fieldName{"intField"};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
 
     Symbol newSymbol{myModule};
 
@@ -77,7 +77,7 @@ TEST_CASE( "Test addField(std::string& inName, uint32_t inByteOffset, "
     std::string            newModuleName{"ABC"};
     std::string            newSymbolName{"string"};
     std::string            newTypeName{"Shape"};
-    Module                 myModule{newModuleName};
+    ElfObj                 myModule{newModuleName};
     bool                     littleEndian = true;
     uint32_t               byteOffset{32};
     uint32_t               multiplicity{2};
@@ -102,7 +102,7 @@ TEST_CASE( "Test addEnumeration(Enumeration &inEnumeration); method",
     std::string     newModuleName{"ABC"};
     std::string     newSymbolName{"string"};
     std::string     enumName{"Color"};
-    Module          myModule{newModuleName};
+    ElfObj          myModule{newModuleName};
     Symbol          newSymbol{myModule};
     Enumeration newEnum(newSymbol);
 
@@ -120,7 +120,7 @@ TEST_CASE( "Test addEnumeration(std::string& inName, int32_t inValue); method",
     std::string     newSymbolName{"string"};
     std::string     enumName{"Color"};
     uint64_t        enumValue{589};
-    Module          myModule{newModuleName};
+    ElfObj          myModule{newModuleName};
     Symbol          newSymbol{myModule};
     Enumeration newEnum(newSymbol);
 
@@ -139,7 +139,7 @@ TEST_CASE( "Test getEnumerations() method",
     std::string     newSymbolName{"string"};
     std::string     enumName{"Color"};
     uint64_t enumValue{589};
-    Module          myModule{newModuleName};
+    ElfObj          myModule{newModuleName};
     Symbol          newSymbol{myModule};
     Enumeration newEnum(newSymbol);
 
@@ -157,7 +157,7 @@ TEST_CASE( "Test getFields() method", "[Symbol]" )
     std::string newModuleName{"ABC"};
     std::string newSymbolName{"string"};
     const std::string fieldName{"intField"};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
 
     Symbol newSymbol{myModule};
     Symbol newType{myModule};
@@ -176,7 +176,7 @@ TEST_CASE( "Test isFieldUnique(std::string &name) method with unique fields", "[
     std::string newSymbolName{"string"};
     std::string intFieldName{"intField"};
     std::string floatFieldName{"floatField"};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
 
     Symbol newSymbol{myModule};
     Symbol newType{myModule};
@@ -196,10 +196,10 @@ TEST_CASE( "Test isFieldUnique(std::string &name) method with unique fields", "[
 TEST_CASE( "Test the correctness of constructor Symbol(Module &module) ", "[Symbol]" )
 {
     std::string newModuleName{"ABC"};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
     Symbol newSymbol{myModule};
 
-    REQUIRE(newSymbol.getModule().getName() == newModuleName);
+    REQUIRE(newSymbol.getElf().getName() == newModuleName);
 }
 
 TEST_CASE( "Test the correctness of constructor Symbol(Module &module,"
@@ -208,13 +208,13 @@ TEST_CASE( "Test the correctness of constructor Symbol(Module &module,"
         "[Symbol]" )
 {
     std::string newModuleName{"ABC"};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
     std::string symbolName{"string"};
     uint32_t    byteSize{8};
 
     Symbol newSymbol{myModule, symbolName, byteSize};
 
-    REQUIRE(newSymbol.getModule().getName() == newModuleName);
+    REQUIRE(newSymbol.getElf().getName() == newModuleName);
     REQUIRE(newSymbol.getName() == symbolName);
     REQUIRE(newSymbol.getByteSize() == byteSize);
 }
@@ -222,7 +222,7 @@ TEST_CASE( "Test the correctness of constructor Symbol(Module &module,"
 TEST_CASE( "Test the correctness of constructor Symbol(const Symbol &symbol)", "[Symbol]" )
 {
     std::string newModuleName{"ABC"};
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
     std::string symbolName{"string"};
     uint32_t    byteSize{8};
 
@@ -230,7 +230,7 @@ TEST_CASE( "Test the correctness of constructor Symbol(const Symbol &symbol)", "
 
     Symbol constSymbol{copySymbol}; // @suppress("Invalid arguments")
 
-    REQUIRE(constSymbol.getModule().getName() == newModuleName);
+    REQUIRE(constSymbol.getElf().getName() == newModuleName);
     REQUIRE(constSymbol.getName() == symbolName);
     REQUIRE(constSymbol.getByteSize() == byteSize);
 }

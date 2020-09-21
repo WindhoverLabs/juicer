@@ -16,7 +16,7 @@ TEST_CASE("Test Enumeration name correctness", "[Enumeration]")
     std::string symbolName{"string"};
     std::string moduleName{"ABC"};
 
-    Module symbolModule{moduleName};
+    ElfObj symbolModule{moduleName};
 
     Symbol enumSymbol{symbolModule};
     enumSymbol.setName(symbolName);
@@ -34,7 +34,7 @@ TEST_CASE("Test Enumeration value correctness", "[Enumeration]")
     std::string symbolName{"string"};
     std::string moduleName{"ABC"};
 
-    Module symbolModule{moduleName};
+    ElfObj symbolModule{moduleName};
 
     Symbol enumSymbol{symbolModule};
     enumSymbol.setName(symbolName);
@@ -53,7 +53,7 @@ TEST_CASE("Test Constructor Enumeration(Symbol &symbol) "
     std::string symbolName{"string"};
     std::string moduleName{"ABC"};
 
-    Module symbolModule{moduleName};
+    ElfObj symbolModule{moduleName};
 
     Symbol enumSymbol{symbolModule};
     enumSymbol.setName(symbolName);
@@ -71,7 +71,7 @@ TEST_CASE("Test Constructor Enumeration(Symbol &symbol, std::string &name, uint6
     uint64_t    value{714};
     std::string moduleName{"ABC"};
 
-    Module      symbolModule{moduleName};
+    ElfObj      symbolModule{moduleName};
 
     Symbol enumSymbol{symbolModule};
     enumSymbol.setName(symbolName);

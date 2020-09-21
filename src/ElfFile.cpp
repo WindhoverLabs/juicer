@@ -10,7 +10,7 @@
 
 ElfFile::ElfFile():module{}{}
 
-ElfFile::ElfFile(Module& inModule) :
+ElfFile::ElfFile(ElfObj& inModule) :
     module{inModule}, // @suppress("Symbol is not resolved")
     name{""},
     checksum{0},
@@ -25,7 +25,7 @@ ElfFile::ElfFile(Module& inModule) :
  *constructor and the error of using a copy constructor will be caught by the
  *compiler before even running juicer.
  */
-ElfFile::ElfFile(Module& inModule, std::string &inName, uint32_t inChecksum,
+ElfFile::ElfFile(ElfObj& inModule, std::string &inName, uint32_t inChecksum,
 		std::string &inDate, bool inLittleEndian) :
 		    module{inModule}, // @suppress("Symbol is not resolved")
 			name{inName}, // @suppress("Symbol is not resolved")
@@ -93,7 +93,7 @@ void ElfFile::isLittleEndian(bool inLittleEndian)
 
 
 
-const Module& ElfFile::getModule() const
+const ElfObj& ElfFile::getModule() const
 {
 	return module;
 }

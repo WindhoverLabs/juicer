@@ -9,7 +9,8 @@
 #define ELFFILE_H_
 
 #include <stdint.h>
-#include "Module.h"
+
+#include "ElfObj.h"
 #include "Logger.h"
 
 
@@ -17,8 +18,8 @@ class ElfFile
 {
 public:
     ElfFile();
-	ElfFile(Module &module);
-	ElfFile(Module &module,
+	ElfFile(ElfObj &module);
+	ElfFile(ElfObj &module,
 			std::string &name,
 			uint32_t checksum,
 			std::string &date,
@@ -30,7 +31,7 @@ public:
 	void setDate(const std::string& date);
 	bool isLittleEndian() const;
 	void isLittleEndian(bool littleEndian);
-	const Module& getModule() const;
+	const ElfObj& getModule() const;
 	const std::string& getName() const;
 	void setName(const std::string& name);
 	ElfFile(const ElfFile &elfFile);
@@ -38,7 +39,7 @@ public:
 protected:
 
 private:
-	const Module      &module;
+	const ElfObj      &module;
 	std::string name;
 	uint32_t    checksum;
 	/**

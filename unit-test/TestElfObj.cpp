@@ -5,8 +5,8 @@
  *      Author: vagrant
  */
 
+#include <ElfObj.h>
 #include "catch.hpp"
-#include "Module.h"
 
 
 /**
@@ -16,7 +16,7 @@
 TEST_CASE( "Correctness of a Module object instance", "[Module] " ) {
     std::string newModuleName{"ABC"};
     uint32_t    moduleId = 102;
-    Module      myModule{newModuleName};
+    ElfObj      myModule{newModuleName};
 
     myModule.setId(moduleId);
 

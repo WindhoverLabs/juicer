@@ -32,22 +32,19 @@ class BitField;
  *of Symbol and ElfFile objects depend on the lifetime of Module; once Module is out of scope
  *then symbols, elfFiles and every unique pointer they contains will be destroyed automatically.
  */
-class Module
+class ElfObj
 {
 public:
-    Module();
-	Module(std::string &name);
-	Module(const Module &module);
-	virtual ~Module();
-    std::vector<std::unique_ptr<ElfFile>>& getElfFiles();
+    ElfObj();
+	ElfObj(std::string &name);
+	ElfObj(const ElfObj &module);
+	virtual ~ElfObj();
     std::vector<std::unique_ptr<Symbol>>&  getSymbols();
 
 	std::string                            getName() const;
 	void                                   setName(std::string &name);
 	uint32_t                               getId(void) const;
 	void                                   setId(uint32_t newId);
-	void                                   addElfFile(ElfFile& elfFile);
-	void                                   addElfFile(std::string& name, uint32_t checksum,std::string& date,bool little_endian);
 	Symbol *                               addSymbol(std::unique_ptr<Symbol> symbol);
 	Symbol *                               addSymbol(std::string& name, uint32_t byte_size);
 	std::vector<Field*>                    getFields();
@@ -55,13 +52,28 @@ public:
 	std::vector<BitField*>                 getBitFields();
     bool                                   isSymbolUnique(std::string &name);
     Symbol *                               getSymbol(std::string &name);
-    bool                                   isLittleEndian();
+	const std::string& getDate() const;
+	void setDate(const std::string& date);
+	bool isLittleEndian() const;
+	void isLittleEndian(bool littleEndian);
+	uint32_t getChecksum() const;
+	void setChecksum(uint32_t checksum);
 
 private:
+	uint32_t    checksum;
+	/**
+	 *@note I'm not sure about date being a std::string. I wonder if it'll
+	 * become problematic with other formats other than SQLite...dates and
+	 * times can be very painful to deal with, especially if we just pass them
+	 * around as a std::string. I don't think C++14 has built-in support
+	 * for dealing with times and dates. C++20 does. We could probably just
+	 * use C-style ctime headers to handle this.
+	 */
+	std::string date;
+	bool        little_endian;
     std::string                            name;
     uint32_t                               id;
     Logger                                 logger;
-    std::vector<std::unique_ptr<ElfFile>>  elfFiles;
     std::vector<std::unique_ptr<Symbol>>   symbols;
 };
 

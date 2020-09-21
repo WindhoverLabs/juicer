@@ -9,22 +9,22 @@
 #include "Field.h"
 #include "Enumeration.h"
 
-Symbol::Symbol(Module& inModule) :
-    module{inModule}, // @suppress("Symbol is not resolved")
+Symbol::Symbol(ElfObj& inModule) :
+    elf{inModule}, // @suppress("Symbol is not resolved")
 	name{""},
 	byte_size{0}
 {
-    logger.logDebug("Symbol %s::%s (%u bytes) created.", module.getName().c_str(), name.c_str(), byte_size);
+    logger.logDebug("Symbol %s::%s (%u bytes) created.", elf.getName().c_str(), name.c_str(), byte_size);
 }
 
 
 
-Symbol::Symbol(Module& inModule, std::string &inName, uint32_t inByteSize) :
-    module{inModule}, // @suppress("Symbol is not resolved")
+Symbol::Symbol(ElfObj& inModule, std::string &inName, uint32_t inByteSize) :
+    elf{inModule}, // @suppress("Symbol is not resolved")
     name{inName}, // @suppress("Symbol is not resolved")
     byte_size{inByteSize}
 {
-    logger.logDebug("Symbol %s::%s (%u bytes) created.", module.getName().c_str(), name.c_str(), byte_size);
+    logger.logDebug("Symbol %s::%s (%u bytes) created.", elf.getName().c_str(), name.c_str(), byte_size);
 }
 
 
@@ -79,7 +79,7 @@ void Symbol::addEnumeration(std::string& inName, int32_t inValue)
 
 
 Symbol::Symbol(const Symbol &inSymbol) :
-    module{inSymbol.module}, // @suppress("Symbol is not resolved")
+    elf{inSymbol.elf}, // @suppress("Symbol is not resolved")
     name{inSymbol.name}, // @suppress("Symbol is not resolved")
     byte_size{inSymbol.byte_size},
     id{0}
@@ -98,7 +98,7 @@ const std::string& Symbol::getName(void) const
 
 void Symbol::setName(std::string &inName)
 {
-    logger.logDebug("Symbol %s::%s renamed to %s::%s.", module.getName().c_str(), name.c_str(), module.getName().c_str(), inName.c_str());
+    logger.logDebug("Symbol %s::%s renamed to %s::%s.", elf.getName().c_str(), name.c_str(), elf.getName().c_str(), inName.c_str());
 
 	this->name = inName;
 
@@ -115,7 +115,7 @@ uint32_t Symbol::getByteSize() const
 
 void Symbol::setByteSize(uint32_t inByteSize)
 {
-    logger.logDebug("Symbol %s::%s byte size changed from %d to %d.", module.getName().c_str(), name.c_str(), byte_size, inByteSize);
+    logger.logDebug("Symbol %s::%s byte size changed from %d to %d.", elf.getName().c_str(), name.c_str(), byte_size, inByteSize);
 
     this->byte_size = inByteSize;
 }
@@ -137,9 +137,9 @@ uint32_t Symbol::getId(void) const
 
 
 
-const Module& Symbol::getModule() const
+const ElfObj& Symbol::getElf() const
 {
-	return module;
+	return elf;
 }
 
 std::vector<std::unique_ptr<Enumeration>>& Symbol::getEnumerations()

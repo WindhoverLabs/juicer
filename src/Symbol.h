@@ -11,24 +11,25 @@
 #include <stdint.h>
 #include <vector>
 #include <memory>
-#include "Module.h"
+
+#include "ElfObj.h"
 #include "Logger.h"
 
 class Field;
 class Enumeration;
-class Module;
+class ElfObj;
 
 class Symbol
 {
 public:
-	Symbol(Module &module);
-	Symbol(Module &module, std::string &name, uint32_t byte_size);
+	Symbol(ElfObj &module);
+	Symbol(ElfObj &module, std::string &name, uint32_t byte_size);
 	virtual ~Symbol();
 	const std::string& getName(void) const;
 	void setName(std::string &name);
 	uint32_t getByteSize() const;
 	void setByteSize(uint32_t byteSize);
-	const Module& getModule() const;
+	const ElfObj& getElf() const;
 	void setId(uint32_t newId);
 	uint32_t getId(void) const;
 	Symbol(const Symbol &symbol);
@@ -46,7 +47,7 @@ public:
 protected:
 
 private:
-	const Module       &module;
+	const ElfObj       &elf;
 	std::string  name;
 	uint32_t     byte_size;
     Logger       logger;

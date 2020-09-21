@@ -9,9 +9,10 @@
 #define IDATACONTAINER_H_
 
 #include <string>
+
+#include "ElfObj.h"
 #include "Juicer.h"
 #include "Logger.h"
-#include "Module.h"
 
 
 typedef enum
@@ -31,7 +32,7 @@ class IDataContainer
 {
 public:
     virtual ~IDataContainer();
-    virtual int write(Module& inModule) = 0;
+    virtual int write(ElfObj& inModule) = 0;
     static IDataContainer* Create(IDataContainer_Type_t containerType, const char *initSpec, ...);
 
 protected:
