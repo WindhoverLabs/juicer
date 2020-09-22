@@ -10,11 +10,12 @@
 
 #include "IDataContainer.h"
 #include "Symbol.h"
-#include "ElfFile.h"
 #include "BitField.h"
 #include "Enumeration.h"
+#include "ElfFile.h"
 #include <sqlite3.h>
-#include "ElfObj.h"
+#include <map>
+#include <string>
 
 #define SQLITEDB_ERROR -1
 #define SQLITEDB_OK 0
@@ -76,6 +77,7 @@ class SQLiteDB: public IDataContainer
 private:
     sqlite3 *database;
     Logger logger;
+    std::vector<Symbol> symbols{};
     int openDatabase(std::string &databaseName);
     int createElfSchema(void);
     int createSymbolSchema(void);
@@ -83,17 +85,18 @@ private:
     int createFiledSchema(void);
     int createBitFiledSchema(void);
     int createEnumerationSchema(void);
-    int writeElfToDatabase(ElfObj& inModule);
-    int writeSymbolsToDatabase(ElfObj& inModule);
-    int writeFieldsToDatabase(ElfObj& inModule);
-    int writeBitFieldsToDatabase(ElfObj& inModule);
-    int writeEnumerationsToDatabase(ElfObj& inModule);
+    int writeElfToDatabase(ElfFile& inModule);
+    int writeSymbolsToDatabase(ElfFile& inModule);
+    int writeFieldsToDatabase(ElfFile& inModule);
+    int writeBitFieldsToDatabase(ElfFile& inModule);
+    int writeEnumerationsToDatabase(ElfFile& inModule);
 
 public:
     SQLiteDB();
     int initialize(std::string &initString);
+    static int callback(void *veryUsed, int argc, char **argv, char **azColName);
     int close(void);
-    virtual int write(ElfObj& inModule);
+    virtual int write(ElfFile& inModule);
     virtual
     ~SQLiteDB();
 };

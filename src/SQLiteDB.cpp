@@ -17,7 +17,39 @@ SQLiteDB::~SQLiteDB()
 {
 }
 
+/**
+ *@brief This call back function assumes that the first column is that row's id,
+ *for now. It is meant to be passed to sqlite3_exec when executing "SELECT" sql statements.
+ *This function will be called for every row that is fetched from the database.
+ *
+ *@param veryUsed a std::map<std::string, std::vector<std::string> >* that is used to store
+ *table's data. The map has the format of "map[id] = row" where row is a vector containing
+ *that row's data, excluding that row's id. The ids are used as key for the map.
+ *@param argc The number of columns in this row.
+ *@param argv An array containing every column of this row.
+ *
+ */
+int SQLiteDB::callback(void *veryUsed, int argc, char **argv, char **azColName)
+{
+  int   i;
 
+  auto* row = (std::map<std::string, std::vector<std::string> >*)veryUsed ;
+
+  std::vector<std::string> tableData{};
+
+  for(i=1; i<argc; i++)
+  {
+	  std::string tempData{argv[i]};
+
+	  tableData.push_back(tempData);
+  }
+
+  std::string id{argv[0]};
+
+  (*row)[id] = tableData;
+
+  return 0;
+}
 
 /**
  *@brief Opens the database at initString and creates the necessary schemas to
@@ -40,11 +72,25 @@ int SQLiteDB::initialize(std::string &initString)
 
     if(SQLITE_OK == rc)
     {
-        createSchemas();
+    	rc = createSchemas();
+        if(SQLITE_OK == rc)
+        {
+        	char* 	errorMessage = nullptr;
+        	std::map<std::string, std::vector<std::string>> symbolsMap{};
+
+            rc = sqlite3_exec(database, "SELECT * FROM symbols", SQLiteDB::callback, &symbolsMap,
+                    &errorMessage);
+            for(auto symbol_id: symbolsMap)
+            {
+            	std::cout<<"symbol_id-->"<<symbol_id.first<<std::endl;
+            }
+
+        }
     }
     else
     {
         rc = SQLITEDB_ERROR;
+        logger.logError("There was an error while creating the tables for the database.");
     }
 
     return rc;
@@ -112,19 +158,19 @@ int SQLiteDB::openDatabase(std::string &fileName)
 
 
 /**
- *@brief Writes all the data such as Elf, Symbols and Modules entries
+ *@brief Writes all the data such as Elf, Symbols and elfs entries
  *to the SQLite database.
  *
- *@param inModule The module that contains all of the DWARF and ELF data.
+ *@param inElf The elf that contains all of the DWARF and ELF data.
  *
  *@return SQLITE_OK if it was able to write the all of data to the database
  *successfully. Otherwise, this method returns SQLITEDB_ERROR.
  */
-int SQLiteDB::write(ElfObj& inModule)
+int SQLiteDB::write(ElfFile& inElf)
 {
     int rc  = SQLITEDB_OK;
 
-    rc = writeElfToDatabase(inModule);
+    rc = writeElfToDatabase(inElf);
 
     /**
      *@note I'm not 100% sure about nesting if statements
@@ -144,28 +190,28 @@ int SQLiteDB::write(ElfObj& inModule)
 
         if(SQLITE_OK == rc)
         {
-            rc = writeSymbolsToDatabase(inModule);
+            rc = writeSymbolsToDatabase(inElf);
 
             if(SQLITE_OK == rc)
             {
                 logger.logDebug("Symbol entries were written to the symbols schema "
                                 "with SQLITE_OK status.");
 
-                rc = writeFieldsToDatabase(inModule);
+                rc = writeFieldsToDatabase(inElf);
 
                 if(SQLITE_OK == rc)
                 {
                     logger.logDebug("Field entries were written to the fields schema "
                                     "with SQLITE_OK status.");
 
-                    rc = writeBitFieldsToDatabase(inModule);
+                    rc = writeBitFieldsToDatabase(inElf);
 
                     if(SQLITE_OK == rc)
                     {
                         logger.logDebug("Bitfield entries were written to the bit_fields schema "
                                         "with SQLITE_OK status.");
 
-                        rc = writeEnumerationsToDatabase(inModule);
+                        rc = writeEnumerationsToDatabase(inElf);
 
                         if(SQLITE_OK == rc)
                         {
@@ -220,15 +266,15 @@ int SQLiteDB::write(ElfObj& inModule)
 
 /**
  *@brief Iterates through all of the ELF entries in
- *inModule and writes each one to the "elfs" table.
+ *inElf and writes each one to the "elfs" table.
  *
- *@param inModule The module that has the Elf data.
+ *@param inElf The elf that has the Elf data.
  *
  *@return Returns SQLITEDB_OK if all of the elf entries are written to the
  *database successfully. If the method fails to write at least one of the
  *elf entries to the database, then SQLITEDB_ERROR is returned.
  */
-int SQLiteDB::writeElfToDatabase(ElfObj& inModule)
+int SQLiteDB::writeElfToDatabase(ElfFile& inElf)
 {
    int      rc  = SQLITEDB_OK;
    char* errorMessage = NULL;
@@ -242,11 +288,11 @@ int SQLiteDB::writeElfToDatabase(ElfObj& inModule)
 
    writeElfQuery += "INSERT INTO elfs(name, checksum, little_endian) "
 					"VALUES(\"";
-   writeElfQuery += inModule.getName();
+   writeElfQuery += inElf.getName();
    writeElfQuery += "\",";
-   writeElfQuery += std::to_string(inModule.getChecksum());
+   writeElfQuery += std::to_string(inElf.getChecksum());
    writeElfQuery += ",";
-   writeElfQuery += std::to_string(inModule.isLittleEndian()? SQLiteDB_TRUE: SQLiteDB_FALSE);
+   writeElfQuery += std::to_string(inElf.isLittleEndian()? SQLiteDB_TRUE: SQLiteDB_FALSE);
    writeElfQuery += ");";
 
    logger.logDebug("Sending \"%s\" query to database.",writeElfQuery.c_str());
@@ -258,11 +304,11 @@ int SQLiteDB::writeElfToDatabase(ElfObj& inModule)
    {
 	   logger.logDebug("Elf values were written to the elfs schema with "
 					   "SQLITE_OK status.");
-       /*Write the id to this module so that other tables can use it as
+       /*Write the id to this elf so that other tables can use it as
         *a foreign key */
 
        sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
-       inModule.setId(lastRowId);
+       inElf.setId(lastRowId);
    }
    else
    {
@@ -280,14 +326,14 @@ int SQLiteDB::writeElfToDatabase(ElfObj& inModule)
 
 /**
  *@brief Iterates through all of the symbols entries in
- *inModule and writes each one to the "symbols" table.
+ *inElf and writes each one to the "symbols" table.
  *
  *
  *@return Returns SQLITEDB_OK if all of the symbols entries are written to the
  *database successfully. If the method fails to write at least one of the
  *symbol entries to the database, then SQLITEDB_ERROR is returned.
  */
-int SQLiteDB::writeSymbolsToDatabase(ElfObj& inModule)
+int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 {
     int         rc  = SQLITEDB_OK;
     char*       errorMessage = NULL;
@@ -297,7 +343,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfObj& inModule)
      * I know for Flight Software we need to explicitly state the "++i",
      * but should/can we do this here with loops for Juicer?
      */
-    for(auto&& symbol : inModule.getSymbols())
+    for(auto&& symbol : inElf.getSymbols())
     {
         /*
          * @todo I want to store these SQLite magical values into MACROS,
@@ -345,13 +391,13 @@ int SQLiteDB::writeSymbolsToDatabase(ElfObj& inModule)
 
 /**
  *@brief Iterates through all of the field entries in
- *inModule and writes each one to the "fields" table.
+ *inElf and writes each one to the "fields" table.
  *
  *@return Returns SQLITEDB_OK if all of the elf entries are written to the
  *database successfully. If the method fails to write at least one of the
  *field entries to the database, then SQLITEDB_ERROR is returned.
  */
-int SQLiteDB::writeFieldsToDatabase(ElfObj& inModule)
+int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
 {
     int         rc  = SQLITEDB_OK;
     char*       errorMessage = NULL;
@@ -361,7 +407,7 @@ int SQLiteDB::writeFieldsToDatabase(ElfObj& inModule)
      * I know for Flight Software we need to explicitly state the "++i",
      * but should/can we do this here with loops for Juicer?
      */
-    for(auto field : inModule.getFields())
+    for(auto field : inElf.getFields())
     {
         /*
          * @todo I want to store these SQLite magical values into MACROS,
@@ -420,13 +466,13 @@ int SQLiteDB::writeFieldsToDatabase(ElfObj& inModule)
 
 /**
  *@brief Iterates through all of the bit_field entries in
- *inModule and writes each one to the "bit_fields" table.
+ *inElf and writes each one to the "bit_fields" table.
  *
  *@return Returns SQLITEDB_OK if all of the elf entries are written to the
  *database successfully. If the method fails to write at least one of the
  *bit_field entries to the database, then SQLITEDB_ERROR is returned.
  */
-int SQLiteDB::writeBitFieldsToDatabase(ElfObj& inModule)
+int SQLiteDB::writeBitFieldsToDatabase(ElfFile& inElf)
 {
     int   rc = SQLITEDB_OK;
     char* errorMessage = NULL;
@@ -436,7 +482,7 @@ int SQLiteDB::writeBitFieldsToDatabase(ElfObj& inModule)
      * I know for Flight Software we need to explicitly state the "++i",
      * but should/can we do this here with loops for Juicer?
      */
-    for(auto bitField : inModule.getBitFields())
+    for(auto bitField : inElf.getBitFields())
     {
         /*
          * @todo I want to store these SQLite magical values into MACROS,
@@ -479,13 +525,13 @@ int SQLiteDB::writeBitFieldsToDatabase(ElfObj& inModule)
 
 /**
  *@brief Iterates through all of the enumeration entries in
- *inModule and writes each one to the "enumerations" table.
+ *inElf and writes each one to the "enumerations" table.
  *
  *@return Returns SQLITEDB_OK if all of the elf entries are written to the
  *database successfully. If the method fails to write at least one of the
  *enumeration entries to the database, then SQLITEDB_ERROR is returned.
  */
-int SQLiteDB::writeEnumerationsToDatabase(ElfObj& inModule)
+int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
 {
     int   rc = SQLITEDB_OK;
     char* errorMessage = NULL;
@@ -495,7 +541,7 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfObj& inModule)
      * I know for Flight Software we need to explicitly state the "++i",
      * but should/can we do this here with loops for Juicer?
      */
-    for(auto enumeration : inModule.getEnumerations())
+    for(auto enumeration : inElf.getEnumerations())
     {
         /*
          * @todo I want to store these SQLite magical values into MACROS,
@@ -625,7 +671,7 @@ int SQLiteDB::createSchemas(void)
  *This method assumes the sqlite handle database has been initialized
  *previously with a call to initialize().
  *
- *@return Returns SQLITE_OK created the modules schema successfully.
+ *@return Returns SQLITE_OK created the elfs schema successfully.
  *If an error occurs, SQLITEDB_ERROR returns.
  */
 int SQLiteDB::createElfSchema(void)
@@ -660,7 +706,7 @@ int SQLiteDB::createElfSchema(void)
  *This method assumes the sqlite handle database has been initialized
  *previously with a call to initialize().
  *
- *@return Returns SQLITE_OK created the modules schema successfully.
+ *@return Returns SQLITE_OK created the elfs schema successfully.
  *If an error occurs, SQLITEDB_ERROR returns.
  */
 int SQLiteDB::createSymbolSchema(void)
@@ -695,7 +741,7 @@ int SQLiteDB::createSymbolSchema(void)
  *This method assumes the sqlite handle database has been initialized
  *previously with a call to initialize().
  *
- *@return Returns SQLITE_OK created the modules schema successfully.
+ *@return Returns SQLITE_OK created the elfs schema successfully.
  *If an error occurs, SQLITEDB_ERROR returns.
  */
 int SQLiteDB::createFiledSchema(void)
@@ -730,7 +776,7 @@ int SQLiteDB::createFiledSchema(void)
  *the sqlite handle database has been initialized previously with a call
  *to initialize().
  *
- *@return Returns SQLITE_OK created the modules schema successfully.
+ *@return Returns SQLITE_OK created the elfs schema successfully.
  *If an error occurs, SQLITEDB_ERROR returns.
  */
 int SQLiteDB::createBitFiledSchema(void)
@@ -764,7 +810,7 @@ int SQLiteDB::createBitFiledSchema(void)
  *This method assumes the sqlite handle database has been initialized
  *previously with a call to initialize().
  *
- *@return Returns SQLITE_OK created the modules schema successfully.
+ *@return Returns SQLITE_OK created the elfs schema successfully.
  *If an error occurs, SQLITEDB_ERROR returns.
  */
 int SQLiteDB::createEnumerationSchema(void)
