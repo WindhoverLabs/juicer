@@ -9,8 +9,8 @@
 #include "Field.h"
 #include "Enumeration.h"
 
-Symbol::Symbol(ElfObj& inModule) :
-    elf{inModule}, // @suppress("Symbol is not resolved")
+Symbol::Symbol(ElfFile& inElf) :
+    elf{inElf}, // @suppress("Symbol is not resolved")
 	name{""},
 	byte_size{0}
 {
@@ -19,8 +19,8 @@ Symbol::Symbol(ElfObj& inModule) :
 
 
 
-Symbol::Symbol(ElfObj& inModule, std::string &inName, uint32_t inByteSize) :
-    elf{inModule}, // @suppress("Symbol is not resolved")
+Symbol::Symbol(ElfFile& inElf, std::string &inName, uint32_t inByteSize) :
+    elf{inElf}, // @suppress("Symbol is not resolved")
     name{inName}, // @suppress("Symbol is not resolved")
     byte_size{inByteSize}
 {
@@ -137,7 +137,7 @@ uint32_t Symbol::getId(void) const
 
 
 
-const ElfObj& Symbol::getElf() const
+const ElfFile& Symbol::getElf() const
 {
 	return elf;
 }

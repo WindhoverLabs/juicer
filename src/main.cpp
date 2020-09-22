@@ -51,7 +51,7 @@ static char doc[] = "Juicer reads a binary file in ELF format, and generates a "
 		"report containing the ABI and bit patterns of structures.";
 
 /* A description of the arguments we accept. */
-static char args_doc[] = "--input <FILE> --module-name <MODULE_NAME> --mode <MODE> (--output <FILE> | "
+static char args_doc[] = "--input <FILE> --mode <MODE> (--output <FILE> | "
 		"(--address <ADDR> --port <PORT> --project <PROJ>))";
 
 /* The options we understand. */
@@ -62,8 +62,7 @@ static struct argp_option options[] =
 		"0=Silent, 1=Errors, 2=Warnings, 3=Info, "
 		"4=Debug" },
     { "log", 'l', "FILE", 0, "Output log FILE" },
-    { "module-name", 'n', "MODULE_NAME", 0, "Module name." },
-    { "mode", 'm', "MODE", 0, "Output mode.  SQLITE,CCDD" },
+	{ "mode", 'm', "MODE", 0, "Output mode.  SQLITE,CCDD" },
 	{ "output", 'o', "FILE", 0,
 				"Sqlite3 database FILE.  Required for SQLITE mode." },
     { "address", 'a', "ADDRESS", 0,
@@ -97,8 +96,6 @@ typedef struct
 	bool user_set;
 	char *project;
 	bool project_set;
-	char *moduleName;
-	bool moduleName_set;
 } arguments_t;
 
 /* Parse a single option. */
@@ -138,13 +135,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			break;
 		}
 
-		case 'n':
-		{
-			arguments->moduleName = arg;
-			arguments->moduleName_set = true;
-			break;
-		}
-
 		case 'o':
 		{
 			arguments->output = arg;
@@ -162,7 +152,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		case 'p':
 		{
 			arguments->port = atoi(arg);
-			;
 			arguments->port_set = true;
 			break;
 		}
@@ -200,13 +189,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			if (arguments->input_set == false)
 			{
 				printf("Error:  Input file not set.\n");
-				argp_usage(state);
-				return ARGP_KEY_ERROR;
-			}
-
-			if (arguments->moduleName_set == false)
-			{
-				printf("Error:  Module name not set.\n");
 				argp_usage(state);
 				return ARGP_KEY_ERROR;
 			}
@@ -343,7 +325,6 @@ int main(int argc, char **argv)
 	        logger.logDebug("Log '%s' started", arguments.log);
 	    }
 
-        logger.logDebug("Module name %s", arguments.moduleName);
         logger.logDebug("Verbosity %u", arguments.verbosity);
         logger.logDebug("Input file '%s'", arguments.input);
         logger.logDebug("Output Mode %s", arguments.outputMode);
@@ -366,10 +347,9 @@ int main(int argc, char **argv)
 
         logger.logInfo("Parsing");
 
-        std::string modernModuleName{arguments.moduleName};
         std::string modernInput{arguments.input};
 
-        juicer.parse(modernModuleName, modernInput);
+        juicer.parse(modernInput);
 
         logger.logInfo("Done");
 	}

@@ -36,14 +36,13 @@
 #include <errno.h>
 #include <libelf.h>
 #include <ctype.h>
-#include "ElfObj.h"
 #include <memory.h>
 #include "IDataContainer.h"
-#include "ElfFile.h"
 #include "Symbol.h"
 #include "Field.h"
 #include "Enumeration.h"
 #include "BitField.h"
+#include "ElfFile.h"
 
 Juicer::Juicer()
 {
@@ -52,7 +51,7 @@ Juicer::Juicer()
 /**
  * Iterates through the CU lists of the dbg.
  */
-int Juicer::readCUList(ElfObj& module, Dwarf_Debug dbg)
+int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg)
 {
     Dwarf_Unsigned cu_header_length = 0;
     Dwarf_Half version_stamp = 0;
@@ -109,7 +108,7 @@ int Juicer::readCUList(ElfObj& module, Dwarf_Debug dbg)
 
         if(JUICER_OK == return_value)
         {
-            return_value = getDieAndSiblings(module, dbg, cu_die, 0);
+            return_value = getDieAndSiblings(elf, dbg, cu_die, 0);
         }
 
         if(JUICER_OK != return_value)
@@ -143,20 +142,20 @@ char * Juicer::dwarfStringToChar(char *dwarfString)
 /**
  * @brief Processes an array that belongs to the die inDie.
  *
- *@param module The module to write the new array symbol to.
+ *@param elf The elf to write the new array symbol to.
  *@param dbg the Dwarf Debug section structure
  *@param inDie the die that contains the array.
  *
- * @todo Store the array data(its name, size, etc) in the module for the
+ * @todo Store the array data(its name, size, etc) in the elf for the
  * database to store it. Make sure to add a "multiplicity" column to the
  * symbols table.
  *
- * @return If the array symbol is added successfully to the module, then DW_DLV_OK is returned.
+ * @return If the array symbol is added successfully to the elf, then DW_DLV_OK is returned.
  * Otherwise, DW_DLV_ERROR is returned. Please note that just because DW_DLV_ERROR is returned
  * it does NOT mean that no array was found. There are cases where an array is found on the die,
- * however, because it has no name we decide to not add it to the module at all.
+ * however, because it has no name we decide to not add it to the elf at all.
  */
-int Juicer::process_DW_TAG_array_type(ElfObj& module, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
 	Dwarf_Die 		dieSubrangeType;
 	Dwarf_Unsigned 	dwfUpperBound = 0;
@@ -253,7 +252,7 @@ int Juicer::process_DW_TAG_array_type(ElfObj& module, Symbol &symbol, Dwarf_Debu
 
 			logger.logInfo("Name for array-->%s", arrayName);
 
-			Symbol* 	arraySymbol =  getBaseTypeSymbol(module, inDie, multiplicity);
+			Symbol* 	arraySymbol =  getBaseTypeSymbol(elf, inDie, multiplicity);
 
 			if(nullptr == arraySymbol)
 			{
@@ -264,8 +263,8 @@ int Juicer::process_DW_TAG_array_type(ElfObj& module, Symbol &symbol, Dwarf_Debu
 			else
 			{
 				std::string arrayBaseType{arraySymbol->getName().c_str()};
-				outSymbol = module.getSymbol(arrayBaseType);
-				outSymbol->addField(stdString, 0, *outSymbol, multiplicity, module.isLittleEndian());
+				outSymbol = elf.getSymbol(arrayBaseType);
+				outSymbol->addField(stdString, 0, *outSymbol, multiplicity, elf.isLittleEndian());
 			}
 
 			logger.logInfo("Name for array-->%s", arrayName);
@@ -352,7 +351,7 @@ char * Juicer::getFirstAncestorName(Dwarf_Die inDie)
 
 
 
-Symbol * Juicer::process_DW_TAG_pointer_type(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die inDie)
+Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
     Symbol          *outSymbol = 0;
     Dwarf_Attribute attr_struct;
@@ -408,7 +407,7 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfObj& module, Dwarf_Debug dbg, Dw
 
         if(res == DW_DLV_OK)
         {
-            outSymbol = module.addSymbol(name, byteSize);
+            outSymbol = elf.addSymbol(name, byteSize);
         }
     }
 
@@ -417,7 +416,7 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfObj& module, Dwarf_Debug dbg, Dw
 
 
 
-Symbol * Juicer::getBaseTypeSymbol(ElfObj &module, Dwarf_Die inDie, uint32_t &multiplicity)
+Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &multiplicity)
 {
     int             res = DW_DLV_OK;
     Dwarf_Attribute attr_struct;
@@ -483,7 +482,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfObj &module, Dwarf_Die inDie, uint32_t &mu
 
             case DW_TAG_pointer_type:
             {
-                outSymbol = process_DW_TAG_pointer_type(module, dbg, typeDie);
+                outSymbol = process_DW_TAG_pointer_type(elf, dbg, typeDie);
                 logger.logDebug("DW_TAG_pointer_type");
                 break;
             }
@@ -569,11 +568,11 @@ Symbol * Juicer::getBaseTypeSymbol(ElfObj &module, Dwarf_Die inDie, uint32_t &mu
                 if(res == DW_DLV_OK)
                 {
                     std::string cName = dieName;
-                    outSymbol = module.addSymbol(cName, byteSize);
+                    outSymbol = elf.addSymbol(cName, byteSize);
 
                     if(nullptr != outSymbol)
                     {
-                    	process_DW_TAG_structure_type(module, *outSymbol, dbg, typeDie);
+                    	process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
                     }
                 }
                 break;
@@ -581,14 +580,14 @@ Symbol * Juicer::getBaseTypeSymbol(ElfObj &module, Dwarf_Die inDie, uint32_t &mu
 
             case DW_TAG_base_type:
             {
-                outSymbol = process_DW_TAG_base_type(module, dbg, typeDie);
+                outSymbol = process_DW_TAG_base_type(elf, dbg, typeDie);
                 logger.logDebug("DW_TAG_base_type");
                 break;
             }
 
             case DW_TAG_typedef:
             {
-                outSymbol = process_DW_TAG_typedef(module, dbg, typeDie);
+                outSymbol = process_DW_TAG_typedef(elf, dbg, typeDie);
                 logger.logDebug("DW_TAG_typedef");
                 break;
             }
@@ -674,8 +673,8 @@ Symbol * Juicer::getBaseTypeSymbol(ElfObj &module, Dwarf_Die inDie, uint32_t &mu
                 if(res == DW_DLV_OK)
                 {
                     std::string cName = dieName;
-                    outSymbol = module.addSymbol(cName, byteSize);
-                    process_DW_TAG_enumeration_type(module, *outSymbol, dbg, typeDie);
+                    outSymbol = elf.addSymbol(cName, byteSize);
+                    process_DW_TAG_enumeration_type(elf, *outSymbol, dbg, typeDie);
                 }
                 break;
             }
@@ -688,7 +687,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfObj &module, Dwarf_Die inDie, uint32_t &mu
                 logger.logDebug("DW_TAG_array_type");
 
                 /* First get the base type itself. */
-                outSymbol = getBaseTypeSymbol(module, typeDie, multiplicity);
+                outSymbol = getBaseTypeSymbol(elf, typeDie, multiplicity);
 
                 /* Now lets get the array size.  Get the array size by getting
                  * the first child, which should be the subrange_type. */
@@ -767,7 +766,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfObj &module, Dwarf_Die inDie, uint32_t &mu
                 /* Get the type attribute. */
                 res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
 
-                getBaseTypeSymbol(module, typeDie, multiplicity);
+                getBaseTypeSymbol(elf, typeDie, multiplicity);
 
                 break;
             }
@@ -802,7 +801,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfObj &module, Dwarf_Die inDie, uint32_t &mu
 
             default:
             {
-                //outSymbol = getBaseTypeSymbol(module, typeDie);//
+                //outSymbol = getBaseTypeSymbol(elf, typeDie);//
                 logger.logWarning("Unsupported Tag found. 0x%02x", tag);
                 break;
             }
@@ -1240,7 +1239,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
 
 
 
-Symbol * Juicer::process_DW_TAG_base_type(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die inDie)
+Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
     int             res = DW_DLV_OK;
     Dwarf_Unsigned  byteSize = 0;
@@ -1270,7 +1269,7 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfObj& module, Dwarf_Debug dbg, Dwarf
 
     /* See if we already have this symbol. */
     cName = dieName;
-    outSymbol = module.getSymbol(cName);
+    outSymbol = elf.getSymbol(cName);
     if(outSymbol == 0)
     {
         /* No.  This is new.  Process it. */
@@ -1286,11 +1285,11 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfObj& module, Dwarf_Debug dbg, Dwarf
             }
         }
 
-        /* We have everything we need.  Add this to the module. */
+        /* We have everything we need.  Add this to the elf. */
         if(res == DW_DLV_OK)
         {
             std::string sDieName = dieName;
-            outSymbol = module.addSymbol(sDieName, byteSize);
+            outSymbol = elf.addSymbol(sDieName, byteSize);
         }
     }
 
@@ -1298,7 +1297,7 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfObj& module, Dwarf_Debug dbg, Dwarf
 }
 
 
-void Juicer::process_DW_TAG_enumeration_type(ElfObj& module, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+void Juicer::process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
     int             res = DW_DLV_OK;
     Dwarf_Attribute attr_struct;
@@ -1425,7 +1424,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfObj& module, Symbol &symbol, Dwa
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-Symbol * Juicer::process_DW_TAG_typedef(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die inDie)
+Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
     int             res = DW_DLV_OK;
     uint32_t        byteSize = 0;
@@ -1458,7 +1457,7 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfObj& module, Dwarf_Debug dbg, Dwarf_D
     {
         uint32_t multiplicity;
 
-        baseTypeSymbol = getBaseTypeSymbol(module ,inDie, multiplicity);
+        baseTypeSymbol = getBaseTypeSymbol(elf ,inDie, multiplicity);
         if(baseTypeSymbol == 0)
         {
             /* Set the error code so we don't do anymore processing. */
@@ -1472,11 +1471,11 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfObj& module, Dwarf_Debug dbg, Dwarf_D
         byteSize = baseTypeSymbol->getByteSize();
     }
 
-    /* We have everything we need.  Add this to the module. */
+    /* We have everything we need.  Add this to the elf. */
     if(res == DW_DLV_OK)
     {
         std::string sDieName = dieName;
-        outSymbol = module.addSymbol(sDieName, byteSize);
+        outSymbol = elf.addSymbol(sDieName, byteSize);
         logger.logDebug("name for this Symbol-->%s\n",outSymbol->getName().c_str());
     }
 
@@ -1490,7 +1489,7 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfObj& module, Dwarf_Debug dbg, Dwarf_D
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-void Juicer::process_DW_TAG_structure_type(ElfObj& module, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
     int             res = DW_DLV_OK;
     Dwarf_Attribute attr_struct;
@@ -1598,7 +1597,7 @@ void Juicer::process_DW_TAG_structure_type(ElfObj& module, Symbol& symbol, Dwarf
                         /* Get the base type die. */
                         if(res == DW_DLV_OK)
                         {
-                            memberBaseTypeSymbol = getBaseTypeSymbol(module, memberDie, multiplicity);
+                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, multiplicity);
                             if(memberBaseTypeSymbol == 0)
                             {
                                 logger.logWarning("Couldn't find base type for %s:%s.", symbol.getName().c_str(), memberName);
@@ -1614,7 +1613,7 @@ void Juicer::process_DW_TAG_structure_type(ElfObj& module, Symbol& symbol, Dwarf
                         {
                             std::string sMemberName = memberName;
 
-                            symbol.addField(sMemberName, (uint32_t)memberLocation, *memberBaseTypeSymbol, multiplicity, module.isLittleEndian());
+                            symbol.addField(sMemberName, (uint32_t)memberLocation, *memberBaseTypeSymbol, multiplicity, elf.isLittleEndian());
                         }
 
                         break;
@@ -1671,7 +1670,7 @@ void Juicer::process_DW_TAG_structure_type(ElfObj& module, Symbol& symbol, Dwarf
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-int Juicer::getDieAndSiblings(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level)
+int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level)
 {
     int res = DW_DLV_ERROR;
     Dwarf_Die cur_die = in_die;
@@ -1700,14 +1699,14 @@ int Juicer::getDieAndSiblings(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die in_die,
         {
             case DW_TAG_base_type:
             {
-                process_DW_TAG_base_type(module, dbg, cur_die);
+                process_DW_TAG_base_type(elf, dbg, cur_die);
 
                 break;
             }
 
             case DW_TAG_typedef:
             {
-                process_DW_TAG_typedef(module, dbg, cur_die);
+                process_DW_TAG_typedef(elf, dbg, cur_die);
 
                 break;
             }
@@ -1729,9 +1728,9 @@ int Juicer::getDieAndSiblings(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die in_die,
                     	res = dwarf_bytesize(cur_die, &bytesize, &error);
                     	std::string stdString{dieName};
 
-                        Symbol* outSymbol = module.addSymbol(stdString,(uint32_t) bytesize);
+                        Symbol* outSymbol = elf.addSymbol(stdString,(uint32_t) bytesize);
 
-                        process_DW_TAG_structure_type(module, *outSymbol, dbg, cur_die);
+                        process_DW_TAG_structure_type(elf, *outSymbol, dbg, cur_die);
 
                     }
                 }
@@ -1746,8 +1745,8 @@ int Juicer::getDieAndSiblings(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die in_die,
             }
             case DW_TAG_array_type:
             {
-				Symbol s{module};
-            	res = process_DW_TAG_array_type(module,s, dbg ,cur_die);
+				Symbol s{elf};
+            	res = process_DW_TAG_array_type(elf,s, dbg ,cur_die);
 
                 break;
             }
@@ -1770,7 +1769,7 @@ int Juicer::getDieAndSiblings(ElfObj& module, Dwarf_Debug dbg, Dwarf_Die in_die,
         else if(res == DW_DLV_OK)
         {
         	logger.logInfo("CHILD");
-        	getDieAndSiblings(module, dbg, child, in_level + 1);
+        	getDieAndSiblings(elf, dbg, child, in_level + 1);
         }
 
         /* res == DW_DLV_NO_ENTRY */
@@ -1976,7 +1975,7 @@ bool Juicer::isIDCSet(void)
  *and its endianness is identified. Returns JUICER_ERROR if either there was
  *an error opening the file or its endianness is unknown.
  */
-int Juicer::parse(std::string moduleName, std::string& elfFilePath)
+int Juicer::parse( std::string& elfFilePath)
 {
     int return_value = JUICER_OK;
 
@@ -1985,8 +1984,8 @@ int Juicer::parse(std::string moduleName, std::string& elfFilePath)
     {
         JuicerEndianness_t      endianness;
         int                     dwarf_value = DW_DLV_OK;
-        /**@note module's lifetime is tied to parser's scope. */
-        std::unique_ptr<ElfObj> module = std::make_unique<ElfObj>(moduleName);
+        /**@note elf's lifetime is tied to parser's scope. */
+        std::unique_ptr<ElfFile> elf = std::make_unique<ElfFile>(elfFilePath);
 
         elfFile = open(elfFilePath.c_str(), O_RDONLY);
         if(elfFile < 0)
@@ -2023,20 +2022,20 @@ int Juicer::parse(std::string moduleName, std::string& elfFilePath)
             int checkSum = 0;
             std::string date {""};
 
-            module->setChecksum(checkSum);
-            module->isLittleEndian(JUICER_ENDIAN_BIG == endianness?
+            elf->setChecksum(checkSum);
+            elf->isLittleEndian(JUICER_ENDIAN_BIG == endianness?
             					false: true);
-            module->setDate(date);
+            elf->setDate(date);
 
             if(JUICER_ENDIAN_BIG == endianness)
             {
                 logger.logDebug("Detected big endian.");
-                module->isLittleEndian(false);
+                elf->isLittleEndian(false);
             }
             else if(JUICER_ENDIAN_LITTLE == endianness)
             {
                 logger.logDebug("Detected little endian.");
-                module->isLittleEndian( true);
+                elf->isLittleEndian( true);
             }
             else
             {
@@ -2047,7 +2046,7 @@ int Juicer::parse(std::string moduleName, std::string& elfFilePath)
 
         if(JUICER_OK == return_value)
         {
-            return_value = readCUList(*module.get(), dbg);
+            return_value = readCUList(*elf.get(), dbg);
 
             dwarf_value = dwarf_finish(dbg, &error);
             if(dwarf_value != DW_DLV_OK)
@@ -2061,8 +2060,8 @@ int Juicer::parse(std::string moduleName, std::string& elfFilePath)
         if(JUICER_OK == return_value)
         {
             /* All done.  Write it out. */
-            logger.logDebug("Parsing of module '%s' is complete.  Writing to data container.", moduleName.c_str());
-            return_value  = idc->write(*module.get());
+            logger.logDebug("Parsing of elf file '%s' is complete.  Writing to data container.", elfFilePath.c_str());
+            return_value  = idc->write(*elf.get());
         }
     }
 

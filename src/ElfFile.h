@@ -5,8 +5,8 @@
  *      Author: vagrant
  */
 
-#ifndef MODULE_H_
-#define MODULE_H_
+#ifndef ElfFile_H
+#define ElfFile_H
 
 #include <memory>
 #include <stdint.h>
@@ -21,8 +21,8 @@ class Enumeration;
 class BitField;
 
 /**
- * The module class contains a "module" with a user-defined name.
- * It is an aggregation of ElfFiles and Symbols. It also
+ * The elf class contains an "module" with a user-defined name.
+ * It is an aggregation of Symbols, fields, bit fields and enumerations. It also
  * manages those resources for you. You do not need to do any manual memory
  * management with new/delete. Do not allocate this class with the "new" as
  * that will make our design error-prone and result in undefined behavior.
@@ -32,13 +32,13 @@ class BitField;
  *of Symbol and ElfFile objects depend on the lifetime of Module; once Module is out of scope
  *then symbols, elfFiles and every unique pointer they contains will be destroyed automatically.
  */
-class ElfObj
+class ElfFile
 {
 public:
-    ElfObj();
-	ElfObj(std::string &name);
-	ElfObj(const ElfObj &module);
-	virtual ~ElfObj();
+    ElfFile();
+	ElfFile(std::string &name);
+	ElfFile(const ElfFile &elf);
+	virtual ~ElfFile();
     std::vector<std::unique_ptr<Symbol>>&  getSymbols();
 
 	std::string                            getName() const;
@@ -77,4 +77,4 @@ private:
     std::vector<std::unique_ptr<Symbol>>   symbols;
 };
 
-#endif /* MODULE_H_ */
+#endif /* ElfFile_H_ */
