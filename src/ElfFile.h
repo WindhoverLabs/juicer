@@ -1,46 +1,65 @@
 /*
- * ElfFile.h
+ * Module.h
  *
  *  Created on: Aug 1, 2020
  *      Author: vagrant
  */
 
-#ifndef ELFFILE_H_
-#define ELFFILE_H_
+#ifndef MODULE_H_
+#define MODULE_H_
 
+#include <memory>
 #include <stdint.h>
-
-#include "ElfObj.h"
+#include <vector>
 #include "Logger.h"
+#include "Juicer.h"
 
+class ElfFile;
+class Symbol;
+class Field;
+class Enumeration;
+class BitField;
 
-class ElfFile
+/**
+ * The module class contains a "module" with a user-defined name.
+ * It is an aggregation of ElfFiles and Symbols. It also
+ * manages those resources for you. You do not need to do any manual memory
+ * management with new/delete. Do not allocate this class with the "new" as
+ * that will make our design error-prone and result in undefined behavior.
+ *
+ *@note This is an "owning class". This means that it manages some resources through unique_ptr
+ *for this class that will be the elfFiles and symbols object. This means the lifetime
+ *of Symbol and ElfFile objects depend on the lifetime of Module; once Module is out of scope
+ *then symbols, elfFiles and every unique pointer they contains will be destroyed automatically.
+ */
+class ElfObj
 {
 public:
-    ElfFile();
-	ElfFile(ElfObj &module);
-	ElfFile(ElfObj &module,
-			std::string &name,
-			uint32_t checksum,
-			std::string &date,
-			bool little_endian);
-	virtual ~ElfFile();
-	uint32_t getChecksum() const;
-	void setChecksum(uint32_t checksum);
+    ElfObj();
+	ElfObj(std::string &name);
+	ElfObj(const ElfObj &module);
+	virtual ~ElfObj();
+    std::vector<std::unique_ptr<Symbol>>&  getSymbols();
+
+	std::string                            getName() const;
+	void                                   setName(std::string &name);
+	uint32_t                               getId(void) const;
+	void                                   setId(uint32_t newId);
+	Symbol *                               addSymbol(std::unique_ptr<Symbol> symbol);
+	Symbol *                               addSymbol(std::string& name, uint32_t byte_size);
+	std::vector<Field*>                    getFields();
+	std::vector<Enumeration*>              getEnumerations();
+	std::vector<BitField*>                 getBitFields();
+    bool                                   isSymbolUnique(std::string &name);
+    Symbol *                               getSymbol(std::string &name);
 	const std::string& getDate() const;
 	void setDate(const std::string& date);
 	bool isLittleEndian() const;
 	void isLittleEndian(bool littleEndian);
-	const ElfObj& getModule() const;
-	const std::string& getName() const;
-	void setName(const std::string& name);
-	ElfFile(const ElfFile &elfFile);
-
-protected:
+	uint32_t getChecksum() const;
+	void setChecksum(uint32_t checksum);
 
 private:
-	const ElfObj      &module;
-	std::string name;
 	uint32_t    checksum;
 	/**
 	 *@note I'm not sure about date being a std::string. I wonder if it'll
@@ -52,9 +71,10 @@ private:
 	 */
 	std::string date;
 	bool        little_endian;
-	Logger      logger;
+    std::string                            name;
+    uint32_t                               id;
+    Logger                                 logger;
+    std::vector<std::unique_ptr<Symbol>>   symbols;
 };
 
-
-
-#endif /* ELFFILE_H_ */
+#endif /* MODULE_H_ */

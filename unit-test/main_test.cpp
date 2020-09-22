@@ -27,31 +27,31 @@ bool is_little_endian()
 }
 
 
-/**
- *@brief This call back function assumes that the first column is that row's id,
- *for now.
- */
-static int callback(void *veryUsed, int argc, char **argv, char **azColName)
-{
-  int   i;
-
-  auto* row = (std::map<std::string, std::vector<std::string> >*)veryUsed ;
-
-  std::vector<std::string> tableData{};
-
-  for(i=1; i<argc; i++)
-  {
-	  std::string tempData{argv[i]};
-
-	  tableData.push_back(tempData);
-  }
-
-  std::string id{argv[0]};
-
-  (*row)[id] = tableData;
-
-  return 0;
-}
+///**
+// *@brief This call back function assumes that the first column is that row's id,
+// *for now.
+// */
+//static int SQLiteDB::callback(void *veryUsed, int argc, char **argv, char **azColName)
+//{
+//  int   i;
+//
+//  auto* row = (std::map<std::string, std::vector<std::string> >*)veryUsed ;
+//
+//  std::vector<std::string> tableData{};
+//
+//  for(i=1; i<argc; i++)
+//  {
+//	  std::string tempData{argv[i]};
+//
+//	  tableData.push_back(tempData);
+//  }
+//
+//  std::string id{argv[0]};
+//
+//  (*row)[id] = tableData;
+//
+//  return 0;
+//}
 
 TEST_CASE("Test Juicer at the highest level with SQLiteDB" ,"[Juicer]")
 {
@@ -60,8 +60,6 @@ TEST_CASE("Test Juicer at the highest level with SQLiteDB" ,"[Juicer]")
     Logger          logger;
 
     logger.logWarning("This is just a test.");
-
-    std::string moduleName{"ABC"};
     std::string inputFile{TEST_FILE_DIR};
 
     inputFile += "/test_file.o";
@@ -73,7 +71,7 @@ TEST_CASE("Test Juicer at the highest level with SQLiteDB" ,"[Juicer]")
 
     juicer.setIDC(idc);
 
-    REQUIRE(juicer.parse(moduleName, inputFile) == JUICER_OK);
+    REQUIRE(juicer.parse(inputFile) == JUICER_OK);
 
     /**
      *Clean up our database handle and objects in memory.
@@ -101,8 +99,6 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     std::string 	little_endian = is_little_endian()? "1": "0";
 
     logger.logWarning("This is just a test.");
-
-    std::string moduleName{"ABC"};
     std::string inputFile{TEST_FILE_DIR};
 
     inputFile += "/test_file.o";
@@ -113,7 +109,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     juicer.setIDC(idc);
 
-    rc = juicer.parse(moduleName, inputFile);
+    rc = juicer.parse(inputFile);
 
     REQUIRE(rc == JUICER_OK);
 
@@ -129,7 +125,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> circleMap{};
 
-    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), callback, &circleMap,
+    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), SQLiteDB::callback, &circleMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -150,7 +146,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> fieldsMap{};
 
-    rc = sqlite3_exec(database, getCircleFields.c_str(), callback, &fieldsMap,
+    rc = sqlite3_exec(database, getCircleFields.c_str(), SQLiteDB::callback, &fieldsMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -180,7 +176,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> typesMap{};
 
-    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), callback, &typesMap,
+    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), SQLiteDB::callback, &typesMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -213,8 +209,6 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     std::string 	little_endian = is_little_endian()? "1": "0";
 
     logger.logWarning("This is just a test.");
-
-    std::string moduleName{"ABC"};
     std::string inputFile{TEST_FILE_DIR};
 
     inputFile += "/test_file.o";
@@ -225,7 +219,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     juicer.setIDC(idc);
 
-    rc = juicer.parse(moduleName, inputFile);
+    rc = juicer.parse(inputFile);
 
     REQUIRE(rc == JUICER_OK);
 
@@ -244,7 +238,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> circleMap{};
 
-    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), callback, &circleMap,
+    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), SQLiteDB::callback, &circleMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -263,7 +257,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> fieldsMap{};
 
-    rc = sqlite3_exec(database, getCircleFields.c_str(), callback, &fieldsMap,
+    rc = sqlite3_exec(database, getCircleFields.c_str(), SQLiteDB::callback, &fieldsMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -317,7 +311,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> typesMap{};
 
-    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), callback, &typesMap,
+    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), SQLiteDB::callback, &typesMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -355,7 +349,6 @@ TEST_CASE("Test the correctness of the flat_array array after Juicer has process
 
     logger.logWarning("This is just a test.");
 
-    std::string moduleName{"ABC"};
     std::string inputFile{TEST_FILE_DIR};
 
     inputFile += "/test_file.o";
@@ -366,7 +359,7 @@ TEST_CASE("Test the correctness of the flat_array array after Juicer has process
 
     juicer.setIDC(idc);
 
-    rc = juicer.parse(moduleName, inputFile);
+    rc = juicer.parse(inputFile);
 
     REQUIRE(rc == JUICER_OK);
 
@@ -382,7 +375,7 @@ TEST_CASE("Test the correctness of the flat_array array after Juicer has process
 
     std::map<std::string, std::vector<std::string>> flatArrayMap{};
 
-    rc = sqlite3_exec(database, getFlatArrayQuery.c_str(), callback, &flatArrayMap,
+    rc = sqlite3_exec(database, getFlatArrayQuery.c_str(), SQLiteDB::callback, &flatArrayMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -405,7 +398,7 @@ TEST_CASE("Test the correctness of the flat_array array after Juicer has process
 
     std::map<std::string, std::vector<std::string>> typesMap{};
 
-    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), callback, &typesMap,
+    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), SQLiteDB::callback, &typesMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -430,7 +423,6 @@ TEST_CASE("Write keys to database that already exist" ,"[Juicer]")
 
     logger.logWarning("This is just a test.");
 
-    std::string moduleName{"ABC"};
     std::string inputFile{TEST_FILE_DIR};
 
     inputFile += "/test_file.o";
@@ -445,8 +437,8 @@ TEST_CASE("Write keys to database that already exist" ,"[Juicer]")
      * Parse twice to write to the database twice and cause
      * existing-keys errors in the database.
      */
-    REQUIRE(juicer.parse(moduleName, inputFile) == JUICER_OK);
-    REQUIRE(juicer.parse(moduleName, inputFile) != JUICER_OK);
+    REQUIRE(juicer.parse(inputFile) == JUICER_OK);
+    REQUIRE(juicer.parse(inputFile) != JUICER_OK);
     /**
      *Clean up our database handle and objects in memory.
      */
@@ -464,7 +456,6 @@ TEST_CASE("Write Elf File to database with a log file")
 
     logger.logWarning("This is just a test.");
 
-    std::string moduleName{"ABC"};
     std::string inputFile{TEST_FILE_DIR};
 
     inputFile += "/test_file.o";
@@ -475,7 +466,7 @@ TEST_CASE("Write Elf File to database with a log file")
 
 	juicer.setIDC(idc);
 
-	REQUIRE(juicer.parse(moduleName, inputFile)==JUICER_OK);
+	REQUIRE(juicer.parse(inputFile)==JUICER_OK);
 
 	logger.setLogFile("logFile");
 
@@ -494,7 +485,6 @@ TEST_CASE("Write Elf File to database with verbosity set to INFO")
     IDataContainer* idc = 0;
     Logger          logger{LOGGER_VERBOSITY_INFO};
 
-    std::string moduleName{"ABC"};
     std::string inputFile{TEST_FILE_DIR};
 
     inputFile += "/test_file.o";
@@ -504,7 +494,7 @@ TEST_CASE("Write Elf File to database with verbosity set to INFO")
 	logger.logInfo("IDataContainer was constructed successfully for unit test.");
 
 	juicer.setIDC(idc);
-	juicer.parse(moduleName, inputFile);
+	juicer.parse(inputFile);
 
 	/**
 	*Clean up our database handle and objects in memory.
@@ -522,7 +512,6 @@ TEST_CASE("Write Elf File to database with invalid verbosity")
 
     logger.logWarning("This is just a test.");
 
-    std::string moduleName{"ABC"};
     std::string inputFile{TEST_FILE_DIR};
 
     inputFile += "/test_file.o";
@@ -532,7 +521,7 @@ TEST_CASE("Write Elf File to database with invalid verbosity")
 	logger.logInfo("IDataContainer was constructed successfully for unit test.");
 
 	juicer.setIDC(idc);
-	juicer.parse(moduleName, inputFile);
+	juicer.parse(inputFile);
 
 	/**
 	*Clean up our database handle and objects in memory.

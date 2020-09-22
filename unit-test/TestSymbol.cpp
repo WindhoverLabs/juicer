@@ -5,20 +5,20 @@
  *      Author: vagrant
  */
 
-#include <ElfObj.h>
+#include <ElfFile.h>
 #include "catch.hpp"
 #include "Field.h"
 #include "Enumeration.h"
-/**
- *@todo This testing module is not done yet.
- */
 
+/**
+ *@todo This testing elf is not done yet.
+ */
 TEST_CASE( "Test the correctness of name", "[Symbol]" )
 {
-    std::string newModuleName{"ABC"};
+    std::string newElfName{"ABC"};
     std::string newSymbolName{"string"};
-    ElfObj      myModule{newModuleName};
-    Symbol newSymbol{myModule};
+    ElfFile      myelf{newElfName};
+    Symbol newSymbol{myelf};
 
     newSymbol.setName(newSymbolName);
 
@@ -27,10 +27,10 @@ TEST_CASE( "Test the correctness of name", "[Symbol]" )
 
 TEST_CASE( "Test the correctness of byte_size ", "[Symbol]" )
 {
-    std::string newModuleName{"ABC"};;
+    std::string newElfName{"ABC"};;
     uint32_t    byteSize{8};
-    ElfObj      myModule{newModuleName};
-    Symbol      newSymbol{myModule};
+    ElfFile      myelf{newElfName};
+    Symbol      newSymbol{myelf};
 
     newSymbol.setByteSize(byteSize);
 
@@ -39,11 +39,11 @@ TEST_CASE( "Test the correctness of byte_size ", "[Symbol]" )
 
 TEST_CASE( "Test the correctness of id ", "[Symbol]" )
 {
-    std::string newModuleName{"ABC"};
+    std::string newElfName{"ABC"};
     std::string newSymbolName{"string"};
     uint32_t    id{123};
-    ElfObj      myModule{newModuleName};
-    Symbol newSymbol{myModule};
+    ElfFile      myelf{newElfName};
+    Symbol newSymbol{myelf};
 
     newSymbol.setId(id);
 
@@ -52,14 +52,14 @@ TEST_CASE( "Test the correctness of id ", "[Symbol]" )
 
 TEST_CASE( "Test addField(Field &inField) method", "[Symbol]" )
 {
-    std::string newModuleName{"ABC"};
+    std::string newElfName{"ABC"};
     std::string newSymbolName{"string"};
     const std::string fieldName{"intField"};
-    ElfObj      myModule{newModuleName};
+    ElfFile      myelf{newElfName};
 
-    Symbol newSymbol{myModule};
+    Symbol newSymbol{myelf};
 
-    Symbol newType{myModule};
+    Symbol newType{myelf};
 
     Field   newField{newSymbol, newType};
     newField.setName(fieldName);
@@ -74,16 +74,16 @@ TEST_CASE( "Test addField(std::string& inName, uint32_t inByteOffset, "
                                             "bool inLittleEndian) method ", "[Symbol]" )
 {
     std::string fieldName{"intField"};
-    std::string            newModuleName{"ABC"};
+    std::string            newElfName{"ABC"};
     std::string            newSymbolName{"string"};
     std::string            newTypeName{"Shape"};
-    ElfObj                 myModule{newModuleName};
+    ElfFile                 myelf{newElfName};
     bool                     littleEndian = true;
     uint32_t               byteOffset{32};
     uint32_t               multiplicity{2};
 
-    Symbol newSymbol{myModule};
-    Symbol newType{myModule};
+    Symbol newSymbol{myelf};
+    Symbol newType{myelf};
 
     newType.setName(newTypeName);
 
@@ -99,11 +99,11 @@ TEST_CASE( "Test addField(std::string& inName, uint32_t inByteOffset, "
 TEST_CASE( "Test addEnumeration(Enumeration &inEnumeration); method",
                      "[Symbol]" )
 {
-    std::string     newModuleName{"ABC"};
+    std::string     newElfName{"ABC"};
     std::string     newSymbolName{"string"};
     std::string     enumName{"Color"};
-    ElfObj          myModule{newModuleName};
-    Symbol          newSymbol{myModule};
+    ElfFile          myelf{newElfName};
+    Symbol          newSymbol{myelf};
     Enumeration newEnum(newSymbol);
 
     newEnum.setName(enumName);
@@ -116,12 +116,12 @@ TEST_CASE( "Test addEnumeration(Enumeration &inEnumeration); method",
 TEST_CASE( "Test addEnumeration(std::string& inName, int32_t inValue); method",
                      "[Symbol]" )
 {
-    std::string     newModuleName{"ABC"};
+    std::string     newElfName{"ABC"};
     std::string     newSymbolName{"string"};
     std::string     enumName{"Color"};
     uint64_t        enumValue{589};
-    ElfObj          myModule{newModuleName};
-    Symbol          newSymbol{myModule};
+    ElfFile          myelf{newElfName};
+    Symbol          newSymbol{myelf};
     Enumeration newEnum(newSymbol);
 
     newEnum.setName(enumName);
@@ -135,12 +135,12 @@ TEST_CASE( "Test addEnumeration(std::string& inName, int32_t inValue); method",
 TEST_CASE( "Test getEnumerations() method",
                      "[Symbol]" )
 {
-    std::string     newModuleName{"ABC"};
+    std::string     newElfName{"ABC"};
     std::string     newSymbolName{"string"};
     std::string     enumName{"Color"};
     uint64_t enumValue{589};
-    ElfObj          myModule{newModuleName};
-    Symbol          newSymbol{myModule};
+    ElfFile          myelf{newElfName};
+    Symbol          newSymbol{myelf};
     Enumeration newEnum(newSymbol);
 
     newEnum.setName(enumName);
@@ -154,13 +154,13 @@ TEST_CASE( "Test getEnumerations() method",
 
 TEST_CASE( "Test getFields() method", "[Symbol]" )
 {
-    std::string newModuleName{"ABC"};
+    std::string newElfName{"ABC"};
     std::string newSymbolName{"string"};
     const std::string fieldName{"intField"};
-    ElfObj      myModule{newModuleName};
+    ElfFile      myelf{newElfName};
 
-    Symbol newSymbol{myModule};
-    Symbol newType{myModule};
+    Symbol newSymbol{myelf};
+    Symbol newType{myelf};
 
     Field   newField{newSymbol, newType};
     newField.setName(fieldName);
@@ -172,14 +172,14 @@ TEST_CASE( "Test getFields() method", "[Symbol]" )
 
 TEST_CASE( "Test isFieldUnique(std::string &name) method with unique fields", "[Symbol]" )
 {
-    std::string newModuleName{"ABC"};
+    std::string newElfName{"ABC"};
     std::string newSymbolName{"string"};
     std::string intFieldName{"intField"};
     std::string floatFieldName{"floatField"};
-    ElfObj      myModule{newModuleName};
+    ElfFile      myelf{newElfName};
 
-    Symbol newSymbol{myModule};
-    Symbol newType{myModule};
+    Symbol newSymbol{myelf};
+    Symbol newType{myelf};
 
     Field   newIntField{newSymbol, newType};
 
@@ -193,44 +193,44 @@ TEST_CASE( "Test isFieldUnique(std::string &name) method with unique fields", "[
 /**
  * Test constructors
  */
-TEST_CASE( "Test the correctness of constructor Symbol(Module &module) ", "[Symbol]" )
+TEST_CASE( "Test the correctness of constructor Symbol(elf &elf) ", "[Symbol]" )
 {
-    std::string newModuleName{"ABC"};
-    ElfObj      myModule{newModuleName};
-    Symbol newSymbol{myModule};
+    std::string newElfName{"ABC"};
+    ElfFile      myelf{newElfName};
+    Symbol newSymbol{myelf};
 
-    REQUIRE(newSymbol.getElf().getName() == newModuleName);
+    REQUIRE(newSymbol.getElf().getName() == newElfName);
 }
 
-TEST_CASE( "Test the correctness of constructor Symbol(Module &module,"
+TEST_CASE( "Test the correctness of constructor Symbol(elf &elf,"
         "std::string &name,"
         "uint32_t byte_size) ",
         "[Symbol]" )
 {
-    std::string newModuleName{"ABC"};
-    ElfObj      myModule{newModuleName};
+    std::string newElfName{"ABC"};
+    ElfFile      myelf{newElfName};
     std::string symbolName{"string"};
     uint32_t    byteSize{8};
 
-    Symbol newSymbol{myModule, symbolName, byteSize};
+    Symbol newSymbol{myelf, symbolName, byteSize};
 
-    REQUIRE(newSymbol.getElf().getName() == newModuleName);
+    REQUIRE(newSymbol.getElf().getName() == newElfName);
     REQUIRE(newSymbol.getName() == symbolName);
     REQUIRE(newSymbol.getByteSize() == byteSize);
 }
 
 TEST_CASE( "Test the correctness of constructor Symbol(const Symbol &symbol)", "[Symbol]" )
 {
-    std::string newModuleName{"ABC"};
-    ElfObj      myModule{newModuleName};
+    std::string newElfName{"ABC"};
+    ElfFile      myelf{newElfName};
     std::string symbolName{"string"};
     uint32_t    byteSize{8};
 
-    Symbol copySymbol{myModule, symbolName, byteSize};
+    Symbol copySymbol{myelf, symbolName, byteSize};
 
     Symbol constSymbol{copySymbol}; // @suppress("Invalid arguments")
 
-    REQUIRE(constSymbol.getElf().getName() == newModuleName);
+    REQUIRE(constSymbol.getElf().getName() == newElfName);
     REQUIRE(constSymbol.getName() == symbolName);
     REQUIRE(constSymbol.getByteSize() == byteSize);
 }
