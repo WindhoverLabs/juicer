@@ -41,7 +41,7 @@
                                   symbol INTEGER NOT NULL,\
                                   name TEXT NOT NULL,\
                                   byte_offset INTEGER NOT NULL,\
-                                  type INTEGER,\
+                                  type INTEGER NOT NULL,\
                                   multiplicity INTEGER NOT NULL,\
                                   little_endian BOOLEAN,\
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
