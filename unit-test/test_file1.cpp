@@ -8,7 +8,7 @@
  *on our unit tests.
  */
 
-#include "test_file.h"
+#include "test_file1.h"
 
 #include<libelf.h>
 #include <libdwarf.h>

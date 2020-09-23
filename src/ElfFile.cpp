@@ -17,7 +17,7 @@ ElfFile::ElfFile(std::string &inName) :
     name{inName}, // @suppress("Symbol is not resolved")
     id{0}
 {
-    logger.logDebug("Module '%s' created.", getName().c_str());
+    logger.logDebug("Elf '%s' created.", getName().c_str());
 }
 
 ElfFile::ElfFile():
