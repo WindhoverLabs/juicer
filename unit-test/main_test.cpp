@@ -125,7 +125,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> circleMap{};
 
-    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), SQLiteDB::callback, &circleMap,
+    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), SQLiteDB::selectCallback, &circleMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -146,7 +146,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> fieldsMap{};
 
-    rc = sqlite3_exec(database, getCircleFields.c_str(), SQLiteDB::callback, &fieldsMap,
+    rc = sqlite3_exec(database, getCircleFields.c_str(), SQLiteDB::selectCallback, &fieldsMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -176,7 +176,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> typesMap{};
 
-    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), SQLiteDB::callback, &typesMap,
+    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), SQLiteDB::selectCallback, &typesMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -238,7 +238,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> circleMap{};
 
-    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), SQLiteDB::callback, &circleMap,
+    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), SQLiteDB::selectCallback, &circleMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -257,7 +257,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> fieldsMap{};
 
-    rc = sqlite3_exec(database, getCircleFields.c_str(), SQLiteDB::callback, &fieldsMap,
+    rc = sqlite3_exec(database, getCircleFields.c_str(), SQLiteDB::selectCallback, &fieldsMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -311,7 +311,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     std::map<std::string, std::vector<std::string>> typesMap{};
 
-    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), SQLiteDB::callback, &typesMap,
+    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), SQLiteDB::selectCallback, &typesMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -375,7 +375,7 @@ TEST_CASE("Test the correctness of the flat_array array after Juicer has process
 
     std::map<std::string, std::vector<std::string>> flatArrayMap{};
 
-    rc = sqlite3_exec(database, getFlatArrayQuery.c_str(), SQLiteDB::callback, &flatArrayMap,
+    rc = sqlite3_exec(database, getFlatArrayQuery.c_str(), SQLiteDB::selectCallback, &flatArrayMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
@@ -398,7 +398,7 @@ TEST_CASE("Test the correctness of the flat_array array after Juicer has process
 
     std::map<std::string, std::vector<std::string>> typesMap{};
 
-    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), SQLiteDB::callback, &typesMap,
+    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), SQLiteDB::selectCallback, &typesMap,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
