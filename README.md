@@ -1,7 +1,13 @@
+
+
 # Table of Contents
 1. [Dependencies](#dependencies)
-2. [Environment Setup](#environment-setup)
-3. [Testing](#testing)
+2. [Building it](#building_it)
+2. [What is it?](#what_is_it)
+3. [Environment Setup](#environment-setup)
+4. [Testing](#testing)
+5. [DWARF Suport](#dwarf_support)
+5. [Requirements](#requirements)
 
 
 ## Dependencies <a name="dependencies"></a>
@@ -11,6 +17,124 @@
 * `C++14`
 * `Catch2`
 * `gcc  5.4.0`
+
+
+## Buiding it <a name="building_it"></a>
+
+1. Clone the repo
+```
+git clone https://github.com/WindhoverLabs/juicer.git
+cd juicer
+```
+2. Right now the working branch is `develop`, so switch to it
+```
+git checkout develop
+```
+3. Our build system has a few build recepies. If all you want is to get jucier up and running,
+
+```
+make
+```
+This will build the executable for you, which you'll find on `build/juicer`.
+
+
+If you would like to run unit tests, you can do that too:
+
+```
+make run-tests
+```
+
+**NOTE:** Make sure you have all of the dependencies mentioned above. If you are missing any of those dependencies, juicer will *not* build. 
+
+
+
+## What is it? <a name="what_is_it"></a>
+juicer extracts structs, arrays, enumerations and intrinsic types(support for everything else is planned for the future, but it is not a priority at the moment) from executable elf files and stores them in a SQLite database.
+
+### An Example
+Imagine we wrote some elf_file.cpp that looks like this.
+```
+#include<libelf.h>
+#include <libdwarf.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+
+typedef struct
+{
+    int32_t width = 101;
+    uint8_t stuff;
+    int32_t length;
+    uint8_t more_stuff;
+    float floating_stuff;
+}Square;
+
+Square sq = {};
+
+int flat_array[] = {1,2,3,4,5,6};
+```
+
+`juicer` uses DWARF debug information to extract all of the information. Because of this, you *must* pass the `-g` flag to `gcc` when compilling your source code:
+
+```
+g++ -std=c++14  elf_file.cpp -g -c -o elf_file
+```
+
+Assuming you've built juicer successfully, you can give this binary file to juicer:
+
+```
+./build/juicer --input path_to_file --mode SQLITE --output build/new_db.sqlite -v4
+
+```
+
+This tells juicer to squeeze and extract as much as possible out of the binary at path_to_file and write all of that data to the `sqlite` database at build/new_db.sqlite. `v4` is for verbosity level 4, which is the highest level and will output every message from the log. 
+
+After juicer is done, you will find a database populated with data about our binary file at `build/new_db.sqlite`.  The database should have the following schemas:
+
+### elfs
+| id* | name  | checksum | date | little_endian |
+| --- | --- | --- | --- | --- |
+|INTEGER | TEXT | INTEGER | DATETIME | BOOLEAN |
+
+###  enumerations
+| symbol* | value* | name |
+| --- | --- | --- |
+| INTEGER | INTEGER | TEXT |
+
+### bit_fields
+|field* | bit_size   | bit_offset |
+|---|---|---|
+| INTEGER | INTEGER | INTEGER |
+
+### fields
+| id* | name | symbol+ | byte_offset | type+ | multiplicity | little_endian
+| --- | --- | --- | ---| --- | --- | --- |
+| INTEGER | TEXT | INTEGER |INTEGER | INTEGER | INTEGER | BOOLEAN |
+
+### symbols
+| id* | name | byte_size |
+| ---| --- | --- |
+| INTEGER | INTEGER | TEXT | INTEGER |
+
+In our specific example, the **symbols** and **fields** tables are the ones we are interested in.
+
+![symbols](Images/symbols_table.png "symbols-table")
+
+As you can see in the image above, our `Square` struct that we defined in our source file is in row 16!
+
+You might ask where are its members...that's what the **fields** table is for.
+
+![symbols](Images/fields_table.png "symbols-table")
+
+As you can see we have a few fields that match our Square struct's id, which is 16. Those fields belong to our struct `Square`. Also note the **type** column; this tells us the particular type a field is. A *type* is the type of a field as it appears in source code. This is symply an external key to the **symols** table. Also note our **flat_array** field; it has the *same* key for type and symbol; this is how arrays are stored, its size can be seen in the `multiplicity` column.
+
+This is how juicer stores data in the database.
+
+**NOTE**: Beware that it is absolutey fine to run juicer multiple times  on different binary files but on the *same* database. In fact juicer has been designed with this mind so that users can run juicer multiple times against any code base, no matter how large in size.
+
+
 
 # Environment Setup <a name="environment-setup"></a>
 
@@ -90,30 +214,35 @@ Note that we don't define a `main` function here so we define one very easily in
 Yes, that's it! Catch2 will read the `CATCH_CONFIG_MAIN` and generate a `main` function for you. The `CATCH_CONFIG_COLOUR_NONE` is not necessary to run Catch2, but if you run into problems where the output will not render properly because it is colored(like in Eclipse), the you might find this macro useful. 
 
 
-Now all you gotta do is build your project on Eclipse(or from the terminal) and the all of your tests.
+Now all you gotta do is build your project on Eclipse(or from the terminal) and then run all of your tests.
 
-### Setting up gcov
-
-To track our test coverage we use `gcov`. 
-
-In order to set up gcove we need to pass the `--coverage` flag to gcc and then pass `lgcov` and  `--coverage` and compile and run your the tests.
+You can run your tests like this:
+```
+make run-tests
+```
 
 ### Generating Coverage Report
-After you compile *and* run the test suite with gcov, generating an html report is very easy! All you need  is two commands.
-
-*Make sure you are in the directory that has all of the `gcda ` and `gcno ` files*
-
-1. Generate the raw report with `lcov`
-```
-lcov -c --directory . --output-file main_coverage.info
-```
-
-This scans the directory `.` for the `gcda ` and `gcno ` files and generates a non-human redable report(a raw report) and saves it to main_coverage.info file.
-
-2. Generate a html report that humans can actually read
 
 ```
-genhtml main_coverage.info --output-directory out 
+make coverage
 ```
-This will create an html report that we can view on the browser and save it to the `out` directory.
+
+This will run all unit tests on juicer and generate a test coverage report for you. After `make` is done, the test coverage report can be found on `build/coverage/index.html`.
+
+## Dwarf Support
+
+As juicer evolves, our dwarf support will grow and evolve as well. At the moment, we don't adhere to a particular DWARF version as we add support to the things that we need for our code base, which is airliner. In other words, we *mustly* support `C` code, or `C++` code without any cutting edge/modern features. For example, modern features such as `templates` or `namespaces` are not supported. If juicer finds these things in your elf files, it will simply ignore them. To have a more concrete idea of what we *do* support in the DWARF, take a look at the table below which records all DWARF tags we support.
+
+### Dwarf Tags
+| Name | Description |
+| ---| --- |
+| DW_TAG_base_type | This is the tag that represents intrinsic types such as `int` and `char`. |
+| DW_TAG_typedef | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}`|
+| DW_TAG_structure_type | This is the tag that represents structs such as  |
+| DW_TAG_array_type | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Noe that this does not include dynamic arrays such as those allocated by malloc or new calls.|
+| DW_TAG_pointer_type | This is the tag that represents pointers in code such as `int* ptr = nullptr`|
+| DW_TAG_enumeration_type | This is the tag that represents enumerations such as `enum Color{RED,BLUE,YELLOW};` |
+| DW_TAG_const_type | This is the tag that represents C/C++ const qualified type such as `sizetype`, which is used by containers(like std::vector) in the STL C++ library.  |
+
+For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/dwarf-2.0.0.pdf).
 
