@@ -6,6 +6,7 @@
  */
 
 #include<string>
+#include <stdio.h>
 #include "SQLiteDB.h"
 
 SQLiteDB::SQLiteDB() :
@@ -29,7 +30,7 @@ SQLiteDB::~SQLiteDB()
  *@param argv An array containing every column of this row.
  *
  */
-int SQLiteDB::callback(void *veryUsed, int argc, char **argv, char **azColName)
+int SQLiteDB::selectCallback(void *veryUsed, int argc, char **argv, char **azColName)
 {
   int   i;
 
@@ -49,6 +50,33 @@ int SQLiteDB::callback(void *veryUsed, int argc, char **argv, char **azColName)
   (*row)[id] = tableData;
 
   return 0;
+}
+
+int SQLiteDB::doesRowExistCallback(void *count, int argc, char **argv, char **azColName) {
+	int32_t *c = (int32_t*)count;
+    *c = atoi(argv[0]);
+    return 0;
+}
+
+/**
+ *@todo This function is not working properly as of now.
+ */
+bool SQLiteDB::doesSymbolExist(std::string name)
+{
+	std::string countRowsQuery{"SELECT COUNT(1) FROM symbols"};
+	countRowsQuery += " WHERE name=";
+	countRowsQuery += name + ";";
+
+	int32_t row_count = 0;
+
+    int rc = SQLITE_OK;
+
+    char* 	errorMessage = nullptr;
+
+    rc = sqlite3_exec(database, countRowsQuery.c_str(), SQLiteDB::doesRowExistCallback, &row_count,
+            &errorMessage);
+
+    return row_count==0? false: true;
 }
 
 /**
@@ -78,7 +106,7 @@ int SQLiteDB::initialize(std::string &initString)
         	char* 	errorMessage = nullptr;
         	std::map<std::string, std::vector<std::string>> symbolsMap{};
 
-            rc = sqlite3_exec(database, "SELECT * FROM symbols", SQLiteDB::callback, &symbolsMap,
+            rc = sqlite3_exec(database, "SELECT * FROM symbols", SQLiteDB::selectCallback, &symbolsMap,
                     &errorMessage);
             for(auto symbol_id: symbolsMap)
             {
@@ -336,51 +364,118 @@ int SQLiteDB::writeElfToDatabase(ElfFile& inElf)
 int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 {
     int         rc  = SQLITEDB_OK;
-    char*       errorMessage = NULL;
+    char*       errorMessage = nullptr;
+
+
 
     /**
      * @note Are we allowed for ground tools to do this for loops?
      * I know for Flight Software we need to explicitly state the "++i",
      * but should/can we do this here with loops for Juicer?
      */
+
+//    doesSymbolExist();
+//
+//   if(rowExists)
+//   {
+//
+//	   std::cout<<"row exists";
+//   }
+
     for(auto&& symbol : inElf.getSymbols())
     {
-        /*
-         * @todo I want to store these SQLite magical values into MACROS,
-         * but I'm not sure what is the best way to do that without it being
-         * messy.
-         */
-        std::string writeSymbolQuery{};
+			/*
+			 * @todo I want to store these SQLite magical values into MACROS,
+			 * but I'm not sure what is the best way to do that without it being
+			 * messy.
+			 */
+			std::string writeSymbolQuery{};
 
-        writeSymbolQuery += "INSERT INTO symbols(elf, name, byte_size) "
-                             "VALUES(";
-        writeSymbolQuery += std::to_string(symbol->getElf().getId());
-        writeSymbolQuery += ",\"";
-        writeSymbolQuery += symbol->getName();
-        writeSymbolQuery += "\",";
-        writeSymbolQuery += std::to_string(symbol->getByteSize());
-        writeSymbolQuery += ")";
+			writeSymbolQuery += "INSERT INTO symbols(elf, name, byte_size) "
+								 "VALUES(";
+			writeSymbolQuery += std::to_string(symbol->getElf().getId());
+			writeSymbolQuery += ",\"";
+			writeSymbolQuery += symbol->getName();
 
-        rc = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL,
-                          &errorMessage);
+			bool rowExists = doesSymbolExist(symbol->getName());
 
-        if(SQLITE_OK == rc)
-        {
-            logger.logDebug("Symbol values were written to the symbols schema with "
-                            "SQLITE_OK status.");
+			   if(rowExists)
+			   {
 
-            /*Write the id to this symbol so that other tables can use it as
-             *a foreign key */
-            sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
-            symbol->setId(lastRowId);
-        }
-        else
-        {
-            logger.logDebug("There was an error while data to the symbols table.");
-            logger.logDebug("%s.", errorMessage);
+				   std::cout<<"row exists";
+			   }
+			writeSymbolQuery += "\",";
+			writeSymbolQuery += std::to_string(symbol->getByteSize());
+			writeSymbolQuery += ")";
 
-            rc = SQLITEDB_ERROR;
-        }
+			rc = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL,
+							  &errorMessage);
+
+//			   bool rowExists = doesSymbolExist("symbols", "2");
+
+			if(SQLITE_OK == rc)
+			{
+				logger.logDebug("Symbol values were written to the symbols schema with "
+								"SQLITE_OK status.");
+
+				/*Write the id to this symbol so that other tables can use it as
+				 *a foreign key */
+				sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+
+
+				if(lastRowId == 0)
+				{
+					logger.logError("lastRowId is ZERO for symbol");
+				}
+
+				symbol->setId(lastRowId);
+			}
+
+			/**
+			 * @note For now, this error condition is assumed to be ONLY related to
+			 * a symbol that already exists being added. This is certainly ambiguous so we
+			 * will need to implement a much more explicit way of doing this in the future.
+			 * Really dislike this vagueness in error-handling.
+			 * Actually I think a much better way to handle this is to NOT rely on error correction,
+			 * but rather check if the symbol exists or not.
+			 */
+			else
+			{
+				logger.logError("There was an error while data to the symbols table for symbol \"%s\".");
+				logger.logError("%s.", errorMessage);
+	//            handle id here
+
+		    	/**
+		    	 *First check if the symbol already exists in the database.
+		    	 *If it does we don't need
+		    	 */
+		    	std::map<std::string, std::vector<std::string>> symbolsMap{};
+
+		    	std::string getSymbolIdQuery{"SELECT * FROM symbols where name="};
+		    	getSymbolIdQuery += "\"";
+		    	getSymbolIdQuery += symbol->getName();
+
+		//    	logger.logDebug("Symbol name$$$-->:%s", )
+
+		    	getSymbolIdQuery += "\";";
+		        rc = sqlite3_exec(database, getSymbolIdQuery.c_str(), SQLiteDB::selectCallback, &symbolsMap,
+		                &errorMessage);
+
+		        if(SQLITE_OK == rc)
+		        {
+					/**
+					 * We know there is only one element in our map, since symbol names are unique.
+					 */
+					for(auto pair: symbolsMap)
+					{
+						 symbol->setId(std::stoi(pair.first));
+					}
+		        }
+
+
+	//            rc = SQLITEDB_ERROR;
+			}
+
     }
 
     return rc;
@@ -415,6 +510,11 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
          * messy.
          */
         std::string writeFieldQuery{};
+
+        if(field->getName() == "Seconds")
+        {
+        	logger.logDebug("Seconds fields");
+        }
 
         writeFieldQuery += "INSERT INTO fields(symbol, name, byte_offset, type, "
                             "multiplicity, little_endian) VALUES(";

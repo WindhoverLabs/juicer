@@ -89,12 +89,14 @@ private:
     int writeSymbolsToDatabase(ElfFile& inModule);
     int writeFieldsToDatabase(ElfFile& inModule);
     int writeBitFieldsToDatabase(ElfFile& inModule);
-    int writeEnumerationsToDatabase(ElfFile& inModule);
+    int writeEnumerationsToDatabase(ElfFile& inModule);\
+    static int doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
+    bool doesSymbolExist(std::string name);
 
 public:
     SQLiteDB();
     int initialize(std::string &initString);
-    static int callback(void *veryUsed, int argc, char **argv, char **azColName);
+    static int selectCallback(void *veryUsed, int argc, char **argv, char **azColName);
     int close(void);
     virtual int write(ElfFile& inModule);
     virtual
