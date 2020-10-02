@@ -19,7 +19,7 @@
 * `gcc  5.4.0`
 
 
-## Buiding it <a name="building_it"></a>
+## Building it <a name="building_it"></a>
 
 1. Clone the repo
 ```
@@ -114,8 +114,8 @@ After juicer is done, you will find a database populated with data about our bin
 | INTEGER | TEXT | INTEGER |INTEGER | INTEGER | INTEGER | BOOLEAN |
 
 ### symbols
-| id* | name | byte_size |
-| ---| --- | --- |
+| id* | elf+ | name | byte_size |
+| ---| --- | --- | --- |
 | INTEGER | INTEGER | TEXT | INTEGER |
 
 In our specific example, the **symbols** and **fields** tables are the ones we are interested in.
@@ -231,14 +231,14 @@ This will run all unit tests on juicer and generate a test coverage report for y
 
 ## Dwarf Support
 
-As juicer evolves, our dwarf support will grow and evolve as well. At the moment, we don't adhere to a particular DWARF version as we add support to the things that we need for our code base, which is airliner. In other words, we *mustly* support `C` code, or `C++` code without any cutting edge/modern features. For example, modern features such as `templates` or `namespaces` are not supported. If juicer finds these things in your elf files, it will simply ignore them. To have a more concrete idea of what we *do* support in the DWARF, take a look at the table below which records all DWARF tags we support.
+As juicer evolves, our dwarf support will grow and evolve as well. At the moment, we don't adhere to a particular DWARF version as we add support to the things that we need for our code base, which is airliner. In other words, we *mostly* support `C` code, or `C++` code without any cutting edge/modern features. For example, modern features such as `templates` or `namespaces` are not supported. If juicer finds these things in your elf files, it will simply ignore them. To have a more concrete idea of what we *do* support in the DWARF, take a look at the table below which records all DWARF tags we support.
 
 ### Dwarf Tags
 | Name | Description |
 | ---| --- |
 | DW_TAG_base_type | This is the tag that represents intrinsic types such as `int` and `char`. |
-| DW_TAG_typedef | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}`|
-| DW_TAG_structure_type | This is the tag that represents structs such as  |
+| DW_TAG_typedef | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}`. At the moment, types such as `typedef int16 my_int` do *not* work. We will invistigate this issue in the future, however, it is not a priority at the moment.|
+| DW_TAG_structure_type | This is the tag that represents structs such as  `struct Square{ int width; int length; };` |
 | DW_TAG_array_type | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Noe that this does not include dynamic arrays such as those allocated by malloc or new calls.|
 | DW_TAG_pointer_type | This is the tag that represents pointers in code such as `int* ptr = nullptr`|
 | DW_TAG_enumeration_type | This is the tag that represents enumerations such as `enum Color{RED,BLUE,YELLOW};` |
@@ -246,3 +246,5 @@ As juicer evolves, our dwarf support will grow and evolve as well. At the moment
 
 For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/dwarf-2.0.0.pdf).
 
+
+Documentation updated on October 2, 2020
