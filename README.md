@@ -11,7 +11,7 @@
 
 
 ## Dependencies <a name="dependencies"></a>
-* `libdwarf`
+* `libdwarf-dev`
 * `libelf`
 * `sqlite3`
 * `C++14`
@@ -26,11 +26,18 @@
 git clone https://github.com/WindhoverLabs/juicer.git
 cd juicer
 ```
-2. Right now the working branch is `develop`, so switch to it
+
+2. Update the git submodules:
+
+```
+git submodule update --init
+```
+
+3. Right now the working branch is `develop`, so switch to it
 ```
 git checkout develop
 ```
-3. Our build system has a few build recepies. If all you want is to get jucier up and running,
+4. Our build system has a few build recepies. If all you want is to get jucier up and running,
 
 ```
 make
