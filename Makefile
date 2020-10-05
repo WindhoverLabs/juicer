@@ -6,14 +6,17 @@ COVERAGE_DIR := $(BUILD_DIR)/coverage
 SRC_DIR    := $(ROOT_DIR)/src
 OBJ_DIR    := $(BUILD_DIR)/obj
 BIN_DIR    := $(BUILD_DIR)
+INCLUDES   := -I$(SRC_DIR) -I/usr/include/libdwarf
+
+# External directories
+CATCH2_DIR := $(ROOT_DIR)/Catch2
 
 # Unit test directories
 UT_SRC_DIR := $(ROOT_DIR)/unit-test
 UT_OBJ_DIR := $(BUILD_DIR)/ut_obj
 UT_BIN_DIR := $(BUILD_DIR)
+UT_INCLUDES := -I$(CATCH2_DIR)/single_include/catch2
 
-# External directories
-CATCH2_DIR := $(ROOT_DIR)/Catch2
 
 # Target files
 EXE        := $(BIN_DIR)/juicer
@@ -33,7 +36,7 @@ LDFLAGS     := -Llib
 LDLIBS      := -lm -ldwarf -lsqlite3 -lelf
 
 # Set unit test flags
-UT_CPPFLAGS := $(CPPFLAGS) -I$(CATCH2_DIR)/single_include/catch2 -I$(SRC_DIR)
+UT_CPPFLAGS := $(CPPFLAGS) $(UT_INCLUDES) $(INCLUDES)
 UT_CFLAGS   := $(CFLAGS) --coverage
 UT_LDFLAGS  := $(LDFLAGS)
 UT_LDLIBS   := $(LDLIBS) -lgcov
