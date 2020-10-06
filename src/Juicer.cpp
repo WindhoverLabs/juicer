@@ -160,10 +160,10 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 	Dwarf_Die 		dieSubrangeType;
 	Dwarf_Unsigned 	dwfUpperBound = 0;
 	uint32_t 		multiplicity = 0;
-	Dwarf_Error 	error;
-	Dwarf_Attribute attr_struct;
+	Dwarf_Error     error = 0;
+	Dwarf_Attribute attr_struct = 0;
 	char* 			arrayName = nullptr;
-	int 			res;
+	int 			res = 0;
 	Dwarf_Die 		sib_die = 0;
 	Symbol* 		outSymbol  = nullptr;
 
@@ -1300,7 +1300,7 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
 void Juicer::process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
     int             res = DW_DLV_OK;
-    Dwarf_Attribute attr_struct;
+    Dwarf_Attribute attr_struct = 0;
     Dwarf_Die       enumeratorDie = 0;
 
     /* Get the fields by getting the first child. */
