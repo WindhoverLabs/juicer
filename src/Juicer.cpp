@@ -1921,6 +1921,8 @@ JuicerEndianness_t Juicer::getEndianness()
     size_t size;
     JuicerEndianness_t rc;
 
+    elf_version(EV_CURRENT);
+
     elf = elf_begin(elfFile, ELF_C_READ, NULL);
 
     if(elf != NULL)
