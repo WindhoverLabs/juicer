@@ -30,13 +30,13 @@ UT_OBJ     := $(UT_SRC:$(UT_SRC_DIR)/%.cpp=$(UT_OBJ_DIR)/%.o)
 UT_OBJ     := $(UT_OBJ:$(SRC_DIR)/%.cpp=$(UT_OBJ_DIR)/%.o)
 
 # Set target flags
-CPPFLAGS    := -MMD -MP -std=c++14 -fmessage-length=0
+CPPFLAGS    := -MMD -MP -std=c++14 -fmessage-length=0 $(INCLUDES)
 CFLAGS      := -Wall -g
 LDFLAGS     := -Llib
 LDLIBS      := -lm -ldwarf -lsqlite3 -lelf
 
 # Set unit test flags
-UT_CPPFLAGS := $(CPPFLAGS) $(UT_INCLUDES) $(INCLUDES)
+UT_CPPFLAGS := $(CPPFLAGS) $(UT_INCLUDES)
 UT_CFLAGS   := $(CFLAGS) --coverage
 UT_LDFLAGS  := $(LDFLAGS)
 UT_LDLIBS   := $(LDLIBS) -lgcov

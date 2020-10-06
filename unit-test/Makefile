@@ -8,6 +8,8 @@ EXE := $(BIN_DIR)/test_juicer
 SRC := $(wildcard $(SRC_DIR)/*.cpp)
 JUICER_SRC := $(wildcard $(JUICER_DIR)/*.cpp)
 JUICER_SRC :=  $(filter-out $(JUICER_DIR)/main.cpp, $(JUICER_SRC))
+INCLUDES   := -I$(SRC_DIR) -I/usr/include/libdwarf
+
 
 CATCH_DIR := ../Catch2/single_include/catch2
 
@@ -18,7 +20,7 @@ JUICER_OBJ := $(JUICER_SRC:$(JUICER_DIR)/%.cpp=$(GCOV_DIR)/%.o)
 
 $(info    VAR is $(JUICER_SRC))
 
-CPPFLAGS := -I. -I$(CATCH_DIR) -I$(JUICER_DIR) -MMD -MP -std=c++14 -fmessage-length=0 --coverage
+CPPFLAGS := -I. -I$(CATCH_DIR) -I$(JUICER_DIR) $(INCLUDES)  -MMD -MP -std=c++14 -fmessage-length=0 --coverage
 CFLAGS   := -Wall -g
 LDFLAGS  := -Llib
 LDLIBS   := -lm -ldwarf -lsqlite3 -lelf -lgcov
