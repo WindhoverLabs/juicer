@@ -3,7 +3,8 @@
 # Table of Contents
 1. [Dependencies](#dependencies)
 2. [Building it](#building_it)
-2. [What is it?](#what_is_it)
+3. [What is it?](#what_is_it)
+4. [GCC Compatibility](#compatibility)
 3. [Environment Setup](#environment-setup)
 4. [Testing](#testing)
 5. [DWARF Suport](#dwarf_support)
@@ -12,11 +13,11 @@
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
-* `libelf`
-* `sqlite3`
+* `libelf-dev`
+* `libsqlite3-dev`
 * `C++14`
 * `Catch2`
-* `gcc  5.4.0`
+* `g++>=5.4.0`
 
 
 ## Building it <a name="building_it"></a>
@@ -142,6 +143,16 @@ This is how juicer stores data in the database.
 **NOTE**: Beware that it is absolutey fine to run juicer multiple times  on different binary files but on the *same* database. In fact juicer has been designed with this mind so that users can run juicer multiple times against any code base, no matter how large in size.
 
 
+# GCC Compatibility <a name="compatibility"></a>
+
+Since`juicer` is reading ELF files, the compiler one uses or the specific linux version *can* affect the behaior of the libelf libraries.
+Because of this we have tested `juicer`on the specified platforms in the table below.
+
+| Ubuntu Version| GCC Version(s)  |
+|---|---|
+| `Ubuntu 16.04.7 LTS`  |     `gcc 5.4.0`, ` gcc 6.5.0 `  | 
+| `Ubuntu 18.04.5 LTS"`  |  ` gcc 7.5.0`,  `gcc 8.4.0`  |
+| `Ubuntu 20.04.1 LTS`  | `gcc 7.5.0`,  `gcc  8.4.0`,  `gcc 9.3.0`    |
 
 # Environment Setup <a name="environment-setup"></a>
 

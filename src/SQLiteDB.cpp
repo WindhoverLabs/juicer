@@ -393,17 +393,18 @@ int SQLiteDB::writeElfToDatabase(ElfFile& inElf)
    }
    else
    {
-	   logger.logDebug("There was an error while writing data to the elfs table.");
-	   logger.logDebug("%s.", errorMessage);
 
-       if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
-       {
-       	rc  = SQLITE_CONSTRAINT_UNIQUE;
-       }
-       else
-       {
-       rc = SQLITEDB_ERROR;
-       }
+	   if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+	   {
+		   logger.logDebug("%s.", errorMessage);
+		   rc  = SQLITE_CONSTRAINT_UNIQUE;
+	   }
+	   else
+	   {
+		   logger.logDebug("There was an error while writing data to the elfs table.");
+		   logger.logDebug("%s.", errorMessage);
+		   rc = SQLITEDB_ERROR;
+	   }
    }
 
 
