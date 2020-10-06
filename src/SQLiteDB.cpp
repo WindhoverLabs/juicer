@@ -221,7 +221,9 @@ int SQLiteDB::openDatabase(std::string &fileName)
  *@param inElf The elf that contains all of the DWARF and ELF data.
  *
  *@return SQLITE_OK if it was able to write the all of data to the database
- *successfully. Otherwise, this method returns SQLITEDB_ERROR.
+ *successfully. Please note that attempting to write an entry that already exists is NOT an error
+ *in juicer's context; if a user attempts to write a record that already exists, this function returns SQLITE_OK.
+ *Otherwise, this method returns SQLITEDB_ERROR.
  */
 int SQLiteDB::write(ElfFile& inElf)
 {
@@ -275,6 +277,11 @@ int SQLiteDB::write(ElfFile& inElf)
                             logger.logDebug("Enumeration entries were written to the enumerations schema "
                                             "with SQLITE_OK status.");
                         }
+                        else if(SQLITE_CONSTRAINT_UNIQUE == rc)
+                        {
+                        	logger.logInfo("Enumeration entry already exists in the database.");
+                        	rc = SQLITE_OK;
+                        }
                         else
                         {
                             logger.logDebug("There was an error while writing enumeration entries to the"
@@ -282,6 +289,11 @@ int SQLiteDB::write(ElfFile& inElf)
 
                             rc = SQLITEDB_ERROR;
                         }
+                    }
+                    else if(SQLITE_CONSTRAINT_UNIQUE == rc)
+                    {
+                    	logger.logInfo("Bitfield entry already exists in the database.");
+                    	rc = SQLITE_OK;
                     }
                     else
                     {
@@ -291,6 +303,11 @@ int SQLiteDB::write(ElfFile& inElf)
                         rc = SQLITEDB_ERROR;
                     }
                 }
+                else if(SQLITE_CONSTRAINT_UNIQUE == rc)
+                {
+                	logger.logInfo("Field entry already exists in the database.");
+                	rc = SQLITE_OK;
+                }
                 else
                 {
                     logger.logDebug("There was an error while writing field entries to the"
@@ -298,6 +315,13 @@ int SQLiteDB::write(ElfFile& inElf)
 
                     rc = SQLITEDB_ERROR;
                 }
+
+
+            }
+            else if(SQLITE_CONSTRAINT_UNIQUE == rc)
+            {
+            	logger.logInfo("Symbol entry already exists in the database.");
+            	rc = SQLITE_OK;
             }
             else
             {
@@ -372,7 +396,14 @@ int SQLiteDB::writeElfToDatabase(ElfFile& inElf)
 	   logger.logDebug("There was an error while writing data to the elfs table.");
 	   logger.logDebug("%s.", errorMessage);
 
-	   rc = SQLITEDB_ERROR;
+       if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+       {
+       	rc  = SQLITE_CONSTRAINT_UNIQUE;
+       }
+       else
+       {
+       rc = SQLITEDB_ERROR;
+       }
    }
 
 
@@ -559,7 +590,14 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
             logger.logDebug("There was an error while data to the fields table.");
             logger.logDebug("%s.", errorMessage);
 
-            rc = SQLITEDB_ERROR;
+            if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+            {
+            	rc  = SQLITE_CONSTRAINT_UNIQUE;
+            }
+            else
+            {
+            	rc = SQLITEDB_ERROR;
+            }
         }
     }
 
@@ -618,7 +656,14 @@ int SQLiteDB::writeBitFieldsToDatabase(ElfFile& inElf)
             logger.logDebug("There was an error while data to the bit_fields table.");
             logger.logDebug("%s.", errorMessage);
 
-            rc = SQLITEDB_ERROR;
+            if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+            {
+            	rc  = SQLITE_CONSTRAINT_UNIQUE;
+            }
+            else
+            {
+            	rc = SQLITEDB_ERROR;
+            }
         }
     }
 
@@ -677,7 +722,14 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
             logger.logDebug("There was an error while data to the enumerations table.");
             logger.logDebug("%s.", errorMessage);
 
-            rc = SQLITEDB_ERROR;
+            if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+            {
+            	rc  = SQLITE_CONSTRAINT_UNIQUE;
+            }
+            else
+            {
+            	rc = SQLITEDB_ERROR;
+            }
         }
     }
 
