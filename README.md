@@ -151,7 +151,7 @@ Because of this we have tested `juicer`on the specified platforms in the table b
 | Ubuntu Version| GCC Version(s)  |
 |---|---|
 | `Ubuntu 16.04.7 LTS`  |     `gcc 5.4.0`, ` gcc 6.5.0 `  | 
-| `Ubuntu 18.04.5 LTS"`  |  ` gcc 7.5.0`,  `gcc 8.4.0`  |
+| `Ubuntu 18.04.5 LTS`  |  ` gcc 7.5.0`,  `gcc 8.4.0`  |
 | `Ubuntu 20.04.1 LTS`  | `gcc 7.5.0`,  `gcc  8.4.0`,  `gcc 9.3.0`    |
 
 # Environment Setup <a name="environment-setup"></a>
