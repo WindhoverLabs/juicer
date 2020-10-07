@@ -1,6 +1,4 @@
 language: C++
-dist: xenial
-
 before_install:
   - sudo apt update
   - sudo apt-get update -qq
@@ -14,4 +12,11 @@ install:
 
 script:
   - make run-tests
+
+jobs:
+  include:
+    - os: linux
+      dist: xenial
+    - os: linux
+      dist: bionic
 
