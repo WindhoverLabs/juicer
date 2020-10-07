@@ -1,4 +1,5 @@
 
+[![Build Status](https://travis-ci.com/WindhoverLabs/juicer.svg?branch=develop)](https://travis-ci.com/WindhoverLabs/juicer)
 
 # Table of Contents
 1. [Dependencies](#dependencies)
