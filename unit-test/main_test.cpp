@@ -114,8 +114,6 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     std::string getCircleStructQuery{"SELECT * FROM symbols WHERE name = \"Circle\"; "};
 
-//    ((SQLiteDB*)(idc))->close();
-
     sqlite3 *database;
 
     rc = sqlite3_open("./test_db.sqlite", &database);
@@ -133,49 +131,56 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
      * Check the correctness of Circle struct.
      */
 
+    REQUIRE(circleMap.find("Circle") != circleMap.end());
+
     REQUIRE(circleMap["Circle"].at(2) == "Circle");
     REQUIRE(circleMap["Circle"].at(3) == std::to_string(sizeof(Circle)));
-//
-//    /**
-//     *Check the fields of the Circle struct.
-//     */
+
+
+    /**
+     *Check the fields of the Circle struct.
+     */
 
     std::string circle_id = circleMap["Circle"].at(0);
-//
+
     std::string getCircleFields{"SELECT * FROM fields WHERE symbol = "};
-//
+
     getCircleFields += circle_id;
     getCircleFields += ";";
-//
+
     std::map<std::string, std::vector<std::string>> fieldsMap{};
-//
+
     rc = sqlite3_exec(database, getCircleFields.c_str(), selectCallbackUsingNameAsKey, &fieldsMap,
                              &errorMessage);
-//
-    REQUIRE(rc == SQLITE_OK);
-//
-//    /**
-//     *Check the correctness of the fields
-//     */
-//
-//    REQUIRE(fieldsMap["9"].at(0) == "19");
 
+    REQUIRE(rc == SQLITE_OK);
+
+    /**
+     * Ensure that we have all of the expected keys in our map; these are the field names.
+     */
+    REQUIRE(fieldsMap.find("diameter") != fieldsMap.end());
+    REQUIRE(fieldsMap.find("radius") != fieldsMap.end());
+    REQUIRE(fieldsMap.find("points") != fieldsMap.end());
+
+    /**
+     *Check the correctness of the fields
+     */
 
     std::string getDiameterType{"SELECT * FROM symbols where id="};
-//
+
     getDiameterType += fieldsMap["diameter"].at(4);
     getDiameterType += ";";
-//
+
     std::map<std::string, std::vector<std::string>> diameterTypeMap{};
 
 
     rc = sqlite3_exec(database, getDiameterType.c_str(), selectCallbackUsingNameAsKey, &diameterTypeMap,
                                &errorMessage);
-  //
+
       REQUIRE(rc == SQLITE_OK);
-//
+
     std::string  diameterType{diameterTypeMap["float"].at(0)};
-//
+
     REQUIRE(fieldsMap["diameter"].at(1) == circleMap["Circle"].at(0));
     REQUIRE(fieldsMap["diameter"].at(2) == "diameter");
     REQUIRE(fieldsMap["diameter"].at(3) == std::to_string(offsetof(Circle, diameter)));
@@ -184,19 +189,17 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(fieldsMap["diameter"].at(6) == little_endian);
 
     std::string getRadiusType{"SELECT * FROM symbols where id="};
-//
+
     getRadiusType += fieldsMap["diameter"].at(4);
     getRadiusType += ";";
-//
+
     std::map<std::string, std::vector<std::string>> radiusTypeMap{};
 
 
     rc = sqlite3_exec(database, getRadiusType.c_str(), selectCallbackUsingNameAsKey, &radiusTypeMap,
                                &errorMessage);
-  //
-      REQUIRE(rc == SQLITE_OK);
 
-//
+      REQUIRE(rc == SQLITE_OK);
 
     std::string  radiusType{radiusTypeMap["float"].at(0)};
 
@@ -206,7 +209,30 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(fieldsMap["radius"].at(4) == radiusType);
     REQUIRE(fieldsMap["radius"].at(5) == "0");
     REQUIRE(fieldsMap["radius"].at(6) == little_endian);
-//
+
+    std::string getPointsType{"SELECT * FROM symbols where id="};
+
+    getPointsType += fieldsMap["points"].at(4);
+    getPointsType += ";";
+
+    std::map<std::string, std::vector<std::string>> PointsTypeMap{};
+
+    rc = sqlite3_exec(database, getPointsType.c_str(), selectCallbackUsingNameAsKey, &PointsTypeMap,
+                               &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+
+
+    std::string  PointsType{PointsTypeMap["int"].at(0)};
+
+    REQUIRE(fieldsMap["points"].at(1) == circleMap["Circle"].at(0));
+    REQUIRE(fieldsMap["points"].at(2) == "points");
+    REQUIRE(fieldsMap["points"].at(3) == std::to_string(offsetof(Circle, points)));
+    REQUIRE(fieldsMap["points"].at(4) == PointsType);
+    REQUIRE(fieldsMap["points"].at(5) == "128");
+    REQUIRE(fieldsMap["points"].at(6) == little_endian);
+
     /**
      *Check the correctness of the types
      */
@@ -220,8 +246,37 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
                              &errorMessage);
     REQUIRE(rc == SQLITE_OK);
 
+    REQUIRE(diameterFieldTypesMap.find("float") != diameterFieldTypesMap.end());
+
     REQUIRE(diameterFieldTypesMap["float"].at(2) == "float");
     REQUIRE(diameterFieldTypesMap["float"].at(3) == std::to_string(sizeof(float)));
+
+    std::string getRadiusFieldTypes{"SELECT * FROM symbols WHERE id = "};
+    getRadiusFieldTypes += radiusType;
+    getRadiusFieldTypes += ";";
+
+    std::map<std::string, std::vector<std::string>> radiusFieldTypesMap{};
+
+    rc = sqlite3_exec(database, getRadiusFieldTypes.c_str(), selectCallbackUsingNameAsKey, &radiusFieldTypesMap,
+                             &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(radiusFieldTypesMap["float"].at(2) == "float");
+    REQUIRE(radiusFieldTypesMap["float"].at(3) == std::to_string(sizeof(float)));
+
+
+    std::string getPointsFieldTypes{"SELECT * FROM symbols WHERE id = "};
+    getPointsFieldTypes += PointsType;
+    getPointsFieldTypes += ";";
+
+    std::map<std::string, std::vector<std::string>> pointsFieldTypesMap{};
+
+    rc = sqlite3_exec(database, getPointsFieldTypes.c_str(), selectCallbackUsingNameAsKey, &pointsFieldTypesMap,
+                             &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(pointsFieldTypesMap["int"].at(2) == "int");
+    REQUIRE(pointsFieldTypesMap["int"].at(3) == std::to_string(sizeof(int)));
 
     /**
      * *Clean up our database handle and objects in memory.
@@ -230,7 +285,6 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     delete idc;
 }
 
-//
 TEST_CASE("Test the correctness of the Circle struct after Juicer has processed it on two"
 		  " different elf files." ,"[main_test#3]")
 {
@@ -268,8 +322,6 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     std::string getCircleStructQuery{"SELECT * FROM symbols WHERE name = \"Circle\"; "};
 
-//    ((SQLiteDB*)(idc))->close();
-
     sqlite3 *database;
 
     rc = sqlite3_open("./test_db.sqlite", &database);
@@ -289,47 +341,44 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(circleMap["Circle"].at(2) == "Circle");
     REQUIRE(circleMap["Circle"].at(3) == std::to_string(sizeof(Circle)));
-//
-//    /**
-//     *Check the fields of the Circle struct.
-//     */
+
+    /**
+     *Check the fields of the Circle struct.
+    */
 
     std::string circle_id = circleMap["Circle"].at(0);
-//
+
     std::string getCircleFields{"SELECT * FROM fields WHERE symbol = "};
-//
+
     getCircleFields += circle_id;
     getCircleFields += ";";
-//
+
     std::map<std::string, std::vector<std::string>> fieldsMap{};
-//
+
     rc = sqlite3_exec(database, getCircleFields.c_str(), selectCallbackUsingNameAsKey, &fieldsMap,
                              &errorMessage);
-//
-    REQUIRE(rc == SQLITE_OK);
-//
-//    /**
-//     *Check the correctness of the fields
-//     */
-//
-//    REQUIRE(fieldsMap["9"].at(0) == "19");
 
+    REQUIRE(rc == SQLITE_OK);
+
+    /**
+     *Check the correctness of the fields
+     */
 
     std::string getDiameterType{"SELECT * FROM symbols where id="};
-//
+
     getDiameterType += fieldsMap["diameter"].at(4);
     getDiameterType += ";";
-//
+
     std::map<std::string, std::vector<std::string>> diameterTypeMap{};
 
 
     rc = sqlite3_exec(database, getDiameterType.c_str(), selectCallbackUsingNameAsKey, &diameterTypeMap,
                                &errorMessage);
-  //
-      REQUIRE(rc == SQLITE_OK);
-//
+
+    REQUIRE(rc == SQLITE_OK);
+
     std::string  diameterType{diameterTypeMap["float"].at(0)};
-//
+
     REQUIRE(fieldsMap["diameter"].at(1) == circleMap["Circle"].at(0));
     REQUIRE(fieldsMap["diameter"].at(2) == "diameter");
     REQUIRE(fieldsMap["diameter"].at(3) == std::to_string(offsetof(Circle, diameter)));
@@ -338,19 +387,17 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(fieldsMap["diameter"].at(6) == little_endian);
 
     std::string getRadiusType{"SELECT * FROM symbols where id="};
-//
+
     getRadiusType += fieldsMap["diameter"].at(4);
     getRadiusType += ";";
-//
+
     std::map<std::string, std::vector<std::string>> radiusTypeMap{};
 
 
     rc = sqlite3_exec(database, getRadiusType.c_str(), selectCallbackUsingNameAsKey, &radiusTypeMap,
                                &errorMessage);
-  //
-      REQUIRE(rc == SQLITE_OK);
 
-//
+    REQUIRE(rc == SQLITE_OK);
 
     std::string  radiusType{radiusTypeMap["float"].at(0)};
 
@@ -360,7 +407,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(fieldsMap["radius"].at(4) == radiusType);
     REQUIRE(fieldsMap["radius"].at(5) == "0");
     REQUIRE(fieldsMap["radius"].at(6) == little_endian);
-//
+
     /**
      *Check the correctness of the types
      */
@@ -384,7 +431,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     ((SQLiteDB*)(idc))->close();
     delete idc;
 }
-//
+
 TEST_CASE("Test the correctness of the Square struct after Juicer has processed it." ,"[main_test#4]")
 {
 	/**
@@ -394,52 +441,90 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 	 * @todo Implement
 	 */
 
-//    Juicer          juicer;
-//    IDataContainer* idc = 0;
-//    Logger          logger;
-//    int 			rc;
-//    char* 			errorMessage = nullptr;
-//    std::string 	little_endian = is_little_endian()? "1": "0";
+    Juicer          juicer;
+    IDataContainer* idc = 0;
+    Logger          logger;
+    int 			rc = 0;
+    char* 			errorMessage = nullptr;
+    std::string 	little_endian = is_little_endian()? "1": "0";
+
+    logger.logWarning("This is just a test.");
+    std::string inputFile{TEST_FILE_1};
+
+    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+    REQUIRE(idc!=nullptr);
+    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+
+    juicer.setIDC(idc);
+
+    rc = juicer.parse(inputFile);
+
+    REQUIRE(rc == JUICER_OK);
+
+    std::string getCircleStructQuery{"SELECT * FROM symbols WHERE name = \"Square\"; "};
+
+    /**
+     *Clean up our database handle and objects in memory.
+     */
+    ((SQLiteDB*)(idc))->close();
+
+    sqlite3 *database;
+
+    rc = sqlite3_open("./test_db.sqlite", &database);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    std::map<std::string, std::vector<std::string>> squareMap{};
+
+    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), selectCallbackUsingNameAsKey, &squareMap,
+                             &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
 //
-//    logger.logWarning("This is just a test.");
-//    std::string inputFile{TEST_FILE_1};
+    /**
+     * Check the correctness of Square struct.
+     */
+    REQUIRE(squareMap["Square"].at(2) == "Square");
+    REQUIRE(squareMap["Square"].at(3) == std::to_string(sizeof(Square)));
+
+
+    std::string square_id = squareMap["Square"].at(0);
 //
-//    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
-//    REQUIRE(idc!=nullptr);
-//    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+    std::string getSquareFields{"SELECT * FROM fields WHERE symbol = "};
 //
-//    juicer.setIDC(idc);
+    getSquareFields += square_id;
+    getSquareFields += ";";
 //
-//    rc = juicer.parse(inputFile);
+    std::map<std::string, std::vector<std::string>> fieldsMap{};
 //
-//    REQUIRE(rc == JUICER_OK);
+    rc = sqlite3_exec(database, getSquareFields.c_str(), selectCallbackUsingNameAsKey, &fieldsMap,
+                             &errorMessage);
 //
-//    std::string getCircleStructQuery{"SELECT * FROM symbols WHERE name = \"Square\"; "};
-//
-//    /**
-//     *Clean up our database handle and objects in memory.
-//     */
-//    ((SQLiteDB*)(idc))->close();
-//
-//    sqlite3 *database;
-//
-//    rc = sqlite3_open("./test_db.sqlite", &database);
-//
-//    REQUIRE(rc == SQLITE_OK);
-//
-//    std::map<std::string, std::vector<std::string>> circleMap{};
-//
-//    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), selectCallbackUsingNameAsKey, &circleMap,
-//                             &errorMessage);
-//
-//    REQUIRE(rc == SQLITE_OK);
-//
-//    /**
-//     * Check the correctness of Square struct.
-//     */
-//    REQUIRE(circleMap["18"].at(1) == "1");
-//    REQUIRE(circleMap["18"].at(1) == "Square");
-//    REQUIRE(circleMap["18"].at(2) == std::to_string(sizeof(Square)));
+    REQUIRE(rc == SQLITE_OK);
+
+    std::string getWidthType{"SELECT * FROM symbols where id="};
+
+    getWidthType += fieldsMap["width"].at(4);
+    getWidthType += ";";
+
+    std::map<std::string, std::vector<std::string>> widthTypeMap{};
+
+
+    rc = sqlite3_exec(database, getWidthType.c_str(), selectCallbackUsingNameAsKey, &widthTypeMap,
+                               &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    std::string  widthType{widthTypeMap["int32_t"].at(0)};
+
+    REQUIRE(fieldsMap["width"].at(1) == squareMap["Square"].at(0));
+    REQUIRE(fieldsMap["width"].at(2) == "width");
+    REQUIRE(fieldsMap["width"].at(3) == std::to_string(offsetof(Square, width)));
+    REQUIRE(fieldsMap["width"].at(4) == widthType);
+    REQUIRE(fieldsMap["width"].at(5) == "0");
+    REQUIRE(fieldsMap["width"].at(6) == little_endian);
+
+
 //
 //    /**
 //     *Check the fields of the Square struct.
@@ -519,8 +604,8 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 //    REQUIRE(typesMap["17"].at(1) == "float");
 //    REQUIRE(typesMap["17"].at(2) == std::to_string(sizeof(float)));
 //
-//    REQUIRE(remove("./test_db.sqlite")==0);
-//    delete idc;
+    REQUIRE(remove("./test_db.sqlite")==0);
+    delete idc;
 }
 //
 //
@@ -627,7 +712,7 @@ TEST_CASE("Write keys to database that already exist" ,"[main_test#6]")
      * existing-keys errors in the database.
      */
     REQUIRE(juicer.parse(inputFile) == JUICER_OK);
-    REQUIRE(juicer.parse(inputFile) != JUICER_OK);
+    REQUIRE(juicer.parse(inputFile) == JUICER_OK);
     /**
      *Clean up our database handle and objects in memory.
      */

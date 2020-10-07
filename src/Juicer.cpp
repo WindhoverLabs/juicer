@@ -1918,39 +1918,81 @@ JuicerEndianness_t Juicer::getEndianness()
 {
     Elf *elf = NULL;
     unsigned char *ident_buffer = NULL;
+    char* buffer = NULL;
+    size_t size = 0;
     JuicerEndianness_t rc;
 
-    Elf64_Ehdr* elf_hdr = 0;
+    Elf64_Ehdr* elf_hdr_64 = 0;
+    Elf32_Ehdr* elf_hdr_32 = 0;
 
     elf_version(EV_CURRENT);
 
     elf = elf_begin(elfFile, ELF_C_READ, NULL);
 
-    if(elf != NULL)
+    buffer = elf_getident(elf, &size);
+
+    if(buffer[EI_CLASS] == ELFCLASS64)
     {
-        elf_hdr = elf64_getehdr(elf);
+		if(elf != NULL)
+		{
+			elf_hdr_64 = elf64_getehdr(elf);
 
-        ident_buffer = elf_hdr->e_ident;
+			ident_buffer = elf_hdr_64->e_ident;
 
-        if(ident_buffer[EI_DATA] == 0)
-        {
-            rc = JUICER_ENDIAN_BIG;
-        }
-        else if(ident_buffer[EI_DATA] == 1)
-        {
-            rc = JUICER_ENDIAN_LITTLE;
-        }
-        else
-        {
-            rc = JUICER_ENDIAN_UNKNOWN;
-        }
-        elf_end(elf);
+			if(ident_buffer[EI_DATA] == 0)
+			{
+				rc = JUICER_ENDIAN_BIG;
+			}
+			else if(ident_buffer[EI_DATA] == 1)
+			{
+				rc = JUICER_ENDIAN_LITTLE;
+			}
+			else
+			{
+				rc = JUICER_ENDIAN_UNKNOWN;
+			}
+			elf_end(elf);
+		}
+		else
+		{
+			logger.logError("elf_begin failed.  errno=%d  %s", errno,
+					strerror(errno));
+		}
+
+    }
+    else if(buffer[EI_CLASS] == ELFCLASS32)
+    {
+		if(elf != NULL)
+		{
+			elf_hdr_32 = elf32_getehdr(elf);
+
+			ident_buffer = elf_hdr_32->e_ident;
+
+			if(ident_buffer[EI_DATA] == 0)
+			{
+				rc = JUICER_ENDIAN_BIG;
+			}
+			else if(ident_buffer[EI_DATA] == 1)
+			{
+				rc = JUICER_ENDIAN_LITTLE;
+			}
+			else
+			{
+				rc = JUICER_ENDIAN_UNKNOWN;
+			}
+			elf_end(elf);
+		}
+		else
+		{
+			logger.logError("elf_begin failed.  errno=%d  %s", errno,
+					strerror(errno));
+		}
     }
     else
     {
-        logger.logError("elf_begin failed.  errno=%d  %s", errno,
-                strerror(errno));
+    	// empty
     }
+
 
     return rc;
 
