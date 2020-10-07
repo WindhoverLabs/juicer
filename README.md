@@ -7,7 +7,7 @@
 4. [GCC Compatibility](#compatibility)
 3. [Environment Setup](#environment-setup)
 4. [Testing](#testing)
-5. [DWARF Suport](#dwarf_support)
+5. [DWARF Support](#dwarf_support)
 5. [Requirements](#requirements)
 
 
@@ -247,7 +247,7 @@ make coverage
 
 This will run all unit tests on juicer and generate a test coverage report for you. After `make` is done, the test coverage report can be found on `build/coverage/index.html`.
 
-## Dwarf Support
+## Dwarf Support <a name="dwarf_support"></a>
 
 As juicer evolves, our dwarf support will grow and evolve as well. At the moment, we don't adhere to a particular DWARF version as we add support to the things that we need for our code base, which is airliner. In other words, we *mostly* support `C` code, or `C++` code without any cutting edge/modern features. For example, modern features such as `templates` or `namespaces` are not supported. If juicer finds these things in your elf files, it will simply ignore them. To have a more concrete idea of what we *do* support in the DWARF, take a look at the table below which records all DWARF tags we support.
 
