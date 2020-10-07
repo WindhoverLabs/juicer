@@ -1917,9 +1917,10 @@ int Juicer::printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level)
 JuicerEndianness_t Juicer::getEndianness()
 {
     Elf *elf = NULL;
-    char *buffer = NULL;
-    size_t size;
+    unsigned char *ident_buffer = NULL;
     JuicerEndianness_t rc;
+
+    Elf64_Ehdr* elf_hdr = 0;
 
     elf_version(EV_CURRENT);
 
@@ -1927,12 +1928,15 @@ JuicerEndianness_t Juicer::getEndianness()
 
     if(elf != NULL)
     {
-        buffer = elf_getident(elf, &size);
-        if(buffer[EI_DATA] == 0)
+        elf_hdr = elf64_getehdr(elf);
+
+        ident_buffer = elf_hdr->e_ident;
+
+        if(ident_buffer[EI_DATA] == 0)
         {
             rc = JUICER_ENDIAN_BIG;
         }
-        else if(buffer[EI_DATA] == 1)
+        else if(ident_buffer[EI_DATA] == 1)
         {
             rc = JUICER_ENDIAN_LITTLE;
         }
