@@ -333,6 +333,11 @@ int SQLiteDB::write(ElfFile& inElf)
         }
 
     }
+    else if(SQLITE_CONSTRAINT_UNIQUE == rc)
+    {
+    	logger.logInfo("Elf entry already exists in the database.");
+    	rc = SQLITE_OK;
+    }
     else
     {
         logger.logDebug("There was an error while writing elf entries to the database.");
