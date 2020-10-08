@@ -132,16 +132,7 @@ int SQLiteDB::initialize(std::string &initString)
     	rc = createSchemas();
         if(SQLITE_OK == rc)
         {
-        	char* 	errorMessage = nullptr;
-        	std::map<std::string, std::vector<std::string>> symbolsMap{};
-
-            rc = sqlite3_exec(database, "SELECT * FROM symbols", SQLiteDB::selectCallback, &symbolsMap,
-                    &errorMessage);
-            for(auto symbol_id: symbolsMap)
-            {
-            	std::cout<<"symbol_id-->"<<symbol_id.first<<std::endl;
-            }
-
+        	logger.logInfo("The schemas were created successfully.");
         }
     }
     else
