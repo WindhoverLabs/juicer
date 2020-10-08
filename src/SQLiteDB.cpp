@@ -841,8 +841,7 @@ int SQLiteDB::createElfSchema(void)
 
     if(SQLITE_OK == rc)
     {
-        logger.logDebug("Created table %s with OK status",
-                        createELfTableQuery.c_str());
+        logger.logDebug("Created table \"elfs\" with OK status");
     }
     else
     {
@@ -876,8 +875,7 @@ int SQLiteDB::createSymbolSchema(void)
 
     if(SQLITE_OK == rc)
     {
-        logger.logDebug("Created table %s with OK status",
-                        createSumbolTableQuery.c_str());
+        logger.logDebug("Created table \"symbols\" with OK status");
     }
     else
     {
@@ -911,8 +909,7 @@ int SQLiteDB::createFiledSchema(void)
 
     if(SQLITE_OK == rc)
     {
-        logger.logDebug("Created table %s with OK status",
-                        createBitFieldTableQuery.c_str());
+        logger.logDebug("Created table \"fields\" with OK status");
     }
     else
     {
@@ -946,8 +943,7 @@ int SQLiteDB::createBitFiledSchema(void)
 
     if(SQLITE_OK == rc)
     {
-        logger.logDebug("Created table %s with OK status",
-                        createBitFieldTableQuery.c_str());
+        logger.logDebug("Created table bit_fields with OK status");
     }
     else
     {
@@ -981,8 +977,7 @@ int SQLiteDB::createEnumerationSchema(void)
 
     if(SQLITE_OK==rc)
     {
-        logger.logDebug("Created table %s with OK status",
-                createEnumerationTableQuery.c_str());
+        logger.logDebug("Created table \"Enumerations\" with OK status");
     }
     else
     {
