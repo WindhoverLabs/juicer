@@ -146,7 +146,7 @@ This is how juicer stores data in the database.
 
 # GCC Compatibility <a name="compatibility"></a>
 
-Since`juicer` is reading ELF files, the compiler one uses or the specific linux version *can* affect the behaior of the libelf libraries.
+Since`juicer` is reading ELF files, the compiler one uses or the specific linux version *can* affect the behavior of the libelf libraries.
 Because of this we have tested `juicer`on the specified platforms in the table below.
 
 | Ubuntu Version| GCC Version(s)  |
