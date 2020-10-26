@@ -167,6 +167,8 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 	Dwarf_Die 		sib_die = 0;
 	Symbol* 		outSymbol  = nullptr;
 
+	return res;
+
 	/* Now lets get the array size.  Get the array size by getting
 	 * the first child, which should be the subrange_type. */
 		res = dwarf_child(inDie, &dieSubrangeType, &error);
