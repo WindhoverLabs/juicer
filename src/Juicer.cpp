@@ -1648,7 +1648,9 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
             }
             else if(res == DW_DLV_NO_ENTRY)
             {
+            	addEndPaddingToStruct(symbol);
                 /* We wrapped around.  We're done processing the member fields. */
+
                 break;
             }
 
@@ -1663,6 +1665,83 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
     }
 }
 
+/**
+ *Scans the symbol and inserts a field called "_spare" if there is padding at the end of structures.
+ *@param symbol The symbol to be scanned for padding.
+ */
+void Juicer::addEndPaddingToStruct(Symbol& symbol)
+{
+	uint32_t correctCurrentSize = 0;
+	int tempFieldSize 	   = 0;
+
+	int newFieldByteOffset = 0;
+
+	std::string spareName{"_spare"};
+
+	std::string paddingType{};
+
+	for(auto&& field: symbol.getFields())
+	{
+		tempFieldSize = field->getType().getByteSize();
+
+
+
+		if(field->getMultiplicity()> 0)
+		{
+			tempFieldSize = tempFieldSize * field->getMultiplicity();
+		}
+
+
+		/*@todo I think this needs to be done when adding the fields while we are processing the DWARF.*/
+//		if(field.getByteOffset()>correctCurrentSize)
+//		{
+//			int paddingSize = field.getByteOffset() - correctCurrentSize;
+//
+//			if(paddingSize == 4)
+//			{
+//				paddingType = "int";
+//			}
+//
+//			Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
+//
+//			Field paddingField{symbol, &paddingSymbol};
+//		}
+
+		correctCurrentSize = correctCurrentSize + tempFieldSize;
+	}
+
+	if(correctCurrentSize<symbol.getByteSize())
+	{
+		int paddingSize =  symbol.getByteSize() - correctCurrentSize;
+
+		if(paddingSize == 2)
+		{
+			/*@note I'm not sure if hard-coding these types is the best way of doing this...probably not.*/
+			if(paddingSize == 2)
+			{
+				paddingType = "short";
+			}
+
+			if(paddingSize == 4)
+			{
+				paddingType = "int";
+			}
+
+			Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
+
+			if(paddingSymbol == nullptr)
+			{
+				paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize);
+			}
+
+			newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
+
+			symbol.addField(spareName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian());
+
+		}
+	}
+
+}
 
 
 /**

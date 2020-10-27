@@ -100,6 +100,7 @@ private:
     Symbol * process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
     Symbol * process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
     void process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    void addEndPaddingToStruct(Symbol& symbol);
     Symbol * process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
     void process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
     int process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
