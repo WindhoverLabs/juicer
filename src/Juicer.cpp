@@ -1678,7 +1678,8 @@ void Juicer::addEndPaddingToStruct(Symbol& symbol)
 
 	std::string spareName{"_spare"};
 
-	std::string paddingType{};
+	/*@todo Save this string in a macro or something like that. */
+	std::string paddingType{"padding_type"};
 
 	for(auto&& field: symbol.getFields())
 	{
@@ -1714,31 +1715,20 @@ void Juicer::addEndPaddingToStruct(Symbol& symbol)
 	{
 		int paddingSize =  symbol.getByteSize() - correctCurrentSize;
 
-		if(paddingSize == 2)
+		paddingType += std::to_string(paddingSize);
+
+		Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
+
+		if(paddingSymbol == nullptr)
 		{
-			/*@note I'm not sure if hard-coding these types is the best way of doing this...probably not.*/
-			if(paddingSize == 2)
-			{
-				paddingType = "short";
-			}
-
-			if(paddingSize == 4)
-			{
-				paddingType = "int";
-			}
-
-			Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
-
-			if(paddingSymbol == nullptr)
-			{
-				paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize);
-			}
-
-			newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
-
-			symbol.addField(spareName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian());
-
+			paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize);
 		}
+
+		newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
+
+		symbol.addField(spareName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian());
+
+
 	}
 
 }
