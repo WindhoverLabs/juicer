@@ -1711,25 +1711,29 @@ void Juicer::addEndPaddingToStruct(Symbol& symbol)
 		correctCurrentSize = correctCurrentSize + tempFieldSize;
 	}
 
-	if(correctCurrentSize<symbol.getByteSize())
+	if(correctCurrentSize>0)
+
 	{
-		int paddingSize =  symbol.getByteSize() - correctCurrentSize;
-
-		paddingType += std::to_string(paddingSize);
-
-		Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
-
-		if(paddingSymbol == nullptr)
+		if(correctCurrentSize<symbol.getByteSize())
 		{
-			paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize);
+			int paddingSize =  symbol.getByteSize() - correctCurrentSize;
+
+			paddingType += std::to_string(paddingSize);
+
+			Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
+
+			if(paddingSymbol == nullptr)
+			{
+				paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize);
+			}
+
+			newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
+
+			symbol.addField(spareName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian());
+
+
 		}
-
-		newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
-
-		symbol.addField(spareName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian());
-
-
-	}
+		}
 
 }
 
