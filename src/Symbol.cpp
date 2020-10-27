@@ -137,7 +137,7 @@ uint32_t Symbol::getId(void) const
 
 
 
-const ElfFile& Symbol::getElf() const
+ElfFile& Symbol::getElf()
 {
 	return elf;
 }

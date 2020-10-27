@@ -27,9 +27,9 @@ public:
 	virtual ~Symbol();
 	const std::string& getName(void) const;
 	void setName(std::string &name);
-	uint32_t getByteSize() const;
+	uint32_t getByteSize() const ;
 	void setByteSize(uint32_t byteSize);
-	const ElfFile& getElf() const;
+	ElfFile& getElf();
 	void setId(uint32_t newId);
 	uint32_t getId(void) const;
 	Symbol(const Symbol &symbol);
@@ -47,7 +47,7 @@ public:
 protected:
 
 private:
-	const ElfFile       &elf;
+	ElfFile       &elf;
 	std::string  name;
 	uint32_t     byte_size;
     Logger       logger;
