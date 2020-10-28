@@ -1498,7 +1498,6 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
     Dwarf_Die       memberDie = 0;
 
     /*@note Used for keeping track of fields used for padding. */
-    uint32_t spareCount = 0;
 
     /* Get the fields by getting the first child. */
     if(res == DW_DLV_OK)
