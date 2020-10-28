@@ -6,11 +6,10 @@
 2. [Building it](#building_it)
 3. [What is it?](#what_is_it)
 4. [GCC Compatibility](#compatibility)
+5. [Padding](#padding)
 3. [Environment Setup](#environment-setup)
 4. [Testing](#testing)
 5. [DWARF Support](#dwarf_support)
-5. [Requirements](#requirements)
-
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
@@ -155,6 +154,10 @@ Because of this we have tested `juicer`on the specified platforms in the table b
 | `Ubuntu 18.04.5 LTS`  |  ` gcc 7.5.0`,  `gcc 8.4.0`  |
 | `Ubuntu 20.04.1 LTS`  | `gcc 7.5.0`,  `gcc  8.4.0`,  `gcc 9.3.0`    |
 
+
+# Padding <a name="padding"></a>
+Different compilers and sometimes programmers insert padding into C Structures. Padding in the database is captured by `juicer` as well. Padding fields will have a name in the "_spare[N]" fashion in the database. N is for distinguishing different fields. For exampe a struct that has three fields of padding will have `_spare0`, `_spare1` and `_spare2`. Padding that is inserted at the end of the struct has a field with the name of `_padding_end`. Hopefully this naming scheme makes sense. 
+
 # Environment Setup <a name="environment-setup"></a>
 
 Most of this project is written in C++14, with some parts in C because of libraries like `sqlite3` and `libdwarf`.
@@ -266,4 +269,4 @@ As juicer evolves, our dwarf support will grow and evolve as well. At the moment
 For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/dwarf-2.0.0.pdf).
 
 
-Documentation updated on October 2, 2020
+Documentation updated on October 28, 2020
