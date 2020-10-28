@@ -1497,6 +1497,9 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
     Dwarf_Attribute attr_struct;
     Dwarf_Die       memberDie = 0;
 
+    /*@note Used for keeping track of fields used for padding. */
+    uint32_t spareCount = 0;
+
     /* Get the fields by getting the first child. */
     if(res == DW_DLV_OK)
     {
@@ -1613,9 +1616,13 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                         /* We have everything we need.  Add this field. */
                         if(res == DW_DLV_OK)
                         {
-                            std::string sMemberName = memberName;
 
-                            symbol.addField(sMemberName, (uint32_t)memberLocation, *memberBaseTypeSymbol, multiplicity, elf.isLittleEndian());
+							std::string sMemberName = memberName;
+
+                        	/*Handle any padding that needs to be added. */
+
+							symbol.addField(sMemberName, (uint32_t)memberLocation, *memberBaseTypeSymbol, multiplicity, elf.isLittleEndian());
+
                         }
 
                         break;
@@ -1648,7 +1655,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
             }
             else if(res == DW_DLV_NO_ENTRY)
             {
-            	addEndPaddingToStruct(symbol);
+            	addPaddingToStruct(symbol);
                 /* We wrapped around.  We're done processing the member fields. */
 
                 break;
@@ -1669,50 +1676,99 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
  *Scans the symbol and inserts a field called "_spare" if there is padding at the end of structures.
  *@param symbol The symbol to be scanned for padding.
  */
-void Juicer::addEndPaddingToStruct(Symbol& symbol)
+void Juicer::addPaddingToStruct(Symbol& symbol)
+{
+	uint32_t spareCount{0};
+
+	/*Add padding between fields */
+	if (symbol.getFields().size()>0)
+	{
+		uint32_t fieldsSize= symbol.getFields().size();
+
+		for(uint32_t i= 1;i<fieldsSize;i++)
+		{
+			/*@note I know the fields container access is ugly this way,
+			 * but it is a lot safer than something like std::vector.back() */
+
+			uint32_t previousFieldSize = symbol.getFields().at(i-1)->getType().getByteSize();
+
+			if(symbol.getFields().at(i-1)->getMultiplicity()>0)
+			{
+				previousFieldSize = symbol.getFields().at(i-1)->getMultiplicity() * previousFieldSize ;
+			}
+
+			uint32_t lastFieldOffset = symbol.getFields().at(i-1)->getByteOffset();
+
+			uint32_t memberLocationDelta = symbol.getFields().at(i)->getByteOffset() - lastFieldOffset ;
+
+			uint32_t memberLocation = lastFieldOffset + previousFieldSize;
+
+			if(memberLocationDelta>previousFieldSize)
+			{
+				uint32_t paddingSize = memberLocationDelta - previousFieldSize;
+
+				std::string spareName{"_spare"};
+
+				spareName += std::to_string(spareCount);
+
+				std::string paddingType{"_padding"};
+
+				paddingType += std::to_string(paddingSize);
+
+				Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
+
+				if(paddingSymbol == nullptr)
+				{
+					paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize);
+				}
+
+				auto&& fields  = symbol.getFields();
+
+				auto fields_it = fields.begin();
+
+				fields.insert(fields_it+i, std::make_unique<Field>(symbol,spareName, (uint32_t)memberLocation,
+						*paddingSymbol, 0, symbol.getElf().isLittleEndian()));
+
+				fieldsSize++;
+				i++;
+				spareCount++;
+
+				memberLocation += paddingSize;
+			}
+			memberLocation += memberLocationDelta;
+
+		}
+
+	}
+
+	addPaddingEndToSturct(symbol);
+}
+
+void Juicer::addPaddingEndToSturct(Symbol& symbol)
 {
 	uint32_t correctCurrentSize = 0;
 	int tempFieldSize 	   = 0;
 
 	int newFieldByteOffset = 0;
 
-	std::string spareName{"_spare"};
+	std::string spareName{"_spare_end"};
 
 	/*@todo Save this string in a macro or something like that. */
-	std::string paddingType{"padding_type"};
+	std::string paddingType{"_padding"};
 
 	for(auto&& field: symbol.getFields())
 	{
 		tempFieldSize = field->getType().getByteSize();
-
-
 
 		if(field->getMultiplicity()> 0)
 		{
 			tempFieldSize = tempFieldSize * field->getMultiplicity();
 		}
 
-
-		/*@todo I think this needs to be done when adding the fields while we are processing the DWARF.*/
-//		if(field.getByteOffset()>correctCurrentSize)
-//		{
-//			int paddingSize = field.getByteOffset() - correctCurrentSize;
-//
-//			if(paddingSize == 4)
-//			{
-//				paddingType = "int";
-//			}
-//
-//			Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
-//
-//			Field paddingField{symbol, &paddingSymbol};
-//		}
-
 		correctCurrentSize = correctCurrentSize + tempFieldSize;
 	}
 
 	if(correctCurrentSize>0)
-
 	{
 		if(correctCurrentSize<symbol.getByteSize())
 		{
@@ -1733,8 +1789,7 @@ void Juicer::addEndPaddingToStruct(Symbol& symbol)
 
 
 		}
-		}
-
+	}
 }
 
 
