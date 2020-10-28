@@ -158,6 +158,10 @@ Because of this we have tested `juicer`on the specified platforms in the table b
 # Padding <a name="padding"></a>
 Different compilers and sometimes programmers insert padding into C Structures. Padding in the database is captured by `juicer` as well. Padding fields will have a name in the "_spare[N]" fashion in the database. N is for distinguishing different fields. For exampe a struct that has three fields of padding will have `_spare0`, `_spare1` and `_spare2`. Padding that is inserted at the end of the struct has a field with the name of `_padding_end`. Hopefully this naming scheme makes sense. 
 
+## Padding Types
+When `juicer` finds padding, a new type is created for the number of bytes of padding that are found. For instance, if there is 3 bytes of padding then a type `_padding24` will be created. The `24` is the size of the padding in bits. Please note that if more padding is found elsewhere and the number of bytes is 3, then the `_padding24` type will be used for that field to avoid over-populating the database with unnecessary data.
+
+
 # Environment Setup <a name="environment-setup"></a>
 
 Most of this project is written in C++14, with some parts in C because of libraries like `sqlite3` and `libdwarf`.

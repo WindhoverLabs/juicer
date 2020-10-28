@@ -1713,7 +1713,7 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 
 				std::string paddingType{"_padding"};
 
-				paddingType += std::to_string(paddingSize);
+				paddingType += std::to_string(paddingSize*8);
 
 				Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
 
@@ -1774,7 +1774,7 @@ void Juicer::addPaddingEndToSturct(Symbol& symbol)
 		{
 			int paddingSize =  symbol.getByteSize() - correctCurrentSize;
 
-			paddingType += std::to_string(paddingSize);
+			paddingType += std::to_string(paddingSize*8);
 
 			Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
 
