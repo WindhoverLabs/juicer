@@ -10,7 +10,6 @@
 
 #include "IDataContainer.h"
 #include "Symbol.h"
-#include "BitField.h"
 #include "Enumeration.h"
 #include "ElfFile.h"
 #include <sqlite3.h>
@@ -44,16 +43,11 @@
                                   type INTEGER NOT NULL,\
                                   multiplicity INTEGER NOT NULL,\
                                   little_endian BOOLEAN,\
+								  bit_size INTEGER NOT NULL,\
+								  bit_offset INTEGER NOT NULL,\
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   FOREIGN KEY (type) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"
-
-#define CREATE_BITFIELD_TABLE    "CREATE TABLE IF NOT EXISTS bit_fields(\
-                                  field INTEGER PRIMARY KEY,\
-                                  bit_size INTEGER NOT NULL,\
-                                  bit_offset INTEGER NOT NULL,\
-                                  FOREIGN KEY (field) REFERENCES fields(id)\
-                                  );"
 
 #define CREATE_ENUMERATION_TABLE "CREATE TABLE IF NOT EXISTS enumerations(\
                                   symbol INTEGER NOT NULL,\
@@ -83,12 +77,10 @@ private:
     int createSymbolSchema(void);
     int createSchemas(void);
     int createFiledSchema(void);
-    int createBitFiledSchema(void);
     int createEnumerationSchema(void);
     int writeElfToDatabase(ElfFile& inModule);
     int writeSymbolsToDatabase(ElfFile& inModule);
     int writeFieldsToDatabase(ElfFile& inModule);
-    int writeBitFieldsToDatabase(ElfFile& inModule);
     int writeEnumerationsToDatabase(ElfFile& inModule);\
     static int doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
     bool doesSymbolExist(std::string name);

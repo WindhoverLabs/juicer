@@ -254,13 +254,6 @@ int SQLiteDB::write(ElfFile& inElf)
                     logger.logDebug("Field entries were written to the fields schema "
                                     "with SQLITE_OK status.");
 
-                    rc = writeBitFieldsToDatabase(inElf);
-
-                    if(SQLITE_OK == rc)
-                    {
-                        logger.logDebug("Bitfield entries were written to the bit_fields schema "
-                                        "with SQLITE_OK status.");
-
                         rc = writeEnumerationsToDatabase(inElf);
 
                         if(SQLITE_OK == rc)
@@ -277,22 +270,8 @@ int SQLiteDB::write(ElfFile& inElf)
                         {
                             logger.logDebug("There was an error while writing enumeration entries to the"
                                             " database.");
-
                             rc = SQLITEDB_ERROR;
                         }
-                    }
-                    else if(SQLITE_CONSTRAINT_UNIQUE == rc)
-                    {
-                    	logger.logInfo("Bitfield entry already exists in the database.");
-                    	rc = SQLITE_OK;
-                    }
-                    else
-                    {
-                        logger.logDebug("There was an error while writing bit_field entries to the"
-                                        " database.");
-
-                        rc = SQLITEDB_ERROR;
-                    }
                 }
                 else if(SQLITE_CONSTRAINT_UNIQUE == rc)
                 {
@@ -605,72 +584,6 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
 
 
 /**
- *@brief Iterates through all of the bit_field entries in
- *inElf and writes each one to the "bit_fields" table.
- *
- *@return Returns SQLITEDB_OK if all of the elf entries are written to the
- *database successfully. If the method fails to write at least one of the
- *bit_field entries to the database, then SQLITEDB_ERROR is returned.
- */
-int SQLiteDB::writeBitFieldsToDatabase(ElfFile& inElf)
-{
-    int   rc = SQLITEDB_OK;
-    char* errorMessage = NULL;
-
-    /**
-     * @note Are we allowed for ground tools to do this for loops?
-     * I know for Flight Software we need to explicitly state the "++i",
-     * but should/can we do this here with loops for Juicer?
-     */
-    for(auto bitField : inElf.getBitFields())
-    {
-        /*
-         * @todo I want to store these SQLite magical values into MACROS,
-         * but I'm not sure what is the best way to do that without it being
-         * messy.
-         */
-        std::string writeBitFieldQuery{};
-
-        writeBitFieldQuery += "INSERT INTO bit_fields(field, bit_field, bit_offset)"
-                              "VALUES(";
-        writeBitFieldQuery += std::to_string(bitField->getField().getId());
-        writeBitFieldQuery += ",";
-        writeBitFieldQuery += std::to_string(bitField->getBitSize());
-        writeBitFieldQuery += ",";
-        writeBitFieldQuery += std::to_string(bitField->getBitOffset());
-        writeBitFieldQuery += ");";
-
-        rc = sqlite3_exec(database, writeBitFieldQuery.c_str(), NULL, NULL,
-                          &errorMessage);
-
-        if(SQLITE_OK == rc)
-        {
-            logger.logDebug("BitField values were written to the bit_fields schema with "
-                            "SQLITE_OK status.");
-        }
-        else
-        {
-            logger.logDebug("There was an error while data to the bit_fields table.");
-            logger.logDebug("%s.", errorMessage);
-
-            if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
-            {
-            	rc  = SQLITE_CONSTRAINT_UNIQUE;
-            }
-            else
-            {
-            	rc = SQLITEDB_ERROR;
-            }
-        }
-    }
-
-    return rc;
-
-}
-
-
-
-/**
  *@brief Iterates through all of the enumeration entries in
  *inElf and writes each one to the "enumerations" table.
  *
@@ -765,35 +678,25 @@ int SQLiteDB::createSchemas(void)
                                 "successfully.");
 
                 rc = createFiledSchema();
-                if(SQLITE_OK == rc)
-                {
-                    logger.logDebug("createFiledSchema() created the fields schema "
-                                    "successfully.");
 
-                    rc = createBitFiledSchema();
-                    if(SQLITE_OK == rc)
-                    {
-                        logger.logDebug("createBitFiledSchema() created the bit_fields schema "
-                                        "successfully.");
+				if(SQLITE_OK == rc)
+				{
+					logger.logDebug("createBitFiledSchema() created the bit_fields schema "
+									"successfully.");
 
-                        rc = createEnumerationSchema();
-                        if(SQLITE_OK == rc)
-                        {
-                            logger.logDebug("createEnumerationSchema() created the bit_fields schema "
-                                            "successfully.");
-                        }
-                        else
-                        {
-                            logger.logDebug("createEnumerationSchema() failed.");
-                            rc = SQLITEDB_ERROR;
-                        }
-                    }
-                    else
-                    {
-                        logger.logDebug("createBitFiledSchema() failed.");
-                        rc = SQLITEDB_ERROR;
-                    }
-                }
+					rc = createEnumerationSchema();
+					if(SQLITE_OK == rc)
+					{
+						logger.logDebug("createEnumerationSchema() created the bit_fields schema "
+										"successfully.");
+					}
+					else
+					{
+						logger.logDebug("createEnumerationSchema() failed.");
+						rc = SQLITEDB_ERROR;
+					}
+				}
+
                 else
                 {
                     logger.logDebug("createFiledSchema() failed.");
@@ -918,39 +821,6 @@ int SQLiteDB::createFiledSchema(void)
         rc = SQLITEDB_ERROR;
     }
 
-    return rc;
-}
-
-/**
- *@brief Creates the bit_fields schema. If
- *the schema already exists, then this method does nothing. This method assumes
- *the sqlite handle database has been initialized previously with a call
- *to initialize().
- *
- *@return Returns SQLITE_OK created the elfs schema successfully.
- *If an error occurs, SQLITEDB_ERROR returns.
- */
-int SQLiteDB::createBitFiledSchema(void)
-{
-    std::string createBitFieldTableQuery{CREATE_BITFIELD_TABLE};
-    int         rc = SQLITE_OK;
-
-    /*@todo The last argument for sqlite3_exec is an error handler that is not
-     * necessary to pass in, but I really think we should for better error
-     * logging.*/
-    rc = sqlite3_exec(database, createBitFieldTableQuery.c_str(), NULL,
-                        NULL,NULL);
-
-    if(SQLITE_OK == rc)
-    {
-        logger.logDebug("Created table bit_fields with OK status");
-    }
-    else
-    {
-        logger.logError("Failed to create the bit_fields table. '%s'",
-                        sqlite3_errmsg(database));
-        rc = SQLITEDB_ERROR;
-    }
     return rc;
 }
 
