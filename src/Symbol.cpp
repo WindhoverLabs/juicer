@@ -37,7 +37,8 @@ void Symbol::addField( Field& inField)
 {
 	logger.logDebug("Adding Field %s to Symbol %s.", inField.getName().c_str(), name.c_str());
 
-	addField(inField.getName(), inField.getByteOffset(), inField.getType(), inField.getMultiplicity(), inField.isLittleEndian());
+	addField(inField.getName(), inField.getByteOffset(), inField.getType(), inField.getMultiplicity(), inField.isLittleEndian(),
+			inField.getBitSize(), inField.getBitOffset());
 }
 
 
@@ -53,14 +54,17 @@ void Symbol::addField(std::string& inName,
 		              uint32_t inByteOffset,
 					  Symbol &inType,
 					  uint32_t inMultiplicity,
-					  bool inLittleEndian)
+					  bool inLittleEndian,
+					  uint32_t inBitSize,
+					  uint32_t inBitOffset)
 {
 
     Field *field = getField(inName);
 
     if(field == nullptr)
     {
-        fields.push_back(std::make_unique<Field>(*this, inName, inByteOffset, inType, inMultiplicity, inLittleEndian));
+        fields.push_back(std::make_unique<Field>(*this, inName, inByteOffset, inType, inMultiplicity, inLittleEndian,
+        		inBitSize, inBitOffset));
     }
 }
 

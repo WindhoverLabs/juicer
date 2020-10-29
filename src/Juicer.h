@@ -44,15 +44,21 @@
 #include <sys/stat.h>  /* For open() */
 #include <fcntl.h>
 
+#include "Field.h"
 #include "ElfFile.h"
 #include "Logger.h"
 #include "Symbol.h"
+#include "Enumeration.h"
+
+class Field;
 
 /*
  * Macros for error values of Juicer methods and functions.
  */
 #define JUICER_OK 0
 #define JUICER_ERROR -1
+#define DWARF_VERSION 4
+
 
 typedef enum
 {
@@ -100,21 +106,22 @@ private:
     Symbol * process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
     Symbol * process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
     void process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    void addPaddingToStruct(Symbol& symbol);
-    void addPaddingEndToSturct(Symbol& symbol);
     Symbol * process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
     void process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
     int process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
     char * getFirstAncestorName(Dwarf_Die inDie);
 	int printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
 	char * dwarfStringToChar(char *dwarfString);
+	void addPaddingToStruct(Symbol& symbol);
+    void addPaddingEndToSturct(Symbol& symbol);
+    void addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField);
+    bool isDWARFVersionSupported(Dwarf_Die);
 	int elfFile = 0;
 	Logger logger;
 	IDataContainer *idc = 0;
 	bool isIDCSet(void);
 	Symbol * getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &multiplicity);
 	void DisplayDie(Dwarf_Die inDie);
-
 
 };
 

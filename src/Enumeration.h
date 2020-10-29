@@ -12,6 +12,8 @@
 #include "Symbol.h"
 #include "Logger.h"
 
+class Symbol;
+
 class Enumeration
 {
 public:

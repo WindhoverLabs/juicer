@@ -9,7 +9,6 @@
 
 #include "Symbol.h"
 #include "Field.h"
-#include "BitField.h"
 #include "Enumeration.h"
 
 
@@ -221,20 +220,4 @@ std::vector<Enumeration*> ElfFile::getEnumerations()
 	}
 
 	return outEnumerations;
-}
-
-std::vector<BitField*> ElfFile::getBitFields()
-{
-	std::vector<BitField*> outBitFields;
-	std::vector< Field*> fields = getFields();
-
-	for(auto&& field: getFields())
-	{
-	    for(auto&& bitField: field->getBitFields())
-	    {
-	        outBitFields.push_back(bitField.get());
-	    }
-	}
-
-	return outBitFields;
 }

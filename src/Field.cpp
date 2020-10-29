@@ -6,8 +6,6 @@
  */
 
 #include "Field.h"
-#include "BitField.h"
-
 
 Field::Field(Symbol& inSymbol, Symbol& inType) :
     	    symbol{inSymbol}, // @suppress("Symbol is not resolved")
@@ -22,34 +20,22 @@ Field::Field(Symbol& inSymbol, Symbol& inType) :
 }
 
 Field::Field(Symbol& inSymbol, std::string &inName, uint32_t inByteOffset,
-		Symbol& inType, uint32_t inMultiplicity, bool inLittleEndian) :
+		Symbol& inType, uint32_t inMultiplicity, bool inLittleEndian, uint32_t inBitSize,
+		uint32_t inBitOffset) :
     	    symbol{inSymbol}, // @suppress("Symbol is not resolved")
     		name{inName}, // @suppress("Symbol is not resolved")
     		byte_offset{inByteOffset},
     		type{inType}, // @suppress("Symbol is not resolved")
     		multiplicity{inMultiplicity},
     		little_endian{inLittleEndian},
+    		bit_offset{inBitOffset},
+			bit_size{inBitSize},
     		id{0}
+
 
 {
 
     logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset, type.getName().c_str(), multiplicity, little_endian ? "LE" : "BE");
-}
-
-std::vector<std::unique_ptr<BitField>>& Field::getBitFields()
-{
-	return bit_fields;
-}
-
-void Field::addBitField(BitField& inBitField)
-{
-	logger.logDebug("Adding BitField %u:%i to Field %s.", inBitField.getBitOffset(), inBitField.getBitSize(), name);
-
-	bit_fields.push_back(std::make_unique<BitField>(inBitField));
-}
-
-void Field::addBitField(uint32_t inBitSize, int32_t inBitOffset)
-{
 }
 
 Field::~Field()
@@ -128,7 +114,7 @@ bool Field::isBitField(void)
 {
 	bool rc = false;
 
-	if(bit_fields.size() > 0)
+	if(bit_size>0 && bit_offset>0)
 	{
 		rc = true;
 	}
@@ -136,16 +122,32 @@ bool Field::isBitField(void)
 	return rc;
 }
 
-
-
 uint32_t Field::getId(void) const
 {
     return id;
 }
 
-
-
 void Field::setId(uint32_t newId)
 {
     id = newId;
+}
+
+void Field::setBitOffset(uint32_t newBitOffset)
+{
+	bit_offset = newBitOffset;
+}
+
+uint32_t Field::getBitOffset() const
+{
+	return bit_offset;
+}
+
+void Field::setBitSize(uint32_t newBitSize)
+{
+	bit_size = newBitSize;
+}
+
+uint32_t Field::getBitSize() const
+{
+	return bit_size;
 }

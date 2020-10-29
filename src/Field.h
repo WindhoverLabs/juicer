@@ -13,8 +13,7 @@
 #include "Symbol.h"
 #include "Logger.h"
 
-
-class BitField;
+class Symbol;
 
 /**
  *@note This is an "owning class". This means that it manages some resources through unique_ptr
@@ -31,7 +30,9 @@ public:
 		  uint32_t byte_offset,
 		  Symbol &type,
 		  uint32_t multiplicity,
-		  bool little_endian);
+		  bool little_endian,
+		  uint32_t inBitSize = 0,
+		  uint32_t inBitOffset = 0);
 	virtual ~Field();
 	uint32_t getByteOffset() const;
 	void setByteOffset(uint32_t byteOffset);
@@ -45,24 +46,27 @@ public:
 	Symbol& getType();
 	uint32_t getId(void) const;
 	void setId(uint32_t newId);
+	uint32_t getBitOffset() const;
+	void setBitOffset(uint32_t bitOffset);
+	uint32_t getBitSize() const;
+	void setBitSize(uint32_t bitSize);
 	Field(Field& field);
-	std::vector<std::unique_ptr<BitField>>& getBitFields();
-	void addBitField(BitField &inBitField);
-	void addBitField(uint32_t inBitSize, int32_t inBitOffset);
 	bool isBitField(void);
 
-protected:
 
 private:
-	Symbol &symbol;
-	std::string  name;
-	uint32_t     byte_offset;
-	Symbol &type;
-	uint32_t     multiplicity;
-	bool         little_endian;
-    Logger       logger;
-    uint32_t     id;
-    std::vector<std::unique_ptr<BitField>> bit_fields;
+	Symbol 		 					       &symbol;
+	std::string  						    name;
+	uint32_t     						    byte_offset;
+	Symbol 		 						   &type;
+	uint32_t     						    multiplicity;
+	bool         							little_endian;
+	/*bit fields members.
+	 * If this field is not bit-packed, then the bit_size is -1 and bit_offset is 0.*/
+	uint32_t 	 							bit_size;
+	uint32_t 	 							bit_offset;
+    Logger       							logger;
+    uint32_t     							id;
 };
 
 #endif /* FIELD_H_ */

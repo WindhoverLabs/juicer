@@ -529,7 +529,7 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
         }
 
         writeFieldQuery += "INSERT INTO fields(symbol, name, byte_offset, type, "
-                            "multiplicity, little_endian) VALUES(";
+                            "multiplicity, little_endian, bit_size, bit_offset) VALUES(";
         writeFieldQuery += std::to_string(field->getSymbol().getId());
         writeFieldQuery += ",";
         writeFieldQuery += "\"";
@@ -544,10 +544,23 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
         writeFieldQuery += ",";
         writeFieldQuery += std::to_string(field->isLittleEndian()?
                                           SQLiteDB_TRUE: SQLiteDB_FALSE);
+
+        writeFieldQuery += ",";
+        writeFieldQuery += std::to_string(field->getBitSize());
+        writeFieldQuery += ",";
+        writeFieldQuery += std::to_string(field->getBitOffset());
+
         writeFieldQuery += ");";
 
         rc = sqlite3_exec(database, writeFieldQuery.c_str(), NULL, NULL,
                           &errorMessage);
+
+        std::string breakField{"Orientation"};
+
+        if(breakField.compare(field->getName()) == 0)
+        {
+        	std::cout<<"Break here";
+        }
 
         if(SQLITE_OK == rc)
         {

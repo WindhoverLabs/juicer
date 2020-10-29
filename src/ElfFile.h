@@ -13,12 +13,11 @@
 #include <vector>
 #include "Logger.h"
 #include "Juicer.h"
+#include "Field.h"
 
-class ElfFile;
 class Symbol;
 class Field;
 class Enumeration;
-class BitField;
 
 /**
  * The elf class contains an "module" with a user-defined name.
@@ -49,7 +48,6 @@ public:
 	Symbol *                               addSymbol(std::string& name, uint32_t byte_size);
 	std::vector<Field*>                    getFields();
 	std::vector<Enumeration*>              getEnumerations();
-	std::vector<BitField*>                 getBitFields();
     bool                                   isSymbolUnique(std::string &name);
     Symbol *                               getSymbol(std::string &name);
 	const std::string& getDate() const;

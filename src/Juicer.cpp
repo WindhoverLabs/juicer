@@ -41,7 +41,6 @@
 #include "Symbol.h"
 #include "Field.h"
 #include "Enumeration.h"
-#include "BitField.h"
 #include "ElfFile.h"
 
 Juicer::Juicer()
@@ -1494,8 +1493,10 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
 void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
     int             res = DW_DLV_OK;
-    Dwarf_Attribute attr_struct;
+    Dwarf_Attribute attr_struct = nullptr;
     Dwarf_Die       memberDie = 0;
+
+    uint32_t bitFieldDelta = 0;
 
     /*@note Used for keeping track of fields used for padding. */
 
@@ -1513,8 +1514,8 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
     /* Start processing the fields. */
     for(;;)
     {
-        char           *memberName = 0;
-        Symbol         *memberBaseTypeSymbol = 0;
+        char           *memberName = nullptr;
+        Symbol         *memberBaseTypeSymbol = nullptr;
         Dwarf_Unsigned memberLocation = 0;
 
         if(res == DW_DLV_OK)
@@ -1574,6 +1575,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                                 logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
                                         dwarf_errmsg(error));
                             }
+
                         }
 
                         /* Get the data member location attribute of this member. */
@@ -1618,10 +1620,20 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
 
 							std::string sMemberName = memberName;
 
-                        	/*Handle any padding that needs to be added. */
+							Field memberField{symbol, sMemberName, (uint32_t) memberLocation, *memberBaseTypeSymbol, multiplicity, elf.isLittleEndian()};
 
-							symbol.addField(sMemberName, (uint32_t)memberLocation, *memberBaseTypeSymbol, multiplicity, elf.isLittleEndian());
+							addBitFields(memberDie, memberField);
 
+							if(symbol.getFields().size()>1)
+							{
+
+								if(symbol.getFields().at(symbol.getFields().size()-1)->isBitField())
+								{
+								bitFieldDelta = (symbol.getFields().at(symbol.getFields().size()-1)->getBitOffset()/8);
+								memberField.setByteOffset(memberField.getByteOffset() +bitFieldDelta );
+								}
+							}
+							symbol.addField(memberField);
                         }
 
                         break;
@@ -1654,6 +1666,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
             }
             else if(res == DW_DLV_NO_ENTRY)
             {
+            	/*Handle any padding that needs to be added. */
             	addPaddingToStruct(symbol);
                 /* We wrapped around.  We're done processing the member fields. */
 
@@ -1684,7 +1697,7 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 	{
 		uint32_t fieldsSize= symbol.getFields().size();
 
-		for(uint32_t i= 1;i<fieldsSize;i++)
+		for(uint32_t i= 1;i<fieldsSize-1;i++)
 		{
 			/*@note I know the fields container access is ugly this way,
 			 * but it is a lot safer than something like std::vector.back() */
@@ -1743,6 +1756,12 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 	addPaddingEndToSturct(symbol);
 }
 
+/**
+ *@brief Scans the symbol and inserts padding at the end of the struct if needed. The field used for padding
+ *is given the name "_spare_end".
+ *
+ *@param symbol The symbol to be scanned for padding.
+ */
 void Juicer::addPaddingEndToSturct(Symbol& symbol)
 {
 	uint32_t correctCurrentSize = 0;
@@ -1754,6 +1773,13 @@ void Juicer::addPaddingEndToSturct(Symbol& symbol)
 
 	/*@todo Save this string in a macro or something like that. */
 	std::string paddingType{"_padding"};
+
+	std::string breakSymbol{"PX4_DistanceSensorMsg_t"};
+
+	if(symbol.getName().compare(breakSymbol) == 0)
+	{
+		std::cout<<"break here";
+	}
 
 	for(auto&& field: symbol.getFields())
 	{
@@ -1769,7 +1795,7 @@ void Juicer::addPaddingEndToSturct(Symbol& symbol)
 
 	if(correctCurrentSize>0)
 	{
-		if(correctCurrentSize<symbol.getByteSize())
+		if(correctCurrentSize>symbol.getByteSize())
 		{
 			int paddingSize =  symbol.getByteSize() - correctCurrentSize;
 
@@ -1784,13 +1810,80 @@ void Juicer::addPaddingEndToSturct(Symbol& symbol)
 
 			newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
 
-			symbol.addField(spareName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian());
-
+			symbol.addField(spareName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian(), 0,0);
 
 		}
 	}
 }
 
+/**
+ *@brief Checks if dataMemberDie has bitfields. And if it does, add them to dataMemberField.
+ */
+void Juicer::addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField)
+{
+    Dwarf_Attribute attr_struct = nullptr;
+	int32_t res = 0;
+	Dwarf_Unsigned bit_offset = 0;
+	Dwarf_Unsigned bit_size = 0;
+
+    res = dwarf_attr(dataMemberDie, DW_AT_bit_size, &attr_struct, &error);
+
+    if(DW_DLV_OK == res)
+    {
+		res = dwarf_formudata(attr_struct, &bit_size, &error);
+		if(res != DW_DLV_OK)
+		{
+			dataMemberField.setBitOffset(0);
+			dataMemberField.setBitSize(0);
+		}
+		else if(DW_DLV_OK == res)
+		{
+
+
+		    res = dwarf_attr(dataMemberDie, DW_AT_bit_offset, &attr_struct, &error);
+
+		    if(DW_DLV_OK == res)
+		    {
+				res = dwarf_formudata(attr_struct, &bit_offset, &error);
+		    }
+			dataMemberField.setBitOffset(bit_offset);
+			dataMemberField.setBitSize(bit_size);
+		}
+    }
+
+//    dataMemberField.setByteOffset(dataMemberField.getByteOffset() + (dataMemberField.getBitOffset()/8));
+
+    return;
+}
+
+/**
+ *@brief Checks if the CU(Compilation Unit such as a .o or executable file) is supported by Juicer.
+ *See the MIN_DWARF_VERSION and MAX_DWARF_VERSION for DWARF versions supported by
+ */
+bool Juicer::isDWARFVersionSupported(Dwarf_Die inDie)
+{
+	bool isSupported = true;
+
+	Dwarf_Half dwarfVersion = 0;
+
+	Dwarf_Half dwarfOffset = 0;
+
+	int rec =  dwarf_get_version_of_die(inDie, &dwarfVersion, &dwarfOffset);
+
+	if(rec != DW_DLV_OK)
+	{
+		logger.logWarning("The dwarf version of this die is unknown");
+	}
+	else
+	{
+		if(dwarfVersion==DWARF_VERSION)
+		{
+			isSupported  = true;
+		}
+	}
+
+	return isSupported;
+}
 
 /**
  * @brief Inspects the data on the die and its own children recursively.
@@ -1822,6 +1915,16 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
             logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error),
                     dwarf_errmsg(error));
             return_value = JUICER_ERROR;
+        }
+
+        if(DW_DLV_OK == res)
+        {
+        	bool isDwarfSupported = isDWARFVersionSupported(cur_die);
+
+			if(isDwarfSupported == false)
+			{
+				logger.logWarning("This DWARF version is not supported for this die. At the moment only DWARF Version 4 is supported.");
+			}
         }
 
         switch(tag)
