@@ -117,16 +117,18 @@ After juicer is done, you will find a database populated with data about our bin
 | INTEGER | INTEGER | INTEGER |
 
 ### fields
-| id* | name | symbol+ | byte_offset | type+ | multiplicity | little_endian
-| --- | --- | --- | ---| --- | --- | --- |
-| INTEGER | TEXT | INTEGER |INTEGER | INTEGER | INTEGER | BOOLEAN |
+| id* | name | symbol+ | byte_offset | type+ | multiplicity | little_endian | bit_size | bit_offset |
+| --- | --- | --- | ---| --- | --- | --- | --- | --- |
+| INTEGER | TEXT | INTEGER |INTEGER | INTEGER | INTEGER | BOOLEAN | INTEGER | INTEGER |
 
 ### symbols
 | id* | elf+ | name | byte_size |
 | ---| --- | --- | --- |
 | INTEGER | INTEGER | TEXT | INTEGER |
 
-In our specific example, the **symbols** and **fields** tables are the ones we are interested in.
+In our specific example, the **symbols** and **fields** tables are the ones we are interested in. 
+
+**NOTE**: Notice the `bit_size` and `bit_offset` columns in the fields table; these values are used for struct members that are bit-packed. When the fields are not bit-packed, bit_size is set to -1 and bit_offset is set to 0.
 
 ![symbols](Images/symbols_table.png "symbols-table")
 
@@ -158,7 +160,7 @@ Because of this we have tested `juicer`on the specified platforms in the table b
 # Padding <a name="padding"></a>
 Different compilers and sometimes programmers insert padding into C Structures. Padding in the database is captured by `juicer` as well. Padding fields will have a name in the "_spare[N]" fashion in the database. N is for distinguishing different fields. For exampe a struct that has three fields of padding will have `_spare0`, `_spare1` and `_spare2`. Padding that is inserted at the end of the struct has a field with the name of `_padding_end`. Hopefully this naming scheme makes sense. 
 
-## Padding Types
+-# Padding Types
 When `juicer` finds padding, a new type is created for the number of bytes of padding that are found. For instance, if there is 3 bytes of padding then a type `_padding24` will be created. The `24` is the size of the padding in bits. Please note that if more padding is found elsewhere and the number of bytes is 3, then the `_padding24` type will be used for that field to avoid over-populating the database with unnecessary data.
 
 
@@ -273,4 +275,4 @@ As juicer evolves, our dwarf support will grow and evolve as well. At the moment
 For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/dwarf-2.0.0.pdf).
 
 
-Documentation updated on October 28, 2020
+Documentation updated on October 29, 2020
