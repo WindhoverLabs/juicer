@@ -36,5 +36,14 @@ enum Color
   YELLOW
 };
 
+struct S {
+uint8_t before;
+int j:5;
+int k:6;
+int m:5;
+uint8_t p;
+int n:8;
+uint8_t after;
+};
 
 #endif /* TEST_FILE_H_ */
