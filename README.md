@@ -128,7 +128,7 @@ After juicer is done, you will find a database populated with data about our bin
 
 In our specific example, the **symbols** and **fields** tables are the ones we are interested in. 
 
-**NOTE**: Notice the `bit_size` and `bit_offset` columns in the fields table; these values are used for struct members that are bit-packed. When the fields are not bit-packed, bit_size is set to -1 and bit_offset is set to 0.
+**NOTE**: Notice the `bit_size` and `bit_offset` columns in the fields table; these values are used for struct members that are bit-packed. When the fields are not bit-packed, bit_size and bit_offset are set to 0.
 
 ![symbols](Images/symbols_table.png "symbols-table")
 
