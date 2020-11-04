@@ -112,8 +112,6 @@ private:
     char * getFirstAncestorName(Dwarf_Die inDie);
 	int printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
 	char * dwarfStringToChar(char *dwarfString);
-	void addPaddingToStruct(Symbol& symbol);
-    void addPaddingEndToSturct(Symbol& symbol);
     void addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField);
     bool isDWARFVersionSupported(Dwarf_Die);
 	int elfFile = 0;

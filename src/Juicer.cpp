@@ -363,11 +363,35 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
     char            *typeDieName;
 
     /* Get the type attribute. */
+
     res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
     if(res != DW_DLV_OK)
     {
         logger.logDebug("Ignoring error in dwarf_attr(DW_AT_type). %u  errno=%u %s", __LINE__, dwarf_errno(error),
             dwarf_errmsg(error));
+
+        int voidRes = dwarf_attr(inDie, DW_AT_byte_size, &attr_struct, &error);
+
+        if(voidRes != DW_DLV_OK)
+        {
+            logger.logDebug("Ignoring error in dwarf_attr(DW_AT_byte_size). %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                dwarf_errmsg(error));
+        }
+        else
+        {
+            Dwarf_Unsigned byteSize = 0;
+            std::string voidType{"void*"};
+            voidRes = dwarf_formudata(attr_struct, &byteSize, &error );
+
+        	if(DW_DLV_OK == voidRes)
+        	{
+            	/* This branch represents a "void*" since there is no valid type.
+            	 * Read section 5.2 of DWARF4 for details on this.*/
+                outSymbol = elf.addSymbol(voidType, byteSize);
+
+        	}
+        }
+
     }
 
     /* Get the offset to the type Die. */
@@ -485,7 +509,10 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
 
             case DW_TAG_pointer_type:
             {
+                DisplayDie(inDie);
+
                 outSymbol = process_DW_TAG_pointer_type(elf, dbg, typeDie);
+
                 logger.logDebug("DW_TAG_pointer_type");
                 break;
             }
@@ -1499,8 +1526,6 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
     Dwarf_Attribute attr_struct = nullptr;
     Dwarf_Die       memberDie = 0;
 
-    /*@note Used for keeping track of fields used for padding. */
-
     /* Get the fields by getting the first child. */
     if(res == DW_DLV_OK)
     {
@@ -1557,6 +1582,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                         uint32_t multiplicity = 0;
 
                         /* Get the name attribute of this Die. */
+
                         if(res == DW_DLV_OK)
                         {
                             res = dwarf_attr(memberDie, DW_AT_name, &attr_struct, &error);
@@ -1571,6 +1597,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                         if(res == DW_DLV_OK)
                         {
                             res = dwarf_formstring(attr_struct, &memberName, &error);
+
                             if(res != DW_DLV_OK)
                             {
                                 logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
@@ -1657,8 +1684,6 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
             }
             else if(res == DW_DLV_NO_ENTRY)
             {
-            	/*Handle any padding that needs to be added. */
-            	addPaddingEndToSturct(symbol);
                 /* We wrapped around.  We're done processing the member fields. */
 
                 break;
@@ -1673,157 +1698,6 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
             break;
         }
     }
-}
-
-/**
- *Scans the symbol and inserts a field called "_spare" if there is padding at the end of structures.
- *@param symbol The symbol to be scanned for padding.
- *@note For now, we will not be adding padding in between structures for now. Will leave logic here for now.
- *Beware that this function does not consider bit fields, so the logic is not correct. But it is very
- *trivial to fix.
- */
-void Juicer::addPaddingToStruct(Symbol& symbol)
-{
-	uint32_t spareCount{0};
-
-	/*Add padding between fields */
-	if (symbol.getFields().size()>0)
-	{
-		uint32_t fieldsSize= symbol.getFields().size();
-
-		for(uint32_t i= 1;i<fieldsSize-1;i++)
-		{
-			/*@note I know the fields container access is ugly this way,
-			 * but it is a lot safer than something like std::vector.back() */
-
-			uint32_t previousFieldSize = symbol.getFields().at(i-1)->getType().getByteSize();
-
-			if(symbol.getFields().at(i-1)->getMultiplicity()>0)
-			{
-				previousFieldSize = symbol.getFields().at(i-1)->getMultiplicity() * previousFieldSize ;
-			}
-
-			uint32_t lastFieldOffset = symbol.getFields().at(i-1)->getByteOffset();
-
-			uint32_t memberLocationDelta = symbol.getFields().at(i)->getByteOffset() - lastFieldOffset ;
-
-			uint32_t memberLocation = lastFieldOffset + previousFieldSize;
-
-			if(memberLocationDelta>previousFieldSize)
-			{
-				uint32_t paddingSize = memberLocationDelta - previousFieldSize;
-
-				std::string spareName{"_spare"};
-
-				spareName += std::to_string(spareCount);
-
-				std::string paddingType{"_padding"};
-
-				paddingType += std::to_string(paddingSize*8);
-
-				Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
-
-				if(paddingSymbol == nullptr)
-				{
-					paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize);
-				}
-
-				auto&& fields  = symbol.getFields();
-
-				auto fields_it = fields.begin();
-
-				fields.insert(fields_it+i, std::make_unique<Field>(symbol,spareName, (uint32_t)memberLocation,
-						*paddingSymbol, 0, symbol.getElf().isLittleEndian()));
-
-				fieldsSize++;
-				i++;
-				spareCount++;
-
-				memberLocation += paddingSize;
-			}
-			memberLocation += memberLocationDelta;
-
-		}
-
-	}
-
-	addPaddingEndToSturct(symbol);
-}
-
-/**
- *@brief Scans the symbol and inserts padding at the end of the struct if needed. The field used for padding
- *is given the name "_spare_end".
- *
- *@param symbol The symbol to be scanned for padding.
- */
-void Juicer::addPaddingEndToSturct(Symbol& symbol)
-{
-	uint32_t correctCurrentSize = 0;
-	int tempFieldSize 	   = 0;
-
-	int newFieldByteOffset = 0;
-
-	std::string spareName{"_spare_end"};
-
-	/*@todo Save this string in a macro or something like that. */
-	std::string paddingType{"_padding"};
-
-	for(auto&& field: symbol.getFields())
-	{
-		if(!field->isBitField())
-		{
-			tempFieldSize = field->getType().getByteSize();
-			if(field->getMultiplicity()> 0)
-			{
-				tempFieldSize = tempFieldSize * field->getMultiplicity();
-			}
-		}
-		else
-		{
-			tempFieldSize = field->getBitSize();
-
-			int modBytes = tempFieldSize%8;
-
-			if(modBytes==0)
-			{
-				tempFieldSize =  tempFieldSize/8;
-			}
-			else
-			{
-				if(tempFieldSize<8)
-				{
-					tempFieldSize = 1;
-				}
-				else
-				{
-					tempFieldSize =  std::ceil(tempFieldSize/8);
-				}
-			}
-		}
-		correctCurrentSize = correctCurrentSize + tempFieldSize;
-	}
-
-	if(correctCurrentSize>0)
-	{
-		if(correctCurrentSize<symbol.getByteSize())
-		{
-			int paddingSize =  symbol.getByteSize() - correctCurrentSize;
-
-			paddingType += std::to_string(paddingSize*8);
-
-			Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
-
-			if(paddingSymbol == nullptr)
-			{
-				paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize);
-			}
-
-			newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
-
-			symbol.addField(spareName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian(), 0,0);
-
-		}
-	}
 }
 
 /**
@@ -1842,13 +1716,6 @@ void Juicer::addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField)
     if(DW_DLV_OK == res)
     {
 		res = dwarf_formudata(attr_struct, &bit_offset, &error);
-    }
-
-    std::string breakField{"ID"};
-
-    if(dataMemberField.getName().compare(breakField) == 0)
-    {
-    	std::cout<<"break here";
     }
 
     res = dwarf_attr(dataMemberDie, DW_AT_bit_size, &attr_struct, &error);
@@ -1875,8 +1742,6 @@ void Juicer::addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField)
 			dataMemberField.setBitSize(bit_size);
 		}
     }
-
-//    dataMemberField.setByteOffset(dataMemberField.getByteOffset() + (dataMemberField.getBitOffset()/8));
 
     return;
 }
