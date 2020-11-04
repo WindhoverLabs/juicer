@@ -20,15 +20,15 @@ Field::Field(Symbol& inSymbol, Symbol& inType) :
 }
 
 Field::Field(Symbol& inSymbol, std::string &inName, uint32_t inByteOffset,
-		Symbol& inType, uint32_t inMultiplicity, bool inLittleEndian, uint32_t inBitSize,
-		uint32_t inBitOffset) :
+		Symbol& inType, uint32_t inMultiplicity, bool inLittleEndian,
+		uint32_t inBitSize, uint32_t inBitOffset) :
     	    symbol{inSymbol}, // @suppress("Symbol is not resolved")
     		name{inName}, // @suppress("Symbol is not resolved")
     		byte_offset{inByteOffset},
     		type{inType}, // @suppress("Symbol is not resolved")
     		multiplicity{inMultiplicity},
     		little_endian{inLittleEndian},
-    		bit_offset{inBitOffset},
+    		bit_offset{inBitSize},
 			bit_size{inBitSize},
     		id{0}
 

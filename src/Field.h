@@ -62,9 +62,9 @@ private:
 	uint32_t     						    multiplicity;
 	bool         							little_endian;
 	/*bit fields members.
-	 * If this field is not bit-packed, then the bit_size is -1 and bit_offset is 0.*/
-	uint32_t 	 							bit_size;
+	 * If this field is not bit-packed, then the bit_size and bit_offset are 0.*/
 	uint32_t 	 							bit_offset;
+	uint32_t 	 							bit_size;
     Logger       							logger;
     uint32_t     							id;
 };
