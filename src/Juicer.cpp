@@ -357,9 +357,9 @@ char * Juicer::getFirstAncestorName(Dwarf_Die inDie)
 Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie)
 {
     Symbol          *outSymbol = 0;
-    Dwarf_Attribute attr_struct;
+    Dwarf_Attribute attr_struct = nullptr;
     Dwarf_Off       typeOffset = 0;
-    Dwarf_Die       typeDie;
+    Dwarf_Die       typeDie = nullptr;
     char            *typeDieName;
 
     /* Get the type attribute. */

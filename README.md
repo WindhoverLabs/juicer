@@ -7,9 +7,9 @@
 3. [What is it?](#what_is_it)
 4. [GCC Compatibility](#compatibility)
 5. [Padding](#padding)
-3. [Environment Setup](#environment-setup)
-4. [Testing](#testing)
-5. [DWARF Support](#dwarf_support)
+6. [Environment Setup](#environment-setup)
+7. [Testing](#testing)
+8. [DWARF Support](#dwarf_support)
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
@@ -258,8 +258,9 @@ make coverage
 This will run all unit tests on juicer and generate a test coverage report for you. After `make` is done, the test coverage report can be found on `build/coverage/index.html`.
 
 ## Dwarf Support <a name="dwarf_support"></a>
+At the moment `juicer` follows the DWARF4 specification, which is the standard in all versions of gcc at the moment. If this changes, then this document will be updated accordingly.
 
-As juicer evolves, our dwarf support will grow and evolve as well. At the moment, we don't adhere to a particular DWARF version as we add support to the things that we need for our code base, which is airliner. In other words, we *mostly* support `C` code, or `C++` code without any cutting edge/modern features. For example, modern features such as `templates` or `namespaces` are not supported. If juicer finds these things in your elf files, it will simply ignore them. To have a more concrete idea of what we *do* support in the DWARF, take a look at the table below which records all DWARF tags we support.
+As juicer evolves, dwarf support will grow and evolve as well. At the moment, we don't adhere to a particular DWARF version as we add support to the things that we need for our code base, which is airliner. In other words, we *mostly* support `C` code, or `C++` code without any cutting edge/modern features. For example, modern features such as `templates` or `namespaces` are not supported. If juicer finds these things in your elf files, it will simply ignore them. To have a more concrete idea of what we *do* support in the DWARF, take a look at the table below which records all DWARF tags we support.
 
 ### Dwarf Tags
 | Name | Description |
@@ -272,7 +273,20 @@ As juicer evolves, our dwarf support will grow and evolve as well. At the moment
 | DW_TAG_enumeration_type | This is the tag that represents enumerations such as `enum Color{RED,BLUE,YELLOW};` |
 | DW_TAG_const_type | This is the tag that represents C/C++ const qualified type such as `sizetype`, which is used by containers(like std::vector) in the STL C++ library.  |
 
-For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/dwarf-2.0.0.pdf).
+For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/DWARF4.pdf).
+
+### `void*`
+
+DWARF version 4 has this to say about void pointers:
+
+> The interpretation of this debugging information entry is intentionally left flexible to allow it to
+be interpreted appropriately in different languages. For example, in C and C++ the language
+implementation can provide an unspecified type entry with the name “void” which can be
+referenced by the type attribute of pointer types and typedef declarations for 'void' (see Sections
+0 and 5.3, respectively)
+> -- <cite>Section 5.2 of DWARF4 </cite>
+
+juicer behaves accordingly. If a pointer does not have a type(meaning it does not have a DW_AT_type attribute), then it is assumed that the pointer in question is of the `void*` type.
 
 
-Documentation updated on October 29, 2020
+Documentation updated on November 4, 2020
