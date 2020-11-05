@@ -1707,7 +1707,7 @@ void Juicer::addPaddingEndToStruct(Symbol& symbol)
 
 	bool hasBitFields = symbol.hasBitFields();
 
-	if(!hasBitFields)
+	if(!hasBitFields && symbol.getFields().size()>0)
 	{
 		std::string paddingFieldName{"_spare_end"};
 
@@ -1717,7 +1717,7 @@ void Juicer::addPaddingEndToStruct(Symbol& symbol)
 
 		uint32_t sizeDelta = symbol.getByteSize() - symbolSize;
 
-		/* The sizeDelta would be the size of the padding chunk, if there is any present.*/
+		/* The sizeDelta would be the size of the padding chunk, if there is any present. capability */
 
 		if(sizeDelta>0)
 		{
@@ -1787,7 +1787,7 @@ void Juicer::addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField)
 
 /**
  *@brief Checks if the CU(Compilation Unit such as a .o or executable file) is supported by Juicer.
- *See the MIN_DWARF_VERSION and MAX_DWARF_VERSION for DWARF versions supported by
+ *See the DWARF_VERSION macro.
  */
 bool Juicer::isDWARFVersionSupported(Dwarf_Die inDie)
 {
