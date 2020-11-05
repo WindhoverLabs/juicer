@@ -113,6 +113,7 @@ private:
 	int printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
 	char * dwarfStringToChar(char *dwarfString);
     void addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField);
+    void addPaddingToStruct(Symbol& symbol);
     void addPaddingEndToStruct(Symbol& symbol);
     bool isDWARFVersionSupported(Dwarf_Die);
 	int elfFile = 0;

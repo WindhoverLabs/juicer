@@ -1681,7 +1681,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
             else if(res == DW_DLV_NO_ENTRY)
             {
                 /* We wrapped around.  We're done processing the member fields. */
-            	addPaddingEndToStruct(symbol);
+            	addPaddingToStruct(symbol);
                 break;
             }
 
@@ -1694,6 +1694,74 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
             break;
         }
     }
+}
+
+void Juicer::addPaddingToStruct(Symbol& symbol)
+{
+	uint32_t spareCount{0};
+
+	/*Add padding between fields */
+	if (symbol.getFields().size()>0 && !symbol.hasBitFields())
+	{
+		uint32_t fieldsSize= symbol.getFields().size();
+
+		for(uint32_t i= 1;i<fieldsSize-1;i++)
+		{
+			/*@note I know the fields container access is ugly this way,
+			 * but it is a lot safer than something like std::vector.back() */
+
+			uint32_t previousFieldSize = symbol.getFields().at(i-1)->getType().getByteSize();
+
+			if(symbol.getFields().at(i-1)->getMultiplicity()>0)
+			{
+				previousFieldSize = symbol.getFields().at(i-1)->getMultiplicity() * previousFieldSize ;
+			}
+
+			uint32_t lastFieldOffset = symbol.getFields().at(i-1)->getByteOffset();
+
+			uint32_t memberLocationDelta = symbol.getFields().at(i)->getByteOffset() - lastFieldOffset ;
+
+			uint32_t memberLocation = lastFieldOffset + previousFieldSize;
+
+			if(memberLocationDelta>previousFieldSize)
+			{
+				uint32_t paddingSize = memberLocationDelta - previousFieldSize;
+
+				std::string spareName{"_spare"};
+
+				spareName += std::to_string(spareCount);
+
+				std::string paddingType{"_padding"};
+
+				paddingType += std::to_string(paddingSize*8);
+
+				Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
+
+				if(paddingSymbol == nullptr)
+				{
+					paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize);
+				}
+
+				auto&& fields  = symbol.getFields();
+
+				auto fields_it = fields.begin();
+
+				fields.insert(fields_it+i, std::make_unique<Field>(symbol,spareName, (uint32_t)memberLocation,
+						*paddingSymbol, 0, symbol.getElf().isLittleEndian()));
+
+				fieldsSize++;
+				i++;
+				spareCount++;
+
+				memberLocation += paddingSize;
+			}
+			memberLocation += memberLocationDelta;
+
+		}
+
+	}
+
+	addPaddingEndToStruct(symbol);
 }
 
 /**
