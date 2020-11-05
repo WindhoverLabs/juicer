@@ -231,3 +231,24 @@ bool Symbol::isEnumerated(void)
 
 	return rc;
 }
+
+/**
+ *@brief Checks if this symbol has any fields that are bitfields.
+ *
+ *@return true if any fields are bitfields, false otherwise.
+ */
+bool Symbol::hasBitFields(void)
+{
+	bool hasBitField = false;
+
+	for(auto&& field: fields)
+	{
+		if(field->isBitField())
+		{
+			hasBitField = true;
+			break;
+		}
+	}
+
+	return hasBitField;
+}

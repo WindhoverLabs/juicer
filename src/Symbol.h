@@ -47,6 +47,7 @@ public:
 	void addEnumeration(std::string& name, int32_t value);
 	std::vector<std::unique_ptr<Enumeration>>& getEnumerations();
 	std::vector<std::unique_ptr<Field>>& getFields();
+	bool hasBitFields();
     bool isFieldUnique(std::string &name);
     Field* getField(std::string &name) const;
     bool hasFields(void);

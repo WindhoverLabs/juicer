@@ -847,10 +847,6 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
     return outSymbol;
 }
 
-
-const char SPARE_FIELD_NAME[]="";
-
-
 void Juicer::DisplayDie(Dwarf_Die inDie)
 {
     int             res = DW_DLV_OK;
@@ -1685,7 +1681,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
             else if(res == DW_DLV_NO_ENTRY)
             {
                 /* We wrapped around.  We're done processing the member fields. */
-
+            	addPaddingEndToStruct(symbol);
                 break;
             }
 
@@ -1698,6 +1694,49 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
             break;
         }
     }
+}
+
+/**
+ *@brief Adds padding to the end of struct.
+ *
+ *@note At the moment, if symbol has any bitfields,
+ *then this function does not attempt to add padding. Will address this issue ASAP.
+ */
+void Juicer::addPaddingEndToStruct(Symbol& symbol)
+{
+
+	bool hasBitFields = symbol.hasBitFields();
+
+	if(!hasBitFields)
+	{
+		std::string paddingFieldName{"_spare_end"};
+
+		std::string paddingType{"_padding"};
+
+		uint32_t symbolSize = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize();
+
+		uint32_t sizeDelta = symbol.getByteSize() - symbolSize;
+
+		/* The sizeDelta would be the size of the padding chunk, if there is any present.*/
+
+		if(sizeDelta>0)
+		{
+			paddingType += std::to_string(sizeDelta*8);
+
+
+			Symbol* paddingSymbol = symbol.getElf().getSymbol(paddingType);
+
+			if(paddingSymbol == nullptr)
+			{
+				paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta);
+			}
+
+			uint32_t newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
+
+			symbol.addField(paddingFieldName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian(), 0,0);
+
+		}
+	}
 }
 
 /**
