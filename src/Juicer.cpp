@@ -1705,7 +1705,7 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 	{
 		uint32_t fieldsSize= symbol.getFields().size();
 
-		for(uint32_t i= 1;i<fieldsSize-1;i++)
+		for(uint32_t i= 1;i<fieldsSize;i++)
 		{
 			/*@note I know the fields container access is ugly this way,
 			 * but it is a lot safer than something like std::vector.back() */
@@ -1774,16 +1774,22 @@ void Juicer::addPaddingEndToStruct(Symbol& symbol)
 {
 
 	bool hasBitFields = symbol.hasBitFields();
+	std::string 		paddingFieldName{"_spare_end"};
+	std::string 		paddingType{"_padding"};
+	uint32_t 			symbolSize = 0;
+	uint32_t 			sizeDelta = 0;
 
 	if(!hasBitFields && symbol.getFields().size()>0)
 	{
-		std::string paddingFieldName{"_spare_end"};
+		symbolSize = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize();
 
-		std::string paddingType{"_padding"};
+		if(symbol.getFields().back()->getMultiplicity()>0)
+		{
+			symbolSize = symbol.getFields().back()->getByteOffset() + (symbol.getFields().back()->getType().getByteSize()
+						 * symbol.getFields().back()->getMultiplicity()) ;
+		}
 
-		uint32_t symbolSize = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize();
-
-		uint32_t sizeDelta = symbol.getByteSize() - symbolSize;
+		sizeDelta = symbol.getByteSize() - symbolSize;
 
 		/* The sizeDelta would be the size of the padding chunk, if there is any present. capability */
 
