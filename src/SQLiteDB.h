@@ -54,7 +54,7 @@
                                   value INTEGER NOT NULL,\
                                   name TEXT NOT NULL,\
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
-                                  PRIMARY KEY (symbol, value)\
+                                  PRIMARY KEY (symbol, name)\
                                   );"
 
 #define SQLiteDB_TRUE 1

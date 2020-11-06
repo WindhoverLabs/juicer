@@ -233,35 +233,30 @@ int SQLiteDB::write(ElfFile& inElf)
      *the call to be valid. Maybe there is something I'm missing, but just
      *thought I'd propose the possibility of exceptions in cases like this.
      */
-    if(SQLITE_OK == rc)
+    if(SQLITEDB_ERROR != rc)
     {
         logger.logDebug("Elf entries were written to the elfs schema with SQLITE_OK "
                         "status.");
 
-        if(SQLITE_OK == rc)
+        if(SQLITEDB_ERROR != rc)
         {
             rc = writeSymbolsToDatabase(inElf);
 
-            if(SQLITE_OK == rc)
+            if(SQLITEDB_ERROR != rc)
             {
                 logger.logDebug("Symbol entries were written to the symbols schema "
                                 "with SQLITE_OK status.");
 
                 rc = writeFieldsToDatabase(inElf);
 
-                if(SQLITE_OK == rc)
+                if(SQLITEDB_ERROR != rc)
                 {
                     logger.logDebug("Field entries were written to the fields schema "
                                     "with SQLITE_OK status.");
 
                         rc = writeEnumerationsToDatabase(inElf);
 
-                        if(SQLITE_OK == rc)
-                        {
-                            logger.logDebug("Enumeration entries were written to the enumerations schema "
-                                            "with SQLITE_OK status.");
-                        }
-                        else if(SQLITE_CONSTRAINT_UNIQUE == rc)
+                        if(SQLITE_CONSTRAINT_UNIQUE == rc)
                         {
                         	logger.logInfo("Enumeration entry already exists in the database.");
                         	rc = SQLITE_OK;
@@ -273,11 +268,6 @@ int SQLiteDB::write(ElfFile& inElf)
                             rc = SQLITEDB_ERROR;
                         }
                 }
-                else if(SQLITE_CONSTRAINT_UNIQUE == rc)
-                {
-                	logger.logInfo("Field entry already exists in the database.");
-                	rc = SQLITE_OK;
-                }
                 else
                 {
                     logger.logDebug("There was an error while writing field entries to the"
@@ -287,18 +277,6 @@ int SQLiteDB::write(ElfFile& inElf)
                 }
 
 
-            }
-            else if(SQLITE_CONSTRAINT_UNIQUE == rc)
-            {
-            	logger.logInfo("Symbol entry already exists in the database.");
-            	rc = SQLITE_OK;
-            }
-            else
-            {
-                logger.logDebug("There was an error while writing symbol entries to the"
-                                " database.");
-
-                rc = SQLITEDB_ERROR;
             }
         }
 
@@ -554,13 +532,6 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
 
         rc = sqlite3_exec(database, writeFieldQuery.c_str(), NULL, NULL,
                           &errorMessage);
-
-        std::string breakField{"Orientation"};
-
-        if(breakField.compare(field->getName()) == 0)
-        {
-        	std::cout<<"Break here";
-        }
 
         if(SQLITE_OK == rc)
         {
