@@ -256,7 +256,7 @@ int SQLiteDB::write(ElfFile& inElf)
 
                         rc = writeEnumerationsToDatabase(inElf);
 
-                        if(SQLITE_CONSTRAINT_UNIQUE == rc)
+                        if(SQLITEDB_OK == rc)
                         {
                         	logger.logInfo("Enumeration entry already exists in the database.");
                         	rc = SQLITE_OK;
@@ -280,11 +280,6 @@ int SQLiteDB::write(ElfFile& inElf)
             }
         }
 
-    }
-    else if(SQLITE_CONSTRAINT_UNIQUE == rc)
-    {
-    	logger.logInfo("Elf entry already exists in the database.");
-    	rc = SQLITE_OK;
     }
     else
     {
@@ -350,7 +345,7 @@ int SQLiteDB::writeElfToDatabase(ElfFile& inElf)
 	   if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
 	   {
 		   logger.logDebug("%s.", errorMessage);
-		   rc  = SQLITE_CONSTRAINT_UNIQUE;
+		   rc  = SQLITE_OK;
 	   }
 	   else
 	   {
@@ -552,7 +547,7 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
 
             if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
             {
-            	rc  = SQLITE_CONSTRAINT_UNIQUE;
+            	rc  = SQLITE_OK;
             }
             else
             {
@@ -618,7 +613,7 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
 
             if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
             {
-            	rc  = SQLITE_CONSTRAINT_UNIQUE;
+            	rc  = SQLITE_OK;
             }
             else
             {
