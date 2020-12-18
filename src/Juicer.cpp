@@ -253,7 +253,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 			 */
 			std::string stdString{arrayName};
 
-			logger.logInfo("Name for array-->%s", arrayName);
+			logger.logDebug("Name for array-->%s", arrayName);
 
 			Symbol* 	arraySymbol =  getBaseTypeSymbol(elf, inDie, multiplicity);
 
@@ -270,7 +270,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 				outSymbol->addField(stdString, 0, *outSymbol, multiplicity, elf.isLittleEndian());
 			}
 
-			logger.logInfo("Name for array-->%s", arrayName);
+		    logger.logDebug("Name for array-->%s", arrayName);
 		}
      }
 
@@ -868,21 +868,21 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
             switch(tag)
             {
                 case DW_TAG_typedef:
-                    printf("DW_TAG_typedef");
+                     logger.logInfo("DW_TAG_typedef");
                     break;
 
                 case DW_TAG_structure_type:
-                    printf("DW_TAG_structure_type");
+                	 logger.logInfo("DW_TAG_structure_type");
                     break;
 
                 default:
-                    printf("0x%02x", tag);
+                	logger.logInfo("0x%02x", tag);
                     break;
             }
         }
         else
         {
-            printf("   ");
+        	logger.logDebug("   ");
         }
 
         res = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
@@ -896,12 +896,12 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
             }
             else
             {
-                printf(":%s\n", dieName);
+            	logger.logInfo(":%s\n", dieName);
             }
         }
         else
         {
-            printf("\n");
+        	logger.logInfo("\n");
         }
 
         res = dwarf_die_offsets(inDie, &globalOffset, &localOffset, &error);
@@ -912,12 +912,12 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
         }
         else
         {
-            printf("  DIE offset (local) : 0x%08llx\n", localOffset);
-            printf("  DIE offset (global): 0x%08llx\n", globalOffset);
+        	logger.logInfo("  DIE offset (local) : 0x%08llx\n", localOffset);
+        	logger.logInfo("  DIE offset (global): 0x%08llx\n", globalOffset);
         }
 
         abbrevCode = dwarf_die_abbrev_code(inDie);
-        printf("  Abbrev code:         %i\n", abbrevCode);
+        logger.logInfo("  Abbrev code:         %i\n", abbrevCode);
 
         res = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
         if(res != DW_DLV_OK)
@@ -927,7 +927,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
         }
         else
         {
-            printf("  Has children:        %s\n", hasChildrenFlag ? "True" : "False");
+        	logger.logInfo("  Has children:        %s\n", hasChildrenFlag ? "True" : "False");
         }
 
         int dwarf_die_abbrev_children_flag(Dwarf_Die /*die*/,
@@ -943,7 +943,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
         {
             if(attribCount > 0)
             {
-                printf("  Attributes:\n");
+            	logger.logInfo("  Attributes:\n");
                 for(uint32_t i = 0; i < attribCount; ++i)
                 {
                     Dwarf_Half attrNum;
@@ -960,43 +960,43 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                         switch(attrNum)
                         {
                             case DW_AT_sibling:
-                                printf("    DW_AT_sibling");
+                            	logger.logInfo("    DW_AT_sibling");
                                 break;
 
                             case DW_AT_location:
-                                printf("    DW_AT_location");
+                            	logger.logInfo("    DW_AT_location");
                                 break;
 
                             case DW_AT_name:
-                                printf("    DW_AT_name");
+                            	logger.logInfo("    DW_AT_name");
                                 break;
 
                             case DW_AT_ordering:
-                                printf("    DW_AT_ordering");
+                            	logger.logInfo("    DW_AT_ordering");
                                 break;
 
                             case DW_AT_subscr_data:
-                                printf("    DW_AT_subscr_data");
+                            	logger.logInfo("    DW_AT_subscr_data");
                                 break;
 
                             case DW_AT_byte_size:
-                                printf("    DW_AT_byte_size");
+                            	logger.logInfo("    DW_AT_byte_size");
                                 break;
 
                             case DW_AT_decl_file:
-                                printf("    DW_AT_decl_file");
+                            	logger.logInfo("    DW_AT_decl_file");
                                 break;
 
                             case DW_AT_decl_line:
-                                printf("    DW_AT_decl_line");
+                            	logger.logInfo("    DW_AT_decl_line");
                                 break;
 
                             case DW_AT_type:
-                                printf("    DW_AT_type");
+                            	logger.logInfo("    DW_AT_type");
                                 break;
 
                             default:
-                                printf("    0x%02x", attrNum);
+                            	logger.logInfo("    0x%02x", attrNum);
                                 break;
                         }
 
@@ -1019,15 +1019,15 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                 switch(formID)
                                 {
                                     case DW_FORM_addr:
-                                        printf(":DW_FORM_addr\n");
+                                    	logger.logInfo(":DW_FORM_addr\n");
                                         break;
 
                                     case DW_FORM_block2:
-                                        printf(":DW_FORM_block2\n");
+                                    	logger.logInfo(":DW_FORM_block2\n");
                                         break;
 
                                     case DW_FORM_block4:
-                                        printf(":DW_FORM_block4\n");
+                                    	logger.logInfo(":DW_FORM_block4\n");
                                         break;
 
                                     case DW_FORM_data1:
@@ -1042,7 +1042,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         else
                                         {
                                             char data = (char) udata;
-                                            printf(":DW_FORM_data1:%u\n", data);
+                                            logger.logInfo(":DW_FORM_data1:%u\n", data);
                                         }
                                         break;
                                     }
@@ -1059,7 +1059,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         else
                                         {
                                             unsigned short data = (unsigned short) udata;
-                                            printf(":DW_FORM_data2:%u\n", data);
+                                            logger.logInfo(":DW_FORM_data2:%u\n", data);
                                         }
                                         break;
                                     }
@@ -1076,7 +1076,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         else
                                         {
                                             unsigned int data = (unsigned int) udata;
-                                            printf(":DW_FORM_data4:%u\n", data);
+                                            logger.logInfo(":DW_FORM_data4:%u\n", data);
                                         }
                                         break;
                                     }
@@ -1092,7 +1092,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         }
                                         else
                                         {
-                                            printf(":DW_FORM_data8:%llu\n", udata);
+                                        	logger.logInfo(":DW_FORM_data8:%llu\n", udata);
                                         }
                                         break;
                                     }
@@ -1108,17 +1108,17 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         }
                                         else
                                         {
-                                            printf(":DW_FORM_string:%s\n", str);
+                                        	logger.logInfo(":DW_FORM_string:%s\n", str);
                                         }
                                         break;
                                     }
 
                                     case DW_FORM_block:
-                                        printf(":DW_FORM_block\n");
+                                    	logger.logInfo(":DW_FORM_block\n");
                                         break;
 
                                     case DW_FORM_sdata:
-                                        printf(":DW_FORM_sdata\n");
+                                    	logger.logInfo(":DW_FORM_sdata\n");
                                         break;
 
                                     case DW_FORM_strp:
@@ -1133,7 +1133,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         else
                                         {
                                             char *text = dwarfStringToChar(strp);
-                                            printf(":DW_FORM_strp:%s\n", text);
+                                            logger.logInfo(":DW_FORM_strp:%s\n", text);
                                         }
                                         break;
                                     }
@@ -1149,13 +1149,13 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         }
                                         else
                                         {
-                                            printf(":DW_FORM_udata:%llu\n", udata);
+                                        	logger.logInfo(":DW_FORM_udata:%llu\n", udata);
                                         }
                                         break;
                                     }
 
                                     case DW_FORM_ref_addr:
-                                        printf(":DW_FORM_ref_addr\n");
+                                    	logger.logInfo(":DW_FORM_ref_addr\n");
                                         break;
 
                                     case DW_FORM_ref1:
@@ -1170,7 +1170,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         else
                                         {
                                             char data = (char) ref;
-                                            printf(":DW_FORM_ref1:%u\n", data);
+                                            logger.logInfo(":DW_FORM_ref1:%u\n", data);
                                         }
                                         break;
                                     }
@@ -1187,7 +1187,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         else
                                         {
                                             unsigned short int data = (unsigned short int) ref;
-                                            printf(":DW_FORM_ref2:%u\n", data);
+                                            logger.logInfo(":DW_FORM_ref2:%u\n", data);
                                         }
                                         break;
                                     }
@@ -1204,7 +1204,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         else
                                         {
                                             unsigned int data = (unsigned int) ref;
-                                            printf(":DW_FORM_ref4:%u\n", data);
+                                            logger.logInfo(":DW_FORM_ref4:%u\n", data);
                                         }
                                         break;
                                     }
@@ -1220,37 +1220,37 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                                         }
                                         else
                                         {
-                                            printf(":DW_FORM_ref4:%llu\n", ref);
+                                        	logger.logInfo(":DW_FORM_ref4:%llu\n", ref);
                                         }
                                         break;
                                     }
 
                                     case DW_FORM_ref_udata:
-                                        printf(":DW_FORM_ref_udata\n");
+                                    	logger.logInfo(":DW_FORM_ref_udata\n");
                                         break;
 
                                     case DW_FORM_indirect:
-                                        printf(":DW_FORM_indirect\n");
+                                    	logger.logInfo(":DW_FORM_indirect\n");
                                         break;
 
                                     case DW_FORM_sec_offset:
-                                        printf(":DW_FORM_sec_offset\n");
+                                    	logger.logInfo(":DW_FORM_sec_offset\n");
                                         break;
 
                                     case DW_FORM_exprloc:
-                                        printf(":DW_FORM_exprloc\n");
+                                    	logger.logInfo(":DW_FORM_exprloc\n");
                                         break;
 
                                     case DW_FORM_flag_present:
-                                        printf(":DW_FORM_flag_present\n");
+                                    	logger.logInfo(":DW_FORM_flag_present\n");
                                         break;
 
                                     case DW_FORM_ref_sig8:
-                                        printf(":DW_FORM_ref_sig8\n");
+                                    	logger.logInfo(":DW_FORM_ref_sig8\n");
                                         break;
 
                                     default:
-                                        printf(":0x%02x\n", formID);
+                                    	logger.logInfo(":0x%02x\n", formID);
                                         break;
 
                                 }
@@ -1258,7 +1258,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
                         }
                     }
                 }
-                printf("\n");
+                logger.logInfo("\n");
             }
         }
     }
@@ -1971,7 +1971,7 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                 }
                 else
                 {
-                    printf("\n");
+                	logger.logInfo("\n");
                 }
 
             	DisplayDie(cur_die);
