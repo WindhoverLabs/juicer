@@ -7,6 +7,7 @@
 
 #include "../src/ElfFile.h"
 #include "catch.hpp"
+#include <limits.h>
 
 
 /**
@@ -16,10 +17,14 @@
 TEST_CASE( "Correctness of a Module object instance", "[Module] " ) {
     std::string newElfName{"ABC"};
     uint32_t    elfId = 102;
-    ElfFile      myElf{newElfName};
+    ElfFile     myElf{newElfName};
+    char        resolvedPath[PATH_MAX];
+
+    realpath(newElfName.c_str(), resolvedPath);
+    newElfName.clear();
+    newElfName.insert(0, resolvedPath);
 
     myElf.setId(elfId);
-
     REQUIRE( myElf.getName() == newElfName );
     REQUIRE( myElf.getId() == elfId );
 

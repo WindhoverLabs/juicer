@@ -9,6 +9,7 @@
 #include "catch.hpp"
 #include "Field.h"
 #include "Enumeration.h"
+#include <limits.h>
 
 /**
  *@todo This testing elf is not done yet.
@@ -197,7 +198,12 @@ TEST_CASE( "Test the correctness of constructor Symbol(elf &elf) ", "[Symbol]" )
 {
     std::string newElfName{"ABC"};
     ElfFile      myelf{newElfName};
-    Symbol newSymbol{myelf};
+    Symbol      newSymbol{myelf};
+    char        resolvedPath[PATH_MAX];
+
+    realpath(newElfName.c_str(), resolvedPath);
+    newElfName.clear();
+    newElfName.insert(0, resolvedPath);
 
     REQUIRE(newSymbol.getElf().getName() == newElfName);
 }
@@ -211,8 +217,13 @@ TEST_CASE( "Test the correctness of constructor Symbol(elf &elf,"
     ElfFile      myelf{newElfName};
     std::string symbolName{"string"};
     uint32_t    byteSize{8};
+    char        resolvedPath[PATH_MAX];
 
     Symbol newSymbol{myelf, symbolName, byteSize};
+
+    realpath(newElfName.c_str(), resolvedPath);
+    newElfName.clear();
+    newElfName.insert(0, resolvedPath);
 
     REQUIRE(newSymbol.getElf().getName() == newElfName);
     REQUIRE(newSymbol.getName() == symbolName);
@@ -225,10 +236,15 @@ TEST_CASE( "Test the correctness of constructor Symbol(const Symbol &symbol)", "
     ElfFile      myelf{newElfName};
     std::string symbolName{"string"};
     uint32_t    byteSize{8};
+    char        resolvedPath[PATH_MAX];
 
     Symbol copySymbol{myelf, symbolName, byteSize};
 
     Symbol constSymbol{copySymbol}; // @suppress("Invalid arguments")
+
+    realpath(newElfName.c_str(), resolvedPath);
+    newElfName.clear();
+    newElfName.insert(0, resolvedPath);
 
     REQUIRE(constSymbol.getElf().getName() == newElfName);
     REQUIRE(constSymbol.getName() == symbolName);
