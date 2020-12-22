@@ -73,6 +73,8 @@ private:
     uint32_t                               id;
     Logger                                 logger;
     std::vector<std::unique_ptr<Symbol>>   symbols;
+
+    void normalizePath(std::string&);
 };
 
 #endif /* ElfFile_H_ */
