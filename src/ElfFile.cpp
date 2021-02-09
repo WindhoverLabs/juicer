@@ -10,12 +10,18 @@
 #include "Symbol.h"
 #include "Field.h"
 #include "Enumeration.h"
+#include <limits.h>
 
-
+/**
+ *@brief
+ *
+ *@param inName This is a path to the Elf File.
+ */
 ElfFile::ElfFile(std::string &inName) :
     name{inName}, // @suppress("Symbol is not resolved")
     id{0}
 {
+    normalizePath(name);
     logger.logDebug("Elf '%s' created.", getName().c_str());
 }
 
@@ -49,12 +55,17 @@ std::string ElfFile::getName() const
 }
 
 
-
+/**
+ *@brief
+ *
+ *@note Absolute paths are enforced.
+ */
 void ElfFile::setName(std::string &inName)
 {
     logger.logDebug("Module %s renamed to %s.", name.c_str(), inName.c_str());
 
-	this->name = inName;
+    this->name = inName;
+    normalizePath(name);
 }
 
 
@@ -220,4 +231,21 @@ std::vector<Enumeration*> ElfFile::getEnumerations()
 	}
 
 	return outEnumerations;
+}
+
+/**
+ *Converts the path into an absolute path.
+ */
+void ElfFile::normalizePath(std::string& path)
+{
+  char resolvedPath[PATH_MAX];
+  realpath(path.c_str(), resolvedPath);
+
+  /**
+   * Whether std::string::clear deallocates memory or not is, like many things in the standard,
+   * implementation-defined.
+   * One may read more details about this here:https://en.cppreference.com/w/cpp/string/basic_string/clear
+   */
+  path.clear();
+  path.insert(0, resolvedPath);
 }
