@@ -1292,31 +1292,33 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
             logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
                     dwarf_errmsg(error));
         }
-    }
-
-    /* See if we already have this symbol. */
-    cName = dieName;
-    outSymbol = elf.getSymbol(cName);
-    if(outSymbol == 0)
-    {
-        /* No.  This is new.  Process it. */
-
-        /* Get the size of this datatype. */
-        if(res == DW_DLV_OK)
+        else
         {
-            res = dwarf_bytesize(inDie, &byteSize, &error);
-            if(res != DW_DLV_OK)
-            {
-                logger.logError("Error in dwarf_bytesize.  %u  errno=%u %s", __LINE__, dwarf_errno(error),
-                    dwarf_errmsg(error));
-            }
-        }
+			/* See if we already have this symbol. */
+			cName = dieName;
+			outSymbol = elf.getSymbol(cName);
+			if(outSymbol == 0)
+			{
+				/* No.  This is new.  Process it. */
 
-        /* We have everything we need.  Add this to the elf. */
-        if(res == DW_DLV_OK)
-        {
-            std::string sDieName = dieName;
-            outSymbol = elf.addSymbol(sDieName, byteSize);
+				/* Get the size of this datatype. */
+				if(res == DW_DLV_OK)
+				{
+					res = dwarf_bytesize(inDie, &byteSize, &error);
+					if(res != DW_DLV_OK)
+					{
+						logger.logError("Error in dwarf_bytesize.  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+							dwarf_errmsg(error));
+					}
+				}
+
+				/* We have everything we need.  Add this to the elf. */
+				if(res == DW_DLV_OK)
+				{
+					std::string sDieName = dieName;
+					outSymbol = elf.addSymbol(sDieName, byteSize);
+				}
+			}
         }
     }
 
@@ -1619,7 +1621,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                             res = dwarf_formudata(attr_struct, &memberLocation, &error);
                             if(res != DW_DLV_OK)
                             {
-                                logger.logError("Error in dwarf_formudata , level %d.  errno=%u %s", dwarf_errno(error),
+                                logger.logError("Error in dwarf_formudata , errno=%u %s", dwarf_errno(error),
                                     dwarf_errmsg(error));
                             }
                         }
@@ -2174,7 +2176,7 @@ JuicerEndianness_t Juicer::getEndianness()
 
 			ident_buffer = elf_hdr_64->e_ident;
 
-			if(ident_buffer[EI_DATA] == 0)
+			if(ident_buffer[EI_DATA] == 2)
 			{
 				rc = JUICER_ENDIAN_BIG;
 			}
@@ -2203,7 +2205,7 @@ JuicerEndianness_t Juicer::getEndianness()
 
 			ident_buffer = elf_hdr_32->e_ident;
 
-			if(ident_buffer[EI_DATA] == 0)
+			if(ident_buffer[EI_DATA] == 2)
 			{
 				rc = JUICER_ENDIAN_BIG;
 			}
@@ -2309,6 +2311,11 @@ int Juicer::parse( std::string& elfFilePath)
             elf->isLittleEndian(JUICER_ENDIAN_BIG == endianness?
             					false: true);
             elf->setDate(date);
+
+            std::cout << "*****************************" << std::endl;
+            std::cout << JUICER_ENDIAN_BIG << std::endl;
+            std::cout << JUICER_ENDIAN_LITTLE << std::endl;
+            std::cout << endianness << std::endl;
 
             if(JUICER_ENDIAN_BIG == endianness)
             {
