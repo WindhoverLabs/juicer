@@ -121,7 +121,7 @@ private:
 	IDataContainer *idc = 0;
 	bool isIDCSet(void);
 	Symbol * getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &multiplicity);
-	void DisplayDie(Dwarf_Die inDie);
+	void DisplayDie(Dwarf_Die inDie, uint32_t level);
 
 };
 
