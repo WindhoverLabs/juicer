@@ -3521,11 +3521,11 @@ JuicerEndianness_t Juicer::getEndianness()
 
 			ident_buffer = elf_hdr_64->e_ident;
 
-			if(ident_buffer[EI_DATA] == 2)
+			if(ident_buffer[EI_DATA] == ELFDATA2MSB)
 			{
 				rc = JUICER_ENDIAN_BIG;
 			}
-			else if(ident_buffer[EI_DATA] == 1)
+			else if(ident_buffer[EI_DATA] == ELFDATA2LSB)
 			{
 				rc = JUICER_ENDIAN_LITTLE;
 			}
@@ -3550,11 +3550,11 @@ JuicerEndianness_t Juicer::getEndianness()
 
 			ident_buffer = elf_hdr_32->e_ident;
 
-			if(ident_buffer[EI_DATA] == 2)
+			if(ident_buffer[EI_DATA] == ELFDATA2MSB)
 			{
 				rc = JUICER_ENDIAN_BIG;
 			}
-			else if(ident_buffer[EI_DATA] == 1)
+			else if(ident_buffer[EI_DATA] == ELFDATA2LSB)
 			{
 				rc = JUICER_ENDIAN_LITTLE;
 			}
@@ -3653,8 +3653,6 @@ int Juicer::parse( std::string& elfFilePath)
             std::string date {""};
 
             elf->setChecksum(checkSum);
-            elf->isLittleEndian(JUICER_ENDIAN_BIG == endianness?
-            					false: true);
             elf->setDate(date);
 
             if(JUICER_ENDIAN_BIG == endianness)
@@ -3672,6 +3670,9 @@ int Juicer::parse( std::string& elfFilePath)
                 logger.logError("Endian is unknown. Aborting parse.");
                 return_value = JUICER_ERROR;
             }
+
+            elf->isLittleEndian(JUICER_ENDIAN_BIG == endianness?
+                                false: true);
         }
 
         if(JUICER_OK == return_value)
