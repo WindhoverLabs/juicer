@@ -2940,6 +2940,24 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                                     {
                                     	if(bdata->bl_from_loclist == 0)
                                     	{
+                                    		/*
+                                    		7.6 Variable Length Data
+                                    		Integers may be encoded using “Little Endian Base 128” (LEB128) numbers. LEB128 is a
+                                    		scheme for encoding integers densely that exploits the assumption that most integers are small in
+                                    		magnitude.
+                                    		This encoding is equally suitable whether the target machine architecture represents data in big-
+                                    		endian or little-endian order. It is “little-endian” only in the sense that it avoids using space to
+                                    		represent the “big” end of an unsigned integer, when the big end is all zeroes or sign extension
+                                    		bits.
+                                    		Unsigned LEB128 (ULEB128) numbers are encoded as follows: start at the low order end of an
+                                    		unsigned integer and chop it into 7-bit chunks. Place each chunk into the low order 7 bits of a
+                                    		byte. Typically, several of the high order bytes will be zero; discard them. Emit the remaining
+                                    		bytes in a stream, starting with the low order byte; set the high order bit on each byte except the
+                                    		last emitted byte. The high bit of zero on the last byte indicates to the decoder that it has
+                                    		encountered the last byte.
+                                    		The integer zero is a special case, consisting of a single zero byte.
+                                    		*/
+
                                     	    uint8_t *data = (uint8_t*)bdata->bl_data;
                                     		if(DW_OP_plus_uconst == data[0])
                                     		{
