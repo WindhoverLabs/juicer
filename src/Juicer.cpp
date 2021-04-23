@@ -584,6 +584,11 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
 
                     if(nullptr != outSymbol)
                     {
+                        if(outSymbol->getName().compare("CFE_EVS_TlmPkt_Payload_t") == 0 )
+                        {
+                            std::cout<<"break here ";
+                        }
+
                     	process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
                     }
                 }
@@ -2548,9 +2553,9 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
 {
     int             res = DW_DLV_OK;
     Dwarf_Unsigned  byteSize = 0;
-    char            *dieName = 0;
+    char            *dieName = nullptr;
     Dwarf_Attribute attr_struct;
-    Symbol          *outSymbol;
+    Symbol          *outSymbol = nullptr;
     std::string     cName;
 
     /* Get the name attribute of this Die. */
@@ -2570,7 +2575,27 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
             logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
                     dwarf_errmsg(error));
         }
-        else
+    }
+
+    /* See if we already have this symbol. */
+    if(dieName == nullptr)
+    {
+        logger.logDebug("dieName is null.");
+    }
+
+    else
+    {
+        cName = dieName;
+    }
+
+    outSymbol = elf.getSymbol(cName);
+
+    if(outSymbol == 0)
+    {
+        /* No.  This is new.  Process it. */
+
+        /* Get the size of this datatype. */
+        if(res == DW_DLV_OK)
         {
 			/* See if we already have this symbol. */
 			cName = dieName;
@@ -2884,7 +2909,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                         /* Get the data member location attribute of this member. */
                         if(res == DW_DLV_OK)
                         {
-                            res = dwarf_attr(memberDie, DW_AT_data_member_location, &attr_struct, &error);
+                            res = dwarf_attr(memberDie, DW_AT_data_bit_offset, &attr_struct, &error);
                             if(res != DW_DLV_OK)
                             {
                                 logger.logWarning("Skipping %s.  Error in dwarf_attr(DW_AT_data_member_location).  %u  errno=%u %s", memberName, __LINE__, dwarf_errno(error),
@@ -3538,18 +3563,17 @@ JuicerEndianness_t Juicer::getEndianness()
 			elf_hdr_64 = elf64_getehdr(elf);
 
 			ident_buffer = elf_hdr_64->e_ident;
-
-			if(ident_buffer[EI_DATA] == ELFDATA2MSB)
+			if(ident_buffer[EI_DATA] == ELFDATA2LSB)
 			{
 				rc = JUICER_ENDIAN_BIG;
 			}
-			else if(ident_buffer[EI_DATA] == ELFDATA2LSB)
+			else if(ident_buffer[EI_DATA] == ELFDATA2MSB)
 			{
 				rc = JUICER_ENDIAN_LITTLE;
 			}
 			else
 			{
-				rc = JUICER_ENDIAN_UNKNOWN;
+				rc = JUICER_ENDIAN_BIG;
 			}
 			elf_end(elf);
 		}
@@ -3568,13 +3592,13 @@ JuicerEndianness_t Juicer::getEndianness()
 
 			ident_buffer = elf_hdr_32->e_ident;
 
-			if(ident_buffer[EI_DATA] == ELFDATA2MSB)
-			{
-				rc = JUICER_ENDIAN_BIG;
-			}
-			else if(ident_buffer[EI_DATA] == ELFDATA2LSB)
+			if(ident_buffer[EI_DATA] == ELFDATA2LSB)
 			{
 				rc = JUICER_ENDIAN_LITTLE;
+			}
+			else if(ident_buffer[EI_DATA] == ELFDATA2MSB)
+			{
+				rc =  JUICER_ENDIAN_BIG;
 			}
 			else
 			{
