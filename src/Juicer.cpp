@@ -584,11 +584,6 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
 
                     if(nullptr != outSymbol)
                     {
-                        if(outSymbol->getName().compare("CFE_EVS_TlmPkt_Payload_t") == 0 )
-                        {
-                            std::cout<<"break here ";
-                        }
-
                     	process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
                     }
                 }
