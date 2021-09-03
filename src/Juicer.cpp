@@ -757,6 +757,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
                 /* Get the upper bound. */
                 if(res == DW_DLV_OK)
                 {
+//                    DW_ORD_row_major
                     res = dwarf_attr(dieSubrangeType, DW_AT_upper_bound, &attr_struct, &error);
                     if(res != DW_DLV_OK)
                     {
@@ -779,6 +780,25 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
                     {
                         multiplicity = dwfUpperBound + 1;
                     }
+
+                    Dwarf_Unsigned array_order;
+                    res = dwarf_attr(typeDie, DW_AT_ordering, &attr_struct, &error);
+                    if(res != DW_DLV_OK)
+                    {
+                        logger.logError("Error in dwarf_attr(DW_AT_upper_bound).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                            dwarf_errmsg(error));
+                    }
+
+                    if(res == DW_DLV_OK)
+                    {
+                        res = dwarf_formudata(attr_struct, &array_order, &error);
+                        if(res != DW_DLV_OK)
+                        {
+                            logger.logError("Error in dwarf_formudata.  errno=%u %s", dwarf_errno(error),
+                                    dwarf_errmsg(error));
+                        }
+                    }
+                    std::cout<<"ordering-->"<< array_order<<std::endl;
                 }
 
                 break;
