@@ -757,6 +757,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
                 /* Get the upper bound. */
                 if(res == DW_DLV_OK)
                 {
+//                    DW_ORD_row_major
                     res = dwarf_attr(dieSubrangeType, DW_AT_upper_bound, &attr_struct, &error);
                     if(res != DW_DLV_OK)
                     {
@@ -924,6 +925,17 @@ void Juicer::DisplayDie(Dwarf_Die inDie)
 
         abbrevCode = dwarf_die_abbrev_code(inDie);
         logger.logDebug("  Abbrev code:         %i\n", abbrevCode);
+
+        res = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
+        if(res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_die_abbrev_children_flag.  errno=%u %s", dwarf_errno(error),
+                    dwarf_errmsg(error));
+        }
+        else
+        {
+        	logger.logDebug("  Has children:        %s\n", hasChildrenFlag ? "True" : "False");
+        }
 
         res = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
         if(res != DW_DLV_OK)
