@@ -757,7 +757,6 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
                 /* Get the upper bound. */
                 if(res == DW_DLV_OK)
                 {
-//                    DW_ORD_row_major
                     res = dwarf_attr(dieSubrangeType, DW_AT_upper_bound, &attr_struct, &error);
                     if(res != DW_DLV_OK)
                     {
@@ -781,24 +780,11 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
                         multiplicity = dwfUpperBound + 1;
                     }
 
-                    Dwarf_Unsigned array_order;
-                    res = dwarf_attr(typeDie, DW_AT_ordering, &attr_struct, &error);
-                    if(res != DW_DLV_OK)
-                    {
-                        logger.logError("Error in dwarf_attr(DW_AT_upper_bound).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
-                            dwarf_errmsg(error));
-                    }
+                    std::vector<Dwarf_Die> siblings = getSiblingsVector(dbg, dieSubrangeType);
 
-                    if(res == DW_DLV_OK)
-                    {
-                        res = dwarf_formudata(attr_struct, &array_order, &error);
-                        if(res != DW_DLV_OK)
-                        {
-                            logger.logError("Error in dwarf_formudata.  errno=%u %s", dwarf_errno(error),
-                                    dwarf_errmsg(error));
-                        }
-                    }
-                    std::cout<<"ordering-->"<< array_order<<std::endl;
+                    //TODO: Multiply (calcArraySizeForAllDims() * multiplicity) to get the total amount of elements in array,
+                    // including all dimensions. I should move that complexity into calcArraySizeForAllDims...
+                    std::cout<<"number of siblings-->"<<calcArraySizeForAllDims(dbg, dieSubrangeType)<<std::endl;
                 }
 
                 break;
@@ -2369,6 +2355,153 @@ int Juicer::parse( std::string& elfFilePath)
     }
 
     return return_value;
+}
+
+int Juicer::calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die dieSubrangeType)
+{
+
+    Dwarf_Unsigned  dwfUpperBound = 0;
+    Dwarf_Attribute attr_struct;
+    Dwarf_Error error;
+
+    int res = DW_DLV_OK;
+    int dimSize = 0;
+    /* Now lets get the array size.  Get the array size by getting
+     * the first child, which should be the subrange_type. */
+
+    /* Make sure this is the subrange_type tag. */
+    if(res == DW_DLV_OK)
+    {
+        Dwarf_Half childTag;
+
+        res = dwarf_tag(dieSubrangeType, &childTag, &error);
+        if(res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_tag.  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                dwarf_errmsg(error));
+        }
+        else
+        {
+            if(childTag != DW_TAG_subrange_type)
+            {
+                logger.logError("Unexpected child in array.  tag=%u", childTag);
+
+                res = DW_DLV_ERROR;
+            }
+        }
+    }
+
+    /* Get the upper bound. */
+    if(res == DW_DLV_OK)
+    {
+        res = dwarf_attr(dieSubrangeType, DW_AT_upper_bound, &attr_struct, &error);
+        if(res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_attr(DW_AT_upper_bound).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                dwarf_errmsg(error));
+        }
+
+        if(res == DW_DLV_OK)
+        {
+            res = dwarf_formudata(attr_struct, &dwfUpperBound, &error);
+            if(res != DW_DLV_OK)
+            {
+                logger.logError("Error in dwarf_formudata.  errno=%u %s", dwarf_errno(error),
+                        dwarf_errmsg(error));
+            }
+        }
+
+        /* Set the multiplicity argument. */
+        if(res == DW_DLV_OK)
+        {
+        	dimSize += dwfUpperBound + 1;
+        }
+    }
+
+    return dimSize;
+}
+
+/**
+ *
+ * @return The number of elements in the die array entry, including all dimensions. It is assumed that die is the first
+ * child of a DW_TAG_array_type die, which should be DW_TAG_subrange_type
+ */
+int Juicer::calcArraySizeForAllDims(Dwarf_Debug dbg, Dwarf_Die die)
+{
+    Dwarf_Die       dieSubrangeType;
+    Dwarf_Unsigned  dwfUpperBound = 0;
+    Dwarf_Attribute attr_struct;
+
+    int arraySize = 0;
+
+    std::vector<Dwarf_Die>  siblings = getSiblingsVector(dbg, die);
+
+    for(auto sibling: siblings)
+    {
+    	if (arraySize == 0)
+    			arraySize = 1;
+
+    	arraySize *= calcArraySizeForDimension(dbg, sibling);
+    }
+
+    return arraySize;
+
+}
+
+/**
+ *Very useful for counting sibling sibling with tags such as DW_TAG_subrange_type
+ *to figure out the size of multidimensional arrays.
+ */
+int Juicer::getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die)
+{
+    int res = DW_DLV_OK;
+    int siblingCount = 0;
+
+    Dwarf_Error error;
+    Dwarf_Die   sibling_die;
+
+    res = dwarf_siblingof(dbg, die, &sibling_die, &error);
+
+    if(res != DW_DLV_OK)
+    {
+        logger.logWarning("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error),
+                dwarf_errmsg(error));
+    }
+    else
+    {
+    	siblingCount = 1;
+    	return siblingCount += getNumberOfSiblingsForDie(dbg, sibling_die);
+    }
+
+    return siblingCount;
+}
+
+std::vector<Dwarf_Die> Juicer::getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die)
+{
+    int res = DW_DLV_OK;
+    std::vector<Dwarf_Die> siblingList{};
+
+    Dwarf_Error error;
+    Dwarf_Die   sibling_die;
+
+    int siblingCount =  getNumberOfSiblingsForDie(dbg, die);
+
+    for(int sibling =0; sibling<siblingCount; sibling++)
+    {
+    	res = dwarf_siblingof(dbg, die, &sibling_die, &error);
+        if(res != DW_DLV_OK)
+        {
+            logger.logWarning("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error),
+                    dwarf_errmsg(error));
+        }
+        else
+        {
+        	siblingList.push_back(sibling_die);
+        	die = sibling_die;
+        }
+    }
+
+    return siblingList;
 }
 
 void Juicer::setIDC(IDataContainer *inIdc)

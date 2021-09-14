@@ -123,6 +123,12 @@ private:
 	Symbol * getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &multiplicity);
 	void DisplayDie(Dwarf_Die inDie);
 
+    std::vector<Dwarf_Die> getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die);
+    int getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die);
+
+    int calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);
+    int calcArraySizeForAllDims(Dwarf_Debug dbg,Dwarf_Die die);
+
 };
 
 #endif /* JUICER_H_ */
