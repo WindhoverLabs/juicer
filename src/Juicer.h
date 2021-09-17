@@ -124,6 +124,7 @@ private:
 	void DisplayDie(Dwarf_Die inDie);
 
     std::vector<Dwarf_Die> getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die);
+    std::vector<Dwarf_Die> getChildrenVector(Dwarf_Debug dbg, Dwarf_Die die);
     int getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die);
 
     int calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);

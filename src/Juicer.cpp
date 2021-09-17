@@ -712,81 +712,14 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
 
             case DW_TAG_array_type:
             {
-                Dwarf_Die dieSubrangeType;
-                Dwarf_Unsigned dwfUpperBound = 0;
-
-                logger.logDebug("DW_TAG_array_type");
-
                 /* First get the base type itself. */
                 outSymbol = getBaseTypeSymbol(elf, typeDie, multiplicity);
 
-                /* Now lets get the array size.  Get the array size by getting
-                 * the first child, which should be the subrange_type. */
-                if(res == DW_DLV_OK)
-                {
-                    res = dwarf_child(typeDie, &dieSubrangeType, &error);
-                    if(res == DW_DLV_ERROR)
-                    {
-                        logger.logError("Error in dwarf_child. errno=%u %s", dwarf_errno(error),
-                                dwarf_errmsg(error));
-                    }
-                }
-
-                /* Make sure this is the subrange_type tag. */
-                if(res == DW_DLV_OK)
-                {
-                    Dwarf_Half childTag;
-
-                    res = dwarf_tag(dieSubrangeType, &childTag, &error);
-                    if(res != DW_DLV_OK)
-                    {
-                        logger.logError("Error in dwarf_tag.  %u  errno=%u %s", __LINE__, dwarf_errno(error),
-                            dwarf_errmsg(error));
-                    }
-                    else
-                    {
-                        if(childTag != DW_TAG_subrange_type)
-                        {
-                            logger.logError("Unexpected child in array.  tag=%u", tag);
-
-                            res = DW_DLV_ERROR;
-                        }
-                    }
-                }
-
-                /* Get the upper bound. */
-                if(res == DW_DLV_OK)
-                {
-//                    DW_ORD_row_major
-                    res = dwarf_attr(dieSubrangeType, DW_AT_upper_bound, &attr_struct, &error);
-                    if(res != DW_DLV_OK)
-                    {
-                        logger.logError("Error in dwarf_attr(DW_AT_upper_bound).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
-                            dwarf_errmsg(error));
-                    }
-
-                    if(res == DW_DLV_OK)
-                    {
-                        res = dwarf_formudata(attr_struct, &dwfUpperBound, &error);
-                        if(res != DW_DLV_OK)
-                        {
-                            logger.logError("Error in dwarf_formudata.  errno=%u %s", dwarf_errno(error),
-                                    dwarf_errmsg(error));
-                        }
-                    }
-
-                    /* Set the multiplicity argument. */
-                    if(res == DW_DLV_OK)
-                    {
-                        multiplicity = dwfUpperBound + 1;
-                    }
-
-                    std::vector<Dwarf_Die> siblings = getSiblingsVector(dbg, dieSubrangeType);
-
-                    //TODO: Multiply (calcArraySizeForAllDims() * multiplicity) to get the total amount of elements in array,
-                    // including all dimensions. I should move that complexity into calcArraySizeForAllDims...
-                    std::cout<<"number of siblings-->"<<calcArraySizeForAllDims(dbg, dieSubrangeType)<<std::endl;
-                }
+				/* Set the multiplicity argument. */
+				if(res == DW_DLV_OK)
+				{
+					multiplicity = calcArraySizeForAllDims(dbg, typeDie);
+				}
 
                 break;
             }
@@ -2374,7 +2307,6 @@ int Juicer::calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die dieSubrangeType
 
     Dwarf_Unsigned  dwfUpperBound = 0;
     Dwarf_Attribute attr_struct;
-    Dwarf_Error error;
 
     int res = DW_DLV_OK;
     int dimSize = 0;
@@ -2435,25 +2367,20 @@ int Juicer::calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die dieSubrangeType
 
 /**
  *
- * @return The number of elements in the die array entry, including all dimensions. It is assumed that die is the first
- * child of a DW_TAG_array_type die, which should be DW_TAG_subrange_type
+ * @return The number of elements in the die array entry, including all dimensions. It is assumed that die is of type
+ * DW_TAG_array_type.
  */
 int Juicer::calcArraySizeForAllDims(Dwarf_Debug dbg, Dwarf_Die die)
 {
-    Dwarf_Die       dieSubrangeType;
-    Dwarf_Unsigned  dwfUpperBound = 0;
-    Dwarf_Attribute attr_struct;
-
     int arraySize = 0;
-
-    std::vector<Dwarf_Die>  siblings = getSiblingsVector(dbg, die);
+    std::vector<Dwarf_Die>  siblings = getChildrenVector(dbg, die);
 
     for(auto sibling: siblings)
     {
     	if (arraySize == 0)
     			arraySize = 1;
 
-    	arraySize *= calcArraySizeForDimension(dbg, sibling);
+    	arraySize = arraySize * calcArraySizeForDimension(dbg, sibling);
     }
 
     return arraySize;
@@ -2469,7 +2396,6 @@ int Juicer::getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die)
     int res = DW_DLV_OK;
     int siblingCount = 0;
 
-    Dwarf_Error error;
     Dwarf_Die   sibling_die;
 
     res = dwarf_siblingof(dbg, die, &sibling_die, &error);
@@ -2493,7 +2419,6 @@ std::vector<Dwarf_Die> Juicer::getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die)
     int res = DW_DLV_OK;
     std::vector<Dwarf_Die> siblingList{};
 
-    Dwarf_Error error;
     Dwarf_Die   sibling_die;
 
     int siblingCount =  getNumberOfSiblingsForDie(dbg, die);
@@ -2514,6 +2439,51 @@ std::vector<Dwarf_Die> Juicer::getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die)
     }
 
     return siblingList;
+}
+
+/**
+ *@brief Get all of the children of the die in a nice STL vector.
+ */
+std::vector<Dwarf_Die> Juicer::getChildrenVector(Dwarf_Debug dbg, Dwarf_Die parentDie)
+{
+    int res = DW_DLV_OK;
+    std::vector<Dwarf_Die> childList{};
+
+    Dwarf_Die   childDie;
+
+    int childCount = 0;
+
+    //Get the first sibling
+    res = dwarf_child(parentDie, &childDie, &error);
+    if(res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_child. errno=%u %s", dwarf_errno(error),
+                dwarf_errmsg(error));
+    }
+
+    if(res == DW_DLV_OK)
+    {
+		childList.push_back(childDie);
+        childCount = getNumberOfSiblingsForDie(dbg, childDie) + 1;
+    	//Get all of the siblings, including the very first one.
+        Dwarf_Die siblingDie;
+		for(int child =0; child<childCount; child++)
+		{
+			res = dwarf_siblingof(dbg, childDie, &siblingDie, &error);
+			if(res != DW_DLV_OK)
+			{
+				logger.logWarning("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error),
+						dwarf_errmsg(error));
+			}
+			else
+			{
+				childList.push_back(siblingDie);
+				childDie = siblingDie;
+			}
+		}
+    }
+
+    return childList;
 }
 
 void Juicer::setIDC(IDataContainer *inIdc)

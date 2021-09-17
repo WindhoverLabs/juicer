@@ -20,6 +20,8 @@ typedef struct
     int32_t length;
     uint8_t more_stuff;
     float floating_stuff;
+    float matrix3D[3][3][3];
+    float matrix1D[3];
 }Square;
 
 struct Circle
