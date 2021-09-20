@@ -3605,15 +3605,15 @@ JuicerEndianness_t Juicer::getEndianness()
 			ident_buffer = elf_hdr_64->e_ident;
 			if(ident_buffer[EI_DATA] == ELFDATA2LSB)
 			{
-				rc = JUICER_ENDIAN_BIG;
+				rc = JUICER_ENDIAN_LITTLE;
 			}
 			else if(ident_buffer[EI_DATA] == ELFDATA2MSB)
 			{
-				rc = JUICER_ENDIAN_LITTLE;
+				rc = JUICER_ENDIAN_BIG;
 			}
 			else
 			{
-				rc = JUICER_ENDIAN_BIG;
+				rc = JUICER_ENDIAN_UNKNOWN;
 			}
 			elf_end(elf);
 		}
