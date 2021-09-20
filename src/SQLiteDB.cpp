@@ -530,20 +530,14 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
 
         if(SQLITE_OK == rc)
         {
-            logger.logDebug("Field values were written to the fields schema with "
-                            "SQLITE_OK status.");
-
             /*Write the id to this field so that other tables can use it as
              *a foreign key */
             sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
             field->setId(lastRowId);
-
-
         }
         else
         {
-            logger.logDebug("There was an error while data to the fields table.");
-            logger.logDebug("%s.", errorMessage);
+            logger.logError("There was an error while writing data to the fields table. %s.", errorMessage);
 
             if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
             {
@@ -608,8 +602,7 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
         }
         else
         {
-            logger.logDebug("There was an error while data to the enumerations table.");
-            logger.logDebug("%s.", errorMessage);
+            logger.logDebug("There was an error while writing data to the enumerations table. %s.", errorMessage);
 
             if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
             {

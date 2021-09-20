@@ -1,4 +1,5 @@
-ROOT_DIR     :=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+mkfile_path  := $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
+ROOT_DIR     := $(shell cd $(shell dirname $(mkfile_path)); pwd)
 BUILD_DIR    := $(ROOT_DIR)/build
 COVERAGE_DIR := $(BUILD_DIR)/coverage
 
