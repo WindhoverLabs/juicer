@@ -45,7 +45,8 @@
 #include <cmath>
 
 
-Juicer::Juicer()
+Juicer::Juicer():
+vxWorksEnabled{false}
 {
 }
 
@@ -2904,6 +2905,126 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
 
                         }
 
+					if (vxWorksEnabled) {
+						/* Get the actual data member location of this member. */
+						if (res == DW_DLV_OK) {
+							Dwarf_Half formID;
+
+							res = dwarf_whatform(attr_struct, &formID, &error);
+							if (res != DW_DLV_OK) {
+								logger.logError(
+										"Error in dwarf_whatform.  errno=%u line=%u  %s",
+										dwarf_errno(error),
+										__LINE__, dwarf_errmsg(error));
+							}
+
+                            switch(formID)
+                            {
+
+                            	case DW_FORM_data1:
+                            	{
+
+                                    res = dwarf_formudata(attr_struct, &udata, &error);
+                                    if(res != DW_DLV_OK)
+                                    {
+                            	        DisplayDie(memberDie, 99);
+
+                				        logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+                                            dwarf_errmsg(error));
+                                    }
+                                    else
+                                    {
+                                    	memberLocation = (uint32_t) udata;
+                                    }
+
+                                    break;
+                            	}
+
+                                case DW_FORM_udata:
+                                {
+                                    Dwarf_Unsigned udata = 0;
+
+                                    res = dwarf_formudata(attr_struct, &udata, &error);
+                                    if(res != DW_DLV_OK)
+                                    {
+                            	        DisplayDie(memberDie, 99);
+
+                				        logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+                                            dwarf_errmsg(error));
+                                    }
+                                    else
+                                    {
+                                    	memberLocation = (uint32_t) udata;
+                                    }
+
+                                    break;
+                                }
+                                case DW_FORM_block1:
+                                {
+                                    Dwarf_Block *bdata = 0;
+
+                                    res = dwarf_formblock(attr_struct, &bdata, &error);
+                                    if(res != DW_DLV_OK)
+                                    {
+                        				logger.logError("Error in dwarf_formblock.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+                                                dwarf_errmsg(error));
+                                    }
+                                    else
+                                    {
+                                    	if(bdata->bl_from_loclist == 0)
+                                    	{
+                                    		/*
+                                    		7.6 Variable Length Data
+                                    		Integers may be encoded using “Little Endian Base 128” (LEB128) numbers. LEB128 is a
+                                    		scheme for encoding integers densely that exploits the assumption that most integers are small in
+                                    		magnitude.
+                                    		This encoding is equally suitable whether the target machine architecture represents data in big-
+                                    		endian or little-endian order. It is “little-endian” only in the sense that it avoids using space to
+                                    		represent the “big” end of an unsigned integer, when the big end is all zeroes or sign extension
+                                    		bits.
+                                    		Unsigned LEB128 (ULEB128) numbers are encoded as follows: start at the low order end of an
+                                    		unsigned integer and chop it into 7-bit chunks. Place each chunk into the low order 7 bits of a
+                                    		byte. Typically, several of the high order bytes will be zero; discard them. Emit the remaining
+                                    		bytes in a stream, starting with the low order byte; set the high order bit on each byte except the
+                                    		last emitted byte. The high bit of zero on the last byte indicates to the decoder that it has
+                                    		encountered the last byte.
+                                    		The integer zero is a special case, consisting of a single zero byte.
+                                    		*/
+
+                                    	    uint8_t *data = (uint8_t*)bdata->bl_data;
+                                    		if(DW_OP_plus_uconst == data[0])
+                                    		{
+                                    			 int i = 0;
+                                    			 int shift = 0;
+                                    			 uint8_t *leb128 = &data[1];
+                                    			 memberLocation = 0;
+
+                                    			 for (i = 1; i < bdata->bl_len; ++i)
+                                    			 {
+                                    				 memberLocation |= (*leb128++ & ((1 << 7) - 1)) << shift; shift += 7;
+                                    			 }
+                                    		 }
+                                    	}
+                                    	else
+                                    	{
+                            				logger.logError("Cannot parse %s.  loclist %d not supported.  line=%u", memberName, __LINE__, bdata->bl_from_loclist);
+                                    	}
+
+                                    }
+
+                                    break;
+                        }
+
+                                default:
+									{
+									   logger.logError("Unable to parse '%s' member location. Unsupported form 0x%0x", memberName, formID);
+									   break;
+									}
+                            }
+						}
+                        }
+					else
+					{
                         /* Get the data member location attribute of this member. */
                         if(res == DW_DLV_OK)
                         {
@@ -2930,126 +3051,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                             	memberLocation = (uint32_t) udata;
                             }
                         }
-
-//                        This is horrid I know, I'll fix it. This should be configurable by the user.
-                        /* Get the actual data member location of this member. */
-                        if(res == DW_DLV_OK)
-                        {
-                            Dwarf_Half formID;
-
-                            res = dwarf_whatform(attr_struct, &formID, &error);
-                            if(res != DW_DLV_OK)
-                            {
-                                logger.logError("Error in dwarf_whatform.  errno=%u line=%u  %s", dwarf_errno(error),
-                                        __LINE__, dwarf_errmsg(error));
-                            }
-
-//                            switch(formID)
-//                            {
-//
-//                            	case DW_FORM_data1:
-//                            	{
-//
-//                                    res = dwarf_formudata(attr_struct, &udata, &error);
-//                                    if(res != DW_DLV_OK)
-//                                    {
-//                            	        DisplayDie(memberDie, 99);
-//
-//                				        logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-//                                            dwarf_errmsg(error));
-//                                    }
-//                                    else
-//                                    {
-//                                    	memberLocation = (uint32_t) udata;
-//                                    }
-//
-//                                    break;
-//                            	}
-//
-//                                case DW_FORM_udata:
-//                                {
-//                                    Dwarf_Unsigned udata = 0;
-//
-//                                    res = dwarf_formudata(attr_struct, &udata, &error);
-//                                    if(res != DW_DLV_OK)
-//                                    {
-//                            	        DisplayDie(memberDie, 99);
-//
-//                				        logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-//                                            dwarf_errmsg(error));
-//                                    }
-//                                    else
-//                                    {
-//                                    	memberLocation = (uint32_t) udata;
-//                                    }
-//
-//                                    break;
-//                                }
-//							#ifdef VX_WORKS
-//                                case DW_FORM_block1:
-//                                {
-//                                    Dwarf_Block *bdata = 0;
-//
-//                                    res = dwarf_formblock(attr_struct, &bdata, &error);
-//                                    if(res != DW_DLV_OK)
-//                                    {
-//                        				logger.logError("Error in dwarf_formblock.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-//                                                dwarf_errmsg(error));
-//                                    }
-//                                    else
-//                                    {
-//                                    	if(bdata->bl_from_loclist == 0)
-//                                    	{
-//                                    		/*
-//                                    		7.6 Variable Length Data
-//                                    		Integers may be encoded using “Little Endian Base 128” (LEB128) numbers. LEB128 is a
-//                                    		scheme for encoding integers densely that exploits the assumption that most integers are small in
-//                                    		magnitude.
-//                                    		This encoding is equally suitable whether the target machine architecture represents data in big-
-//                                    		endian or little-endian order. It is “little-endian” only in the sense that it avoids using space to
-//                                    		represent the “big” end of an unsigned integer, when the big end is all zeroes or sign extension
-//                                    		bits.
-//                                    		Unsigned LEB128 (ULEB128) numbers are encoded as follows: start at the low order end of an
-//                                    		unsigned integer and chop it into 7-bit chunks. Place each chunk into the low order 7 bits of a
-//                                    		byte. Typically, several of the high order bytes will be zero; discard them. Emit the remaining
-//                                    		bytes in a stream, starting with the low order byte; set the high order bit on each byte except the
-//                                    		last emitted byte. The high bit of zero on the last byte indicates to the decoder that it has
-//                                    		encountered the last byte.
-//                                    		The integer zero is a special case, consisting of a single zero byte.
-//                                    		*/
-//
-//                                    	    uint8_t *data = (uint8_t*)bdata->bl_data;
-//                                    		if(DW_OP_plus_uconst == data[0])
-//                                    		{
-//                                    			 int i = 0;
-//                                    			 int shift = 0;
-//                                    			 uint8_t *leb128 = &data[1];
-//                                    			 memberLocation = 0;
-//
-//                                    			 for (i = 1; i < bdata->bl_len; ++i)
-//                                    			 {
-//                                    				 memberLocation |= (*leb128++ & ((1 << 7) - 1)) << shift; shift += 7;
-//                                    			 }
-//                                    		 }
-//                                    	}
-//                                    	else
-//                                    	{
-//                            				logger.logError("Cannot parse %s.  loclist %d not supported.  line=%u", memberName, __LINE__, bdata->bl_from_loclist);
-//                                    	}
-//
-//                                    }
-//
-//                                    break;
-//                        }
-//						#endif
-//
-//                                default:
-//									{
-//									   logger.logError("Unable to parse '%s' member location. Unsupported form 0x%0x", memberName, formID);
-//									   break;
-//									}
-//                            }
-                        }
+					}
 
 
                         /* Get the base type die. */

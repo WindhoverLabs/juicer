@@ -96,6 +96,7 @@ public:
     void setIDC(IDataContainer *idc);
 
 private:
+    bool vxWorksEnabled;
 	Dwarf_Debug dbg = 0;
 	int res = DW_DLV_ERROR;
 	Dwarf_Error error = 0;
