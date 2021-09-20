@@ -10,6 +10,7 @@
 6. [Environment Setup](#environment-setup)
 7. [Testing](#testing)
 8. [DWARF Support](#dwarf_support)
+9. [vxWorks Support](#vxWorks)
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
@@ -38,7 +39,7 @@ git submodule update --init
 ```
 git checkout develop
 ```
-4. Our build system has a few build recepies. If all you want is to get jucier up and running,
+4. Our build system has a few build recipes. If all you want is to get jucier up and running,
 
 ```
 make
@@ -52,7 +53,7 @@ If you would like to run unit tests, you can do that too:
 make run-tests
 ```
 
-**NOTE:** Make sure you have all of the dependencies mentioned above. If you are missing any of those dependencies, juicer will *not* build. 
+**NOTE:** Make sure you have all the dependencies mentioned above. If you are missing any of those dependencies, juicer will *not* build. 
 
 
 
@@ -84,7 +85,7 @@ Square sq = {};
 int flat_array[] = {1,2,3,4,5,6};
 ```
 
-`juicer` uses DWARF debug information to extract all of the information. Because of this, you *must* pass the `-g` flag to `gcc` when compilling your source code:
+`juicer` uses DWARF debug information to extract all of the information. Because of this, you *must* pass the `-g` flag to `gcc` when compiling your source code:
 
 ```
 g++ -std=c++14  elf_file.cpp -g -c -o elf_file
@@ -138,11 +139,11 @@ You might ask where are its members...that's what the **fields** table is for.
 
 ![symbols](Images/fields_table.png "symbols-table")
 
-As you can see we have a few fields that match our Square struct's id, which is 16. Those fields belong to our struct `Square`. Also note the **type** column; this tells us the particular type a field is. A *type* is the type of a field as it appears in source code. This is symply an external key to the **symols** table. Also note our **flat_array** field; it has the *same* key for type and symbol; this is how arrays are stored, its size can be seen in the `multiplicity` column.
+As you can see we have a few fields that match our Square struct's id, which is 16. Those fields belong to our struct `Square`. Also note the **type** column; this tells us the particular type a field is. A *type* is the type of a field as it appears in source code. This is simply an external key to the **symbols** table. Also note our **flat_array** field; it has the *same* key for type and symbol; this is how arrays are stored, its size can be seen in the `multiplicity` column.
 
 This is how juicer stores data in the database.
 
-**NOTE**: Beware that it is absolutey fine to run juicer multiple times  on different binary files but on the *same* database. In fact juicer has been designed with this mind so that users can run juicer multiple times against any code base, no matter how large in size.
+**NOTE**: Beware that it is absolutely fine to run juicer multiple times  on different binary files but on the *same* database. In fact juicer has been designed with this mind so that users can run juicer multiple times against any code base, no matter how large in size.
 
 
 # GCC Compatibility <a name="compatibility"></a>
@@ -239,15 +240,21 @@ Note that we don't define a `main` function here so we define one very easily in
 	
 	#include "catch.hpp"
 	
-Yes, that's it! Catch2 will read the `CATCH_CONFIG_MAIN` and generate a `main` function for you. The `CATCH_CONFIG_COLOUR_NONE` is not necessary to run Catch2, but if you run into problems where the output will not render properly because it is colored(like in Eclipse), the you might find this macro useful. 
+Yes, that's it! Catch2 will read the `CATCH_CONFIG_MAIN` and generate a `main` function for you. The `CATCH_CONFIG_COLOUR_NONE` is not necessary to run Catch2, but if you run into problems where the output will not render properly because it is colored(like in Eclipse), then you might find this macro useful. 
 
 
-Now all you gotta do is build your project on Eclipse(or from the terminal) and then run all of your tests.
+Now all you have to do is build your project on Eclipse(or from the terminal) and then run all of your tests.
 
 You can run your tests like this:
 ```
 make run-tests
 ```
+To run a specific test:
+```
+cd build
+./juicer-ut "[ElfFile]"
+```
+Notice the tag "[ElfFile]" which was defined for the test case above.
 
 ### Generating Coverage Report
 
@@ -266,7 +273,7 @@ As juicer evolves, dwarf support will grow and evolve as well. At the moment, we
 | Name | Description |
 | ---| --- |
 | DW_TAG_base_type | This is the tag that represents intrinsic types such as `int` and `char`. |
-| DW_TAG_typedef | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}`. At the moment, types such as `typedef int16 my_int` do *not* work. We will invistigate this issue in the future, however, it is not a priority at the moment.|
+| DW_TAG_typedef | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}`. At the moment, types such as `typedef int16 my_int` do *not* work. We will investigate this issue in the future, however, it is not a priority at the moment.|
 | DW_TAG_structure_type | This is the tag that represents structs such as  `struct Square{ int width; int length; };` |
 | DW_TAG_array_type | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Noe that this does not include dynamic arrays such as those allocated by malloc or new calls.|
 | DW_TAG_pointer_type | This is the tag that represents pointers in code such as `int* ptr = nullptr`|
@@ -289,4 +296,8 @@ referenced by the type attribute of pointer types and typedef declarations for '
 juicer behaves accordingly. If a pointer does not have a type(meaning it does not have a DW_AT_type attribute), then it is assumed that the pointer in question is of the `void*` type.
 
 
-Documentation updated on November 4, 2020
+## VxWorks Support <a name="vxWorks"></a>
+At the moment vxWorks support is a work in progress. Support is currently *not* tested, so at the moment it is on its own [branch]
+(https://github.com/WindhoverLabs/juicer/tree/vxWorks).
+
+Documentation updated on September 20, 2021
