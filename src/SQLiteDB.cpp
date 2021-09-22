@@ -468,7 +468,6 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 }
 
 
-
 /**
  *@brief Iterates through all of the field entries in
  *inElf and writes each one to the "fields" table.
@@ -496,13 +495,8 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
          */
         std::string writeFieldQuery{};
 
-        if(field->getName() == "Seconds")
-        {
-        	logger.logDebug("Seconds fields");
-        }
-
         writeFieldQuery += "INSERT INTO fields(symbol, name, byte_offset, type, "
-                            "multiplicity, little_endian, bit_size, bit_offset) VALUES(";
+                            "dimension_list, little_endian, bit_size, bit_offset) VALUES(";
         writeFieldQuery += std::to_string(field->getSymbol().getId());
         writeFieldQuery += ",";
         writeFieldQuery += "\"";
@@ -554,6 +548,86 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
 
 }
 
+/**
+ *@brief Iterates through all of the field entries in
+ *inElf and writes each one to the "fields" table.
+ *
+ *@return Returns SQLITEDB_OK if all of the elf entries are written to the
+ *database successfully. If the method fails to write at least one of the
+ *field entries to the database, then SQLITEDB_ERROR is returned.
+ */
+int SQLiteDB::writeDimensionsListToDatabase(ElfFile& inElf)
+{
+	//TODO:Add dimensions to ElfFile object.
+    int         rc  = SQLITEDB_OK;
+    char*       errorMessage = NULL;
+
+    /**
+     * @note Are we allowed for ground tools to do this for loops?
+     * I know for Flight Software we need to explicitly state the "++i",
+     * but should/can we do this here with loops for Juicer?
+     */
+    for(auto field : inElf.getFields())
+    {
+        /*
+         * @todo I want to store these SQLite magical values into MACROS,
+         * but I'm not sure what is the best way to do that without it being
+         * messy.
+         */
+        std::string writeFieldQuery{};
+
+        writeFieldQuery += "INSERT INTO fields(symbol, name, byte_offset, type, "
+                            "dimension_list, little_endian, bit_size, bit_offset) VALUES(";
+        writeFieldQuery += std::to_string(field->getSymbol().getId());
+        writeFieldQuery += ",";
+        writeFieldQuery += "\"";
+        writeFieldQuery += field->getName();
+        writeFieldQuery += "\"";
+        writeFieldQuery += ",";
+        writeFieldQuery += std::to_string(field->getByteOffset());
+        writeFieldQuery += ",";
+        writeFieldQuery += std::to_string(field->getType().getId());
+        writeFieldQuery += ",";
+        writeFieldQuery += std::to_string(field->getMultiplicity());
+        writeFieldQuery += ",";
+        writeFieldQuery += std::to_string(field->isLittleEndian()?
+                                          SQLiteDB_TRUE: SQLiteDB_FALSE);
+
+        writeFieldQuery += ",";
+        writeFieldQuery += std::to_string(field->getBitSize());
+        writeFieldQuery += ",";
+        writeFieldQuery += std::to_string(field->getBitOffset());
+
+        writeFieldQuery += ");";
+
+        rc = sqlite3_exec(database, writeFieldQuery.c_str(), NULL, NULL,
+                          &errorMessage);
+
+        if(SQLITE_OK == rc)
+        {
+            /*Write the id to this field so that other tables can use it as
+             *a foreign key */
+            sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+            field->setId(lastRowId);
+        }
+        else
+        {
+            logger.logError("There was an error while writing data to the fields table. %s.", errorMessage);
+
+            if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+            {
+            	rc  = SQLITE_OK;
+            }
+            else
+            {
+            	rc = SQLITEDB_ERROR;
+            }
+        }
+    }
+
+    return rc;
+
+}
 
 
 /**
@@ -649,7 +723,9 @@ int SQLiteDB::createSchemas(void)
                 logger.logDebug("createSymbolSchema() created the symbols schema "
                                 "successfully.");
 
-                rc = createFiledSchema();
+
+
+                rc = createFieldsSchema();
 
 				if(SQLITE_OK == rc)
 				{
@@ -771,15 +847,15 @@ int SQLiteDB::createSymbolSchema(void)
  *@return Returns SQLITE_OK created the elfs schema successfully.
  *If an error occurs, SQLITEDB_ERROR returns.
  */
-int SQLiteDB::createFiledSchema(void)
+int SQLiteDB::createFieldsSchema(void)
 {
-    std::string createBitFieldTableQuery{CREATE_FIELD_TABLE};
+    std::string createFieldTableQuery{CREATE_FIELD_TABLE};
     int         rc = SQLITE_OK;
 
     /*@todo The last argument for sqlite3_exec is an error handler that is not
      * necessary to pass in, but I really think we should for better error
      * logging.*/
-    rc = sqlite3_exec(database, createBitFieldTableQuery.c_str(), NULL,
+    rc = sqlite3_exec(database, createFieldTableQuery.c_str(), NULL,
                       NULL,NULL);
 
     if(SQLITE_OK == rc)
@@ -789,6 +865,40 @@ int SQLiteDB::createFiledSchema(void)
     else
     {
         logger.logError("Failed to create the fields table. '%s'",
+                        sqlite3_errmsg(database));
+        rc = SQLITEDB_ERROR;
+    }
+
+    return rc;
+}
+
+/**
+ *@brief Creates the fields schema.
+ *If the schema already exists, then this method does nothing.
+ *This method assumes the sqlite handle database has been initialized
+ *previously with a call to initialize().
+ *
+ *@return Returns SQLITE_OK created the elfs schema successfully.
+ *If an error occurs, SQLITEDB_ERROR returns.
+ */
+int SQLiteDB::createDimensionsSchema(void)
+{
+    std::string createDimensionsTableQuery{CREATE_DIMENSION_TABLE};
+    int         rc = SQLITE_OK;
+
+    /*@todo The last argument for sqlite3_exec is an error handler that is not
+     * necessary to pass in, but I really think we should for better error
+     * logging.*/
+    rc = sqlite3_exec(database, createDimensionsTableQuery.c_str(), NULL,
+                      NULL,NULL);
+
+    if(SQLITE_OK == rc)
+    {
+        logger.logDebug("Created table \"dimensions\" with OK status");
+    }
+    else
+    {
+        logger.logError("Failed to create the dimensions table. '%s'",
                         sqlite3_errmsg(database));
         rc = SQLITEDB_ERROR;
     }
@@ -823,7 +933,7 @@ int SQLiteDB::createEnumerationSchema(void)
     }
     else
     {
-        logger.logError("Failed to create the fields table. '%s'",
+        logger.logError("Failed to create the enumerations table. '%s'",
                 sqlite3_errmsg(database));
         rc = SQLITEDB_ERROR;
     }
