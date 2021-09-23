@@ -507,7 +507,8 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
         writeFieldQuery += ",";
         writeFieldQuery += std::to_string(field->getType().getId());
         writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->getMultiplicity());
+//        TODO:Replace with dimList
+//        writeFieldQuery += std::to_string(field->getMultiplicity());
         writeFieldQuery += ",";
         writeFieldQuery += std::to_string(field->isLittleEndian()?
                                           SQLiteDB_TRUE: SQLiteDB_FALSE);
@@ -588,7 +589,7 @@ int SQLiteDB::writeDimensionsListToDatabase(ElfFile& inElf)
         writeFieldQuery += ",";
         writeFieldQuery += std::to_string(field->getType().getId());
         writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->getMultiplicity());
+//        writeFieldQuery += std::to_string(field->getMultiplicity());
         writeFieldQuery += ",";
         writeFieldQuery += std::to_string(field->isLittleEndian()?
                                           SQLiteDB_TRUE: SQLiteDB_FALSE);

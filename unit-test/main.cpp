@@ -2,7 +2,8 @@
  * main.cpp
  *
  *  Created on: Aug 12, 2020
- *      Author: vagrant
+ *      Author: lgomez
+ *      Email:  lgomez@windhoverlabs.com
  */
 
 /*This tells Catch to provide a main() - only do this in one cpp file*/

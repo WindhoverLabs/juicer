@@ -160,7 +160,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 {
 	Dwarf_Die 		dieSubrangeType;
 	Dwarf_Unsigned 	dwfUpperBound = 0;
-	uint32_t 		multiplicity = 0;
+	std::vector<Dimension> 		dimList{};
 	Dwarf_Error     error = 0;
 	Dwarf_Attribute attr_struct = 0;
 	char* 			arrayName = nullptr;
@@ -224,7 +224,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 		/* Set the multiplicity, the array's size. */
 		if(res == DW_DLV_OK)
 		{
-			multiplicity = dwfUpperBound + 1;
+			dimList = getDimList(dbg, dieSubrangeType);
 		}
 	}
 
@@ -250,7 +250,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 			 */
 			std::string stdString{arrayName};
 
-			Symbol* 	arraySymbol =  getBaseTypeSymbol(elf, inDie, multiplicity);
+			Symbol* 	arraySymbol =  getBaseTypeSymbol(elf, inDie, dimList);
 
 			if(nullptr == arraySymbol)
 			{
@@ -262,7 +262,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 			{
 				std::string arrayBaseType{arraySymbol->getName().c_str()};
 				outSymbol = elf.getSymbol(arrayBaseType);
-				outSymbol->addField(stdString, 0, *outSymbol, multiplicity, elf.isLittleEndian());
+				outSymbol->addField(stdString, 0, *outSymbol, dimList, elf.isLittleEndian());
 			}
 		}
     }
@@ -436,7 +436,7 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
 
 
 
-Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &multiplicity)
+Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, std::vector<Dimension> &dimList)
 {
     int             res = DW_DLV_OK;
     Dwarf_Attribute attr_struct;
@@ -690,12 +690,20 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
             case DW_TAG_array_type:
             {
                 /* First get the base type itself. */
-                outSymbol = getBaseTypeSymbol(elf, typeDie, multiplicity);
+                outSymbol = getBaseTypeSymbol(elf, typeDie, dimList);
 
 				/* Set the multiplicity argument. */
 				if(res == DW_DLV_OK)
 				{
-					multiplicity = calcArraySizeForAllDims(dbg, typeDie);
+					std::vector<Dimension> dims  = getDimList(dbg, typeDie);
+					std::cout<<"number of dims:"<<dims.size()<<std::endl;
+
+					for(auto dim: dims)
+					{
+						std::cout<<"upper bound for dim:"<<dim.getUpperBound()<<std::endl;
+					}
+
+					dimList = getDimList(dbg, typeDie);
 				}
 
                 break;
@@ -713,7 +721,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
                 /* Get the type attribute. */
                 res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
 
-                getBaseTypeSymbol(elf, typeDie, multiplicity);
+                getBaseTypeSymbol(elf, typeDie, dimList);
 
                 break;
             }
@@ -2727,9 +2735,9 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
     /* Get the base type die. */
     if(res == DW_DLV_OK)
     {
-        uint32_t multiplicity;
+        std::vector<Dimension> dimensionList{};
 
-        baseTypeSymbol = getBaseTypeSymbol(elf ,inDie, multiplicity);
+        baseTypeSymbol = getBaseTypeSymbol(elf ,inDie, dimensionList);
         if(baseTypeSymbol == 0)
         {
             /* Set the error code so we don't do anymore processing. */
@@ -2821,7 +2829,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
 
                     case DW_TAG_member:
                     {
-                        uint32_t multiplicity = 0;
+                        std::vector<Dimension> dimensionList{};
 
                         /* Get the name attribute of this Die. */
 
@@ -2877,7 +2885,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                         /* Get the base type die. */
                         if(res == DW_DLV_OK)
                         {
-                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, multiplicity);
+                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList);
                             if(memberBaseTypeSymbol == 0)
                             {
                                 logger.logWarning("Couldn't find base type for %s:%s.", symbol.getName().c_str(), memberName);
@@ -2893,7 +2901,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
 
 							std::string sMemberName = memberName;
 
-							Field memberField{symbol, sMemberName, (uint32_t) memberLocation, *memberBaseTypeSymbol, multiplicity, elf.isLittleEndian()};
+							Field memberField{symbol, sMemberName, (uint32_t) memberLocation, *memberBaseTypeSymbol, dimensionList, elf.isLittleEndian()};
 
 							addBitFields(memberDie, memberField);
 							symbol.addField(memberField);
@@ -2961,6 +2969,7 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 
 			uint32_t previousFieldSize = symbol.getFields().at(i-1)->getType().getByteSize();
 
+			//        TODO:Replace with dimList
 			if(symbol.getFields().at(i-1)->getMultiplicity()>0)
 			{
 				previousFieldSize = symbol.getFields().at(i-1)->getMultiplicity() * previousFieldSize ;
@@ -3056,7 +3065,7 @@ void Juicer::addPaddingEndToStruct(Symbol& symbol)
 
 			uint32_t newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
 
-			symbol.addField(paddingFieldName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian(), 0,0);
+			symbol.addField(paddingFieldName,newFieldByteOffset, *paddingSymbol, symbol.getElf().isLittleEndian(), 0,0);
 
 		}
 	}
@@ -3673,18 +3682,34 @@ int Juicer::calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die dieSubrangeType
 int Juicer::calcArraySizeForAllDims(Dwarf_Debug dbg, Dwarf_Die die)
 {
     int arraySize = 0;
-    std::vector<Dwarf_Die>  siblings = getChildrenVector(dbg, die);
+    std::vector<Dwarf_Die>  children = getChildrenVector(dbg, die);
 
-    for(auto sibling: siblings)
+    for(auto child: children)
     {
     	if (arraySize == 0)
     			arraySize = 1;
 
-    	arraySize = arraySize * calcArraySizeForDimension(dbg, sibling);
+    	arraySize = arraySize * calcArraySizeForDimension(dbg, child);
     }
 
     return arraySize;
 
+}
+
+/**
+ * Assuming that die is a DW_TAG_array_type, iterate through each  DW_TAG_subrange_type and return
+ * a std::vector with all them as Dimension objects
+ */
+std::vector<Dimension> Juicer::getDimList(Dwarf_Debug dbg, Dwarf_Die die)
+{
+	std::vector<Dimension> dimList{};
+    std::vector<Dwarf_Die>  children = getChildrenVector(dbg, die);
+    for(auto child: children)
+    {
+    	dimList.push_back(Dimension{calcArraySizeForDimension(dbg, child)});
+    }
+
+    return dimList;
 }
 
 /**
