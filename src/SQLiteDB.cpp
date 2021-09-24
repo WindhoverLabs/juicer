@@ -134,11 +134,15 @@ int SQLiteDB::initialize(std::string &initString)
         {
         	logger.logInfo("The schemas were created successfully.");
         }
+        else
+        {
+        	logger.logInfo("There was an error while creating the schemas.");
+        }
     }
     else
     {
         rc = SQLITEDB_ERROR;
-        logger.logError("There was an error while creating the tables for the database.");
+        logger.logError("There was an error while opening the database.");
     }
 
     return rc;
@@ -248,6 +252,8 @@ int SQLiteDB::write(ElfFile& inElf)
                                 "with SQLITE_OK status.");
 
                 rc = writeFieldsToDatabase(inElf);
+
+                writeDimensionsListToDatabase(inElf);
 
                 if(SQLITEDB_ERROR != rc)
                 {
@@ -508,7 +514,7 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
         writeFieldQuery += std::to_string(field->getType().getId());
         writeFieldQuery += ",";
 //        TODO:Replace with dimList
-//        writeFieldQuery += std::to_string(field->getMultiplicity());
+        writeFieldQuery += std::to_string(field->getArraySize());
         writeFieldQuery += ",";
         writeFieldQuery += std::to_string(field->isLittleEndian()?
                                           SQLiteDB_TRUE: SQLiteDB_FALSE);
@@ -519,6 +525,8 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
         writeFieldQuery += std::to_string(field->getBitOffset());
 
         writeFieldQuery += ");";
+
+
 
         rc = sqlite3_exec(database, writeFieldQuery.c_str(), NULL, NULL,
                           &errorMessage);
@@ -532,7 +540,9 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
         }
         else
         {
-            logger.logError("There was an error while writing data to the fields table. %s.", errorMessage);
+            logger.logError("There was an error while writing data to the fields table. "
+            				"Query:\"%s\""
+            				"Error message:%s.", writeFieldQuery.c_str(), errorMessage);
 
             if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
             {
@@ -570,60 +580,44 @@ int SQLiteDB::writeDimensionsListToDatabase(ElfFile& inElf)
      */
     for(auto field : inElf.getFields())
     {
-        /*
-         * @todo I want to store these SQLite magical values into MACROS,
-         * but I'm not sure what is the best way to do that without it being
-         * messy.
-         */
-        std::string writeFieldQuery{};
+    	if (field->isArray())
+    	{
 
-        writeFieldQuery += "INSERT INTO fields(symbol, name, byte_offset, type, "
-                            "dimension_list, little_endian, bit_size, bit_offset) VALUES(";
-        writeFieldQuery += std::to_string(field->getSymbol().getId());
-        writeFieldQuery += ",";
-        writeFieldQuery += "\"";
-        writeFieldQuery += field->getName();
-        writeFieldQuery += "\"";
-        writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->getByteOffset());
-        writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->getType().getId());
-        writeFieldQuery += ",";
-//        writeFieldQuery += std::to_string(field->getMultiplicity());
-        writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->isLittleEndian()?
-                                          SQLiteDB_TRUE: SQLiteDB_FALSE);
+    		uint32_t dimOrder = 0;
+        	for(auto dim: field->getDimensionList())
+        	{
+                /*
+                 * @todo I want to store these SQLite magical values into MACROS,
+                 * but I'm not sure what is the best way to do that without it being
+                 * messy.
+                 */
+                std::string writeDimsQuery{};
 
-        writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->getBitSize());
-        writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->getBitOffset());
+                writeDimsQuery += "INSERT INTO dimension_lists(field, dim_order, upper_bound"
+                                    ") VALUES(";
+                writeDimsQuery += std::to_string(field->getId());
+                writeDimsQuery += ",";
+                writeDimsQuery += std::to_string(dimOrder);
+                writeDimsQuery += ",";
+                writeDimsQuery += std::to_string(dim.getUpperBound());
 
-        writeFieldQuery += ");";
+                writeDimsQuery += ");";
 
-        rc = sqlite3_exec(database, writeFieldQuery.c_str(), NULL, NULL,
-                          &errorMessage);
+                rc = sqlite3_exec(database, writeDimsQuery.c_str(), NULL, NULL,
+                                  &errorMessage);
 
-        if(SQLITE_OK == rc)
-        {
-            /*Write the id to this field so that other tables can use it as
-             *a foreign key */
-            sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
-            field->setId(lastRowId);
-        }
-        else
-        {
-            logger.logError("There was an error while writing data to the fields table. %s.", errorMessage);
+                if(SQLITE_OK != rc)
+                {
+                	logger.logError("There was an error while writing data to the dimension table. "
+                					"Query:\"%s\""
+                					"Error message:%s.", writeDimsQuery.c_str(), errorMessage);
+                    rc = SQLITEDB_ERROR;
+                }
 
-            if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
-            {
-            	rc  = SQLITE_OK;
-            }
-            else
-            {
-            	rc = SQLITEDB_ERROR;
-            }
-        }
+            	dimOrder++;
+        	}
+
+    	}
     }
 
     return rc;
@@ -724,33 +718,41 @@ int SQLiteDB::createSchemas(void)
                 logger.logDebug("createSymbolSchema() created the symbols schema "
                                 "successfully.");
 
-
-
                 rc = createFieldsSchema();
 
-				if(SQLITE_OK == rc)
-				{
-					logger.logDebug("createBitFiledSchema() created the bit_fields schema "
-									"successfully.");
+                if(SQLITE_OK == rc)
+                {
+                    rc = createDimensionsSchema();
 
-					rc = createEnumerationSchema();
-					if(SQLITE_OK == rc)
-					{
-						logger.logDebug("createEnumerationSchema() created the bit_fields schema "
-										"successfully.");
-					}
-					else
-					{
-						logger.logDebug("createEnumerationSchema() failed.");
-						rc = SQLITEDB_ERROR;
-					}
-				}
+    				if(SQLITE_OK == rc)
+    				{
+    					logger.logDebug("createBitFiledSchema() created the bit_fields schema "
+    									"successfully.");
 
+    					rc = createEnumerationSchema();
+    					if(SQLITE_OK == rc)
+    					{
+    						logger.logDebug("createEnumerationSchema() created the bit_fields schema "
+    										"successfully.");
+    					}
+    					else
+    					{
+    						logger.logDebug("createDimensionsSchema() failed.");
+    						rc = SQLITEDB_ERROR;
+    					}
+    				}
+    				else
+    				{
+                        logger.logDebug("createDimensionsSchema() failed.");
+                        rc = SQLITEDB_ERROR;
+    				}
+                }
                 else
                 {
-                    logger.logDebug("createFiledSchema() failed.");
+                    logger.logDebug("createFieldsSchema() failed.");
                     rc = SQLITEDB_ERROR;
                 }
+
             }
             else
             {

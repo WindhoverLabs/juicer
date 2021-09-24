@@ -18,7 +18,6 @@ Symbol::Symbol(ElfFile& inElf) :
 }
 
 
-
 Symbol::Symbol(ElfFile& inElf, std::string &inName, uint32_t inByteSize) :
     elf{inElf}, // @suppress("Symbol is not resolved")
     name{inName}, // @suppress("Symbol is not resolved")
@@ -26,7 +25,6 @@ Symbol::Symbol(ElfFile& inElf, std::string &inName, uint32_t inByteSize) :
 {
     logger.logDebug("Symbol %s::%s (%u bytes) created.", elf.getName().c_str(), name.c_str(), byte_size);
 }
-
 
 
 Symbol::~Symbol()
@@ -40,8 +38,6 @@ void Symbol::addField( Field& inField)
 	addField(inField.getName(), inField.getByteOffset(), inField.getType(), inField.getDimensionList(), inField.isLittleEndian(),
 			inField.getBitSize(), inField.getBitOffset());
 }
-
-
 
 
 /**

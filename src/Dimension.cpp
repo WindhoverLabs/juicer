@@ -55,12 +55,10 @@ Dimension::~Dimension() {
 std::string Dimension::toString()
 {
 	std::string str{};
-	str += "{";
 
+	str += "{";
 	str += "upperBound:";
 	str += std::to_string(upperBound);
-	str += ",";
-
 	str += "}";
 
 	return str;

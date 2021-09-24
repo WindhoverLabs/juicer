@@ -702,14 +702,6 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, std::vector<Di
 				/* Set the multiplicity argument. */
 				if(res == DW_DLV_OK)
 				{
-					std::vector<Dimension> dims  = getDimList(dbg, typeDie);
-					std::cout<<"number of dims:"<<dims.size()<<std::endl;
-
-					for(auto dim: dims)
-					{
-						std::cout<<"upper bound for dim:"<<dim.getUpperBound()<<std::endl;
-					}
-
 					dimList = getDimList(dbg, typeDie);
 				}
 
@@ -778,7 +770,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
 {
     int             res = DW_DLV_OK;
     Dwarf_Attribute *attribs;
-    Dwarf_Signed    attribCount = 20;
+    Dwarf_Signed    attribCount = 0;
     Dwarf_Off       globalOffset;
     Dwarf_Off       localOffset;
     Dwarf_Attribute attr_struct;
@@ -1121,8 +1113,16 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
         res = dwarf_attrlist(inDie, &attribs, &attribCount, &error);
         if(res != DW_DLV_OK)
         {
-            logger.logError("Error in dwarf_attrlist.  errno=%u %s", dwarf_errno(error),
-            dwarf_errmsg(error));
+        	if(res == DW_DLV_ERROR)
+        	{
+        		logger.logError("Error in dwarf_attrlist.  errno=%u %s", dwarf_errno(error),
+        				dwarf_errmsg(error));
+        	}
+        	else if(res == DW_DLV_NO_ENTRY)
+        	{
+        		logger.logWarning("No Entry in dwarf_attrlist.  errno=%u %s", dwarf_errno(error),
+        		        				dwarf_errmsg(error));
+        	}
         }
         else
         {
@@ -3185,11 +3185,6 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
     	DisplayDie(cur_die, in_level);
 
-        if(offset == 0x3ad6b)
-        {
-        	printf("Hello\n");
-        }
-
         res = dwarf_tag(cur_die, &tag, &error);
         if(res != DW_DLV_OK)
         {
@@ -3617,14 +3612,14 @@ int Juicer::parse( std::string& elfFilePath)
     return return_value;
 }
 
-int Juicer::calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die dieSubrangeType)
+uint32_t Juicer::calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die dieSubrangeType)
 {
 
     Dwarf_Unsigned  dwfUpperBound = 0;
     Dwarf_Attribute attr_struct;
 
     int res = DW_DLV_OK;
-    int dimSize = 0;
+    uint32_t dimSize = 0;
     /* Now lets get the array size.  Get the array size by getting
      * the first child, which should be the subrange_type. */
 

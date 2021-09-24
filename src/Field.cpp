@@ -47,7 +47,7 @@ Field::Field(Symbol& inSymbol, std::string &inName, uint32_t inByteOffset,
     		name{inName}, // @suppress("Symbol is not resolved")
     		byte_offset{inByteOffset},
     		type{inType}, // @suppress("Symbol is not resolved")
-			dimensionList{0},
+			dimensionList{},
     		little_endian{inLittleEndian},
     		bit_offset{inBitSize},
 			bit_size{inBitSize},
