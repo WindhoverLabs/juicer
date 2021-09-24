@@ -53,6 +53,7 @@ public:
 	virtual ~Dimension();
 
 private:
+	//Inclusive. Meaning that in an array such as " flatArray int[3]" upperBound will be 2.
 	uint32_t upperBound;
 };
 

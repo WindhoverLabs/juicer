@@ -26,13 +26,18 @@ class Symbol;
  */
 class Field
 {
+	/**
+	 * Field::Field(Symbol&, std::__cxx11::basic_string<char,
+	 * std::char_traits<char>,
+	 * std::allocator<char> >&, unsigned int, Symbol&, bool, unsigned int, unsigned int)
+	 */
 public:
 	Field(Symbol &symbol, Symbol &type);
 	Field(Symbol &symbol,
 		  std::string &name,
 		  uint32_t byte_offset,
 		  Symbol &type,
-		  std::vector<Dimension> dimensionList,
+		  std::vector<Dimension>& dimensionList,
 		  bool little_endian,
 		  uint32_t inBitSize = 0,
 		  uint32_t inBitOffset = 0);
@@ -49,6 +54,7 @@ public:
 	bool isLittleEndian() const;
 	void setLittleEndian(bool littleEndian);
 	uint32_t getMultiplicity() const;
+	uint32_t getArraySize() const;
 	void setMultiplicity(uint32_t multiplicity);
 	std::string& getName();
 	void setName(const std::string& name);
@@ -63,7 +69,8 @@ public:
 	Field(Field& field);
 	bool isBitField(void);
 	void addDimension(Dimension d);
-	std::vector<Dimension> getDimensionList();
+	std::vector<Dimension>& getDimensionList();
+	bool		isArray(void) const;
 	std::string getDimensionListStr();
 
 private:

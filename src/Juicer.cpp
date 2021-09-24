@@ -31,18 +31,25 @@
  *
  *****************************************************************************/
 
-#include "Juicer.h"
 #include <string.h>
 #include <errno.h>
 #include <libelf.h>
 #include <ctype.h>
 #include <memory.h>
+#include <cmath>
+#include <iostream>
+#include <vector>
+#include <numeric>
+#include <string>
+#include <functional>
+
+#include "Juicer.h"
 #include "IDataContainer.h"
 #include "Symbol.h"
 #include "Field.h"
 #include "Enumeration.h"
 #include "ElfFile.h"
-#include <cmath>
+
 
 
 Juicer::Juicer()
@@ -2969,10 +2976,9 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 
 			uint32_t previousFieldSize = symbol.getFields().at(i-1)->getType().getByteSize();
 
-			//        TODO:Replace with dimList
-			if(symbol.getFields().at(i-1)->getMultiplicity()>0)
+			if(symbol.getFields().at(i-1)->isArray()>0)
 			{
-				previousFieldSize = symbol.getFields().at(i-1)->getMultiplicity() * previousFieldSize ;
+				previousFieldSize = symbol.getFields().at(i-1)->getArraySize() * previousFieldSize ;
 			}
 
 			uint32_t lastFieldOffset = symbol.getFields().at(i-1)->getByteOffset();
@@ -3005,7 +3011,7 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 				auto fields_it = fields.begin();
 
 				fields.insert(fields_it+i, std::make_unique<Field>(symbol,spareName, (uint32_t)memberLocation,
-						*paddingSymbol, 0, symbol.getElf().isLittleEndian()));
+						*paddingSymbol, symbol.getElf().isLittleEndian()));
 
 				fieldsSize++;
 				i++;
@@ -3041,10 +3047,10 @@ void Juicer::addPaddingEndToStruct(Symbol& symbol)
 	{
 		symbolSize = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize();
 
-		if(symbol.getFields().back()->getMultiplicity()>0)
+		if(symbol.getFields().back()->getArraySize()>0)
 		{
 			symbolSize = symbol.getFields().back()->getByteOffset() + (symbol.getFields().back()->getType().getByteSize()
-						 * symbol.getFields().back()->getMultiplicity()) ;
+						 * symbol.getFields().back()->getArraySize()) ;
 		}
 
 		sizeDelta = symbol.getByteSize() - symbolSize;

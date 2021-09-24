@@ -53,7 +53,7 @@ void Symbol::addField( Field& inField)
 void Symbol::addField(std::string& inName,
 		              uint32_t inByteOffset,
 					  Symbol &inType,
-					  std::vector<Dimension> dimensionList,
+					  std::vector<Dimension>& dimensionList,
 					  bool inLittleEndian,
 					  uint32_t inBitSize,
 					  uint32_t inBitOffset)

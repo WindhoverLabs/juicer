@@ -22,7 +22,7 @@ Field::Field(Symbol& inSymbol, Symbol& inType) :
 
 
 Field::Field(Symbol& inSymbol, std::string &inName, uint32_t inByteOffset,
-		Symbol& inType, std::vector<Dimension>	inDimensionList, bool inLittleEndian,
+		Symbol& inType, std::vector<Dimension>&	inDimensionList, bool inLittleEndian,
 		uint32_t inBitSize, uint32_t inBitOffset) :
     	    symbol{inSymbol}, // @suppress("Symbol is not resolved")
     		name{inName}, // @suppress("Symbol is not resolved")
@@ -40,8 +40,23 @@ Field::Field(Symbol& inSymbol, std::string &inName, uint32_t inByteOffset,
     logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset, type.getName().c_str(), dimensionList, little_endian ? "LE" : "BE");
 }
 
-Field::~Field()
+Field::Field(Symbol& inSymbol, std::string &inName, uint32_t inByteOffset,
+		Symbol& inType, bool inLittleEndian,
+		uint32_t inBitSize, uint32_t inBitOffset) :
+    	    symbol{inSymbol}, // @suppress("Symbol is not resolved")
+    		name{inName}, // @suppress("Symbol is not resolved")
+    		byte_offset{inByteOffset},
+    		type{inType}, // @suppress("Symbol is not resolved")
+			dimensionList{0},
+    		little_endian{inLittleEndian},
+    		bit_offset{inBitSize},
+			bit_size{inBitSize},
+    		id{0}
+
+
 {
+
+    logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset, type.getName().c_str(), dimensionList, little_endian ? "LE" : "BE");
 }
 
 Field::Field(Field& field) :
@@ -49,10 +64,15 @@ Field::Field(Field& field) :
     		name{field.getName()}, // @suppress("Symbol is not resolved")
     		byte_offset{field.getByteOffset()},
     		type{field.getType()}, // @suppress("Symbol is not resolved")
-			dimensionList{field.getMultiplicity()},
+			dimensionList(field.getDimensionList()),
     		little_endian{field.isLittleEndian()}
 {
 }
+
+Field::~Field()
+{
+}
+
 
 uint32_t Field::getByteOffset() const
 {
@@ -157,3 +177,34 @@ std::string Field::getDimensionListStr()
 
 	return dimListStr;
 }
+
+bool Field::isArray(void) const
+{
+	return dimensionList.size() > 0;
+}
+
+/**
+ * Get the number of elements in this array, including all dimensions in the case of multidimensional arrays.
+ * If this field is not an array, 0 is returned.
+ */
+uint32_t Field::getArraySize() const
+{
+	uint32_t size{0};
+	if(isArray())
+	{
+		size = 1;
+		for(auto dim: dimensionList)
+		{
+			size *= dim.getUpperBound();
+		}
+	}
+
+	return size;
+}
+
+std::vector<Dimension>& Field::getDimensionList()
+{
+	return dimensionList;
+}
+
+
