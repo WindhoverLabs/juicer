@@ -41,11 +41,11 @@
 
 #define CREATE_DIMENSION_TABLE   "CREATE TABLE IF NOT EXISTS dimension_lists (\
                                   id INTEGER PRIMARY KEY,\
-								  field INTEGER NOT NULL,\
+								  field_id INTEGER NOT NULL,\
                                   dim_order INTEGER NOT NULL,\
                                   upper_bound INTEGER NOT NULL,\
-								  FOREIGN KEY (field) REFERENCES fields(id),\
-								  UNIQUE(field, dim_order, upper_bound));"
+								  FOREIGN KEY (field_id) REFERENCES fields(id),\
+								  UNIQUE(field_id, dim_order, upper_bound));"
 
 #define CREATE_FIELD_TABLE       "CREATE TABLE IF NOT EXISTS fields(\
                                   id INTEGER PRIMARY KEY,\
@@ -53,7 +53,7 @@
                                   name TEXT NOT NULL,\
                                   byte_offset INTEGER NOT NULL,\
                                   type INTEGER NOT NULL,\
-								  dimension_list INTEGER NOT NULL,\
+								  dimension_list INTEGER,\
                                   little_endian BOOLEAN,\
 								  bit_size INTEGER NOT NULL,\
 								  bit_offset INTEGER NOT NULL,\

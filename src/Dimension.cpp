@@ -64,4 +64,12 @@ std::string Dimension::toString()
 	return str;
 }
 
+uint32_t Dimension::getId() const {
+	return id;
+}
+
+void Dimension::setId(uint32_t id) {
+	this->id = id;
+}
+
 

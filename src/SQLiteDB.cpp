@@ -502,7 +502,7 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
         std::string writeFieldQuery{};
 
         writeFieldQuery += "INSERT INTO fields(symbol, name, byte_offset, type, "
-                            "dimension_list, little_endian, bit_size, bit_offset) VALUES(";
+                            "little_endian, bit_size, bit_offset) VALUES(";
         writeFieldQuery += std::to_string(field->getSymbol().getId());
         writeFieldQuery += ",";
         writeFieldQuery += "\"";
@@ -512,9 +512,6 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
         writeFieldQuery += std::to_string(field->getByteOffset());
         writeFieldQuery += ",";
         writeFieldQuery += std::to_string(field->getType().getId());
-        writeFieldQuery += ",";
-//        TODO:Replace with dimList
-        writeFieldQuery += std::to_string(field->getArraySize());
         writeFieldQuery += ",";
         writeFieldQuery += std::to_string(field->isLittleEndian()?
                                           SQLiteDB_TRUE: SQLiteDB_FALSE);
@@ -593,7 +590,7 @@ int SQLiteDB::writeDimensionsListToDatabase(ElfFile& inElf)
                  */
                 std::string writeDimsQuery{};
 
-                writeDimsQuery += "INSERT INTO dimension_lists(field, dim_order, upper_bound"
+                writeDimsQuery += "INSERT INTO dimension_lists(field_id, dim_order, upper_bound"
                                     ") VALUES(";
                 writeDimsQuery += std::to_string(field->getId());
                 writeDimsQuery += ",";
@@ -614,6 +611,48 @@ int SQLiteDB::writeDimensionsListToDatabase(ElfFile& inElf)
                     rc = SQLITEDB_ERROR;
                 }
 
+                if(SQLITE_OK == rc)
+                {
+                    /*Write the id to this field so that other tables can use it as
+                     *a foreign key */
+                    sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+                    dim.setId(lastRowId);
+
+                    std::string writeDimListIdToFields{"UPDATE fields "
+                    									"SET dimension_list ="};
+
+                    writeDimListIdToFields += std::to_string(dim.getId());
+                    writeDimListIdToFields += " WHERE ";
+                    writeDimListIdToFields += "id = ";
+                    writeDimListIdToFields += std::to_string(field->getId());
+                    writeDimListIdToFields += ";";
+
+                    rc = sqlite3_exec(database, writeDimListIdToFields.c_str(), NULL, NULL,
+                                            &errorMessage);
+
+                    if(SQLITE_OK != rc && SQLITE_CONSTRAINT_UNIQUE != sqlite3_extended_errcode(database))
+                    {
+                    	logger.logError("There was an error while writing the dimension_list id to the fields table"
+                    					"Query:\"%s\""
+                    					"Error message:%s", writeDimListIdToFields.c_str(), errorMessage);
+                    }
+
+                }
+                else
+                {
+                    logger.logError("There was an error while writing data to the fields table. "
+                    				"Query:\"%s\""
+                    				"Error message:%s.", writeDimsQuery.c_str(), errorMessage);
+
+                    if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    {
+                    	rc  = SQLITE_OK;
+                    }
+                    else
+                    {
+                    	rc = SQLITEDB_ERROR;
+                    }
+                }
             	dimOrder++;
         	}
 

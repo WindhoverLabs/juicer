@@ -52,9 +52,13 @@ public:
 	std::string toString();
 	virtual ~Dimension();
 
+	uint32_t getId() const;
+	void setId(uint32_t id);
+
 private:
 	//Inclusive. Meaning that in an array such as " flatArray int[3]" upperBound will be 2.
 	uint32_t upperBound;
+	uint32_t id;
 };
 
 #endif /* DIMENSION_H_ */
