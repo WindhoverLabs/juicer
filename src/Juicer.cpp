@@ -3707,7 +3707,7 @@ std::vector<Dimension> Juicer::getDimList(Dwarf_Debug dbg, Dwarf_Die die)
     std::vector<Dwarf_Die>  children = getChildrenVector(dbg, die);
     for(auto child: children)
     {
-    	dimList.push_back(Dimension{calcArraySizeForDimension(dbg, child)});
+    	dimList.push_back(Dimension{calcArraySizeForDimension(dbg, child) - 1});
     }
 
     return dimList;

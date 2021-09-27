@@ -537,17 +537,19 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
         }
         else
         {
-            logger.logError("There was an error while writing data to the fields table. "
-            				"Query:\"%s\""
-            				"Error message:%s.", writeFieldQuery.c_str(), errorMessage);
-
             if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
             {
             	rc  = SQLITE_OK;
+                logger.logWarning("SQLITE_CONSTRAINT_UNIQUE violated. "
+                				"Query:\"%s\""
+                				"Error message:%s.", writeFieldQuery.c_str(), errorMessage);
             }
             else
             {
             	rc = SQLITEDB_ERROR;
+                logger.logError("There was an error while writing data to the fields table. "
+                				"Query:\"%s\""
+                				"Error message:%s.", writeFieldQuery.c_str(), errorMessage);
             }
         }
     }
