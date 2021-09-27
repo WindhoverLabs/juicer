@@ -15,6 +15,6 @@
  *something else other than Eclipse's console(such as GNOME shell) to run the tests
  *and comment out the CATCH_CONFIG_COLOUR_NONE macro.
  */
-#define CATCH_CONFIG_COLOUR_NONE
+//#define CATCH_CONFIG_COLOUR_NONE
 
 #include "catch.hpp"

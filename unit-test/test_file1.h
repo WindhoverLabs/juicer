@@ -2,7 +2,7 @@
  * dwarf_file.h
  *
  *  Created on: Aug 20, 2020
- *      Author: vagrant
+ *      Author: lgomez
  *
  *This file is used by the testing suite. It is meant to be used as an
  *object file that will be executed by Juicer and checked for correctness
@@ -20,7 +20,7 @@ typedef struct
     int32_t length;
     uint8_t more_stuff;
     float floating_stuff;
-    float matrix3D[3][3][3];
+    float matrix3D[3][4][5];
     float matrix1D[3];
 }Square;
 
