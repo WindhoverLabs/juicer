@@ -27,11 +27,6 @@ class Symbol;
  */
 class Field
 {
-	/**
-	 * Field::Field(Symbol&, std::__cxx11::basic_string<char,
-	 * std::char_traits<char>,
-	 * std::allocator<char> >&, unsigned int, Symbol&, bool, unsigned int, unsigned int)
-	 */
 public:
 	Field(Symbol &symbol, Symbol &type);
 	Field(Symbol &symbol,
