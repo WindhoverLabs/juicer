@@ -399,8 +399,6 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 		 */
 		if(symbolExists)
 		{
-//			logger.logError("There was an error while data to the symbols table for symbol \"%s\".");
-//			logger.logError("%s.", errorMessage);
 
 			std::map<std::string, std::vector<std::string>> symbolsMap{};
 
