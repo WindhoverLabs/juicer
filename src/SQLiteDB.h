@@ -53,11 +53,9 @@
                                   name TEXT NOT NULL,\
                                   byte_offset INTEGER NOT NULL,\
                                   type INTEGER NOT NULL,\
-								  dimension_list INTEGER,\
                                   little_endian BOOLEAN,\
 								  bit_size INTEGER NOT NULL,\
 								  bit_offset INTEGER NOT NULL,\
-								  FOREIGN KEY(dimension_list) REFERENCES dimension_lists(id),\
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   FOREIGN KEY (type) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"

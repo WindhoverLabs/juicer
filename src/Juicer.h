@@ -45,12 +45,12 @@
 #include <fcntl.h>
 #include <stdint.h>
 
+#include "DimensionList.h"
 #include "Field.h"
 #include "ElfFile.h"
 #include "Logger.h"
 #include "Symbol.h"
 #include "Enumeration.h"
-#include "Dimension.h"
 
 class Field;
 
@@ -122,7 +122,7 @@ private:
 	Logger logger;
 	IDataContainer *idc = 0;
 	bool isIDCSet(void);
-	Symbol * getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, std::vector<Dimension> &multiplicity);
+	Symbol * getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &multiplicity);
 	void DisplayDie(Dwarf_Die inDie, uint32_t level);
 
     std::vector<Dwarf_Die> getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die);
@@ -132,7 +132,7 @@ private:
     uint32_t calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);
     int calcArraySizeForAllDims(Dwarf_Debug dbg,Dwarf_Die die);
 
-    std::vector<Dimension> getDimList(Dwarf_Debug dbg, Dwarf_Die die);
+    DimensionList getDimList(Dwarf_Debug dbg, Dwarf_Die die);
 };
 
 #endif /* JUICER_H_ */

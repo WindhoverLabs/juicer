@@ -16,19 +16,19 @@ Field::Field(Symbol& inSymbol, Symbol& inType) :
 		    little_endian{false},
 		    id{0}
 {
-    logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset, type.getName().c_str(), getDimensionListStr().c_str(), little_endian ? "LE" : "BE");
+    logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset, type.getName().c_str(), dimensionList.toString(), little_endian ? "LE" : "BE");
 }
 
 
 
 Field::Field(Symbol& inSymbol, std::string &inName, uint32_t inByteOffset,
-		Symbol& inType, std::vector<Dimension>&	inDimensionList, bool inLittleEndian,
+		Symbol& inType, DimensionList& inDimensionList, bool inLittleEndian,
 		uint32_t inBitSize, uint32_t inBitOffset) :
     	    symbol{inSymbol}, // @suppress("Symbol is not resolved")
     		name{inName}, // @suppress("Symbol is not resolved")
     		byte_offset{inByteOffset},
     		type{inType}, // @suppress("Symbol is not resolved")
-			dimensionList{inDimensionList.begin(), inDimensionList.end()},
+			dimensionList{inDimensionList},
     		little_endian{inLittleEndian},
     		bit_offset{inBitSize},
 			bit_size{inBitSize},
@@ -162,25 +162,9 @@ uint32_t Field::getBitSize() const
 	return bit_size;
 }
 
-void Field::addDimension(Dimension d)
-{
-	dimensionList.push_back(d);
-}
-
-std::string Field::getDimensionListStr()
-{
-	std::string dimListStr{"{"};
-	for(auto dim: dimensionList)
-	{
-		dimListStr += dim.toString();
-	}
-
-	return dimListStr;
-}
-
 bool Field::isArray(void) const
 {
-	return dimensionList.size() > 0;
+	return dimensionList.getDimensions().size()>0;
 }
 
 /**
@@ -193,16 +177,16 @@ uint32_t Field::getArraySize() const
 	if(isArray())
 	{
 		size = 1;
-		for(auto dim: dimensionList)
+		for(auto dim: dimensionList.getDimensions())
 		{
-			size *= dim.getUpperBound();
+			size *= dim.getUpperBound() + 1;
 		}
 	}
 
 	return size;
 }
 
-std::vector<Dimension>& Field::getDimensionList()
+DimensionList& Field::getDimensionList()
 {
 	return dimensionList;
 }

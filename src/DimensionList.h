@@ -32,33 +32,71 @@
 *****************************************************************************/
 
 /*
- * Dimension.h
+ * DimensionList.h
  *
  *  Created on: Sep 23, 2021
  *      Author: lgomez
  *      Email:  lgomez@windhoverlabs.com
- *The dimension of an array. Modeled after the DWARF4 standard.
+ *
  */
 
 #ifndef DIMENSION_H_
 #define DIMENSION_H_
 #include <stdint.h>
 #include <string>
+#include <vector>
 
-class Dimension {
+/**
+ *The dimensions of an array. Modeled after the DW_TAG_array_type tag in DWARF4 standard
+ *and DimensionList in XTCE. The DimensionList class keeps all
+ *dimensions inside of an internal std::vector<Dimension> that is internally managed.
+ *
+ *Users of this class can only add Dimension objects to this class via the addDimension method;
+ *they cannot remove dimensions, at least not directly. This is to guarantee the order of each Dimension object.
+ *Users that need to extract data from each dimension by calling getDimensions() method
+ *can assume the order has not been changed since the first time each dimension was added with addDimension.
+ *Notice the vector returned from getDimensions is const; this is to prevent users of this class
+ *from tampering with order of the dimensions.
+ */
+class DimensionList {
+	struct Dimension
+	{
+		Dimension(uint32_t newUpperBound): upperBound{newUpperBound}{}
+	private:
+		//Inclusive. Meaning that in an array such as " flatArray int[3]" the upperBound will be 2.
+		uint32_t 	upperBound;
+
+	public:
+		uint32_t getUpperBound() const
+		{
+			return upperBound;
+		}
+		std::string toString()
+		{
+			std::string str{};
+
+			str += "{";
+			str += "upperBound:";
+			str += std::to_string(upperBound);
+			str += "}";
+
+			return str;
+		}
+	};
+
 public:
-	uint32_t getUpperBound() const;
-	Dimension(uint32_t inUpperBound);
-	std::string toString();
-	virtual ~Dimension();
+	DimensionList();
+	~DimensionList();
 
-	uint32_t getId() const;
-	void setId(uint32_t id);
+	std::string											toString();
+	void												addDimension(uint32_t inUpperBound);
+	uint32_t 											getId() const;
+	void 												setId(uint32_t id);
+	const std::vector<DimensionList::Dimension>&		getDimensions() const;
 
 private:
-	//Inclusive. Meaning that in an array such as " flatArray int[3]" upperBound will be 2.
-	uint32_t upperBound;
-	uint32_t id;
+	uint32_t								id{};
+	std::vector<DimensionList::Dimension>	dimensions{};
 };
 
 #endif /* DIMENSION_H_ */

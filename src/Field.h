@@ -12,9 +12,10 @@
 
 #include <stdint.h>
 #include <vector>
+
+#include "DimensionList.h"
 #include "Symbol.h"
 #include "Logger.h"
-#include "Dimension.h"
 
 class Symbol;
 
@@ -37,7 +38,7 @@ public:
 		  std::string &name,
 		  uint32_t byte_offset,
 		  Symbol &type,
-		  std::vector<Dimension>& dimensionList,
+		  DimensionList& dimensionList,
 		  bool little_endian,
 		  uint32_t inBitSize = 0,
 		  uint32_t inBitOffset = 0);
@@ -68,8 +69,7 @@ public:
 	void setBitSize(uint32_t bitSize);
 	Field(Field& field);
 	bool isBitField(void);
-	void addDimension(Dimension d);
-	std::vector<Dimension>& getDimensionList();
+	DimensionList& getDimensionList();
 	bool		isArray(void) const;
 	std::string getDimensionListStr();
 
@@ -78,7 +78,7 @@ private:
 	std::string  						    name;
 	uint32_t     						    byte_offset;
 	Symbol 		 						   &type;
-    std::vector<Dimension>					dimensionList;
+	DimensionList							dimensionList;
 	bool         							little_endian;
 	/*bit fields members.
 	 * If this field is not bit-packed, then the bit_size and bit_offset are 0.*/

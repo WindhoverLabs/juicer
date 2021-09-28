@@ -167,7 +167,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 {
 	Dwarf_Die 		dieSubrangeType;
 	Dwarf_Unsigned 	dwfUpperBound = 0;
-	std::vector<Dimension> 		dimList{};
+	DimensionList 		dimList{};
 	Dwarf_Error     error = 0;
 	Dwarf_Attribute attr_struct = 0;
 	char* 			arrayName = nullptr;
@@ -443,7 +443,7 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
 
 
 
-Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, std::vector<Dimension> &dimList)
+Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &dimList)
 {
     int             res = DW_DLV_OK;
     Dwarf_Attribute attr_struct;
@@ -2742,7 +2742,7 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
     /* Get the base type die. */
     if(res == DW_DLV_OK)
     {
-        std::vector<Dimension> dimensionList{};
+        DimensionList dimensionList{};
 
         baseTypeSymbol = getBaseTypeSymbol(elf ,inDie, dimensionList);
         if(baseTypeSymbol == 0)
@@ -2836,7 +2836,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
 
                     case DW_TAG_member:
                     {
-                        std::vector<Dimension> dimensionList{};
+                        DimensionList dimensionList{};
 
                         /* Get the name attribute of this Die. */
 
@@ -3701,13 +3701,13 @@ int Juicer::calcArraySizeForAllDims(Dwarf_Debug dbg, Dwarf_Die die)
  * Assuming that die is a DW_TAG_array_type, iterate through each  DW_TAG_subrange_type and return
  * a std::vector with all them as Dimension objects
  */
-std::vector<Dimension> Juicer::getDimList(Dwarf_Debug dbg, Dwarf_Die die)
+DimensionList Juicer::getDimList(Dwarf_Debug dbg, Dwarf_Die die)
 {
-	std::vector<Dimension> dimList{};
+	DimensionList dimList{};
     std::vector<Dwarf_Die>  children = getChildrenVector(dbg, die);
     for(auto child: children)
     {
-    	dimList.push_back(Dimension{calcArraySizeForDimension(dbg, child) - 1});
+    	dimList.addDimension(calcArraySizeForDimension(dbg, child) - 1);
     }
 
     return dimList;

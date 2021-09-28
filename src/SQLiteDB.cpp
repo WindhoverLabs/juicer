@@ -521,8 +521,6 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
 
         writeFieldQuery += ");";
 
-
-
         rc = sqlite3_exec(database, writeFieldQuery.c_str(), NULL, NULL,
                           &errorMessage);
 
@@ -581,7 +579,7 @@ int SQLiteDB::writeDimensionsListToDatabase(ElfFile& inElf)
     	{
 
     		uint32_t dimOrder = 0;
-        	for(auto dim: field->getDimensionList())
+        	for(auto dim: field->getDimensionList().getDimensions())
         	{
                 /*
                  * @todo I want to store these SQLite magical values into MACROS,
@@ -610,42 +608,13 @@ int SQLiteDB::writeDimensionsListToDatabase(ElfFile& inElf)
                 					"Error message:%s.", writeDimsQuery.c_str(), errorMessage);
                     rc = SQLITEDB_ERROR;
                 }
-
-                if(SQLITE_OK == rc)
-                {
-                    /*Write the id to this field so that other tables can use it as
-                     *a foreign key */
-                    sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
-                    dim.setId(lastRowId);
-
-                    std::string writeDimListIdToFields{"UPDATE fields "
-                    									"SET dimension_list ="};
-
-                    writeDimListIdToFields += std::to_string(dim.getId());
-                    writeDimListIdToFields += " WHERE ";
-                    writeDimListIdToFields += "id = ";
-                    writeDimListIdToFields += std::to_string(field->getId());
-                    writeDimListIdToFields += ";";
-
-                    rc = sqlite3_exec(database, writeDimListIdToFields.c_str(), NULL, NULL,
-                                            &errorMessage);
-
-                    if(SQLITE_OK != rc && SQLITE_CONSTRAINT_UNIQUE != sqlite3_extended_errcode(database))
-                    {
-                    	logger.logError("There was an error while writing the dimension_list id to the fields table"
-                    					"Query:\"%s\""
-                    					"Error message:%s", writeDimListIdToFields.c_str(), errorMessage);
-                    }
-
-                }
                 else
                 {
-                    logger.logError("There was an error while writing data to the fields table. "
-                    				"Query:\"%s\""
-                    				"Error message:%s.", writeDimsQuery.c_str(), errorMessage);
-
                     if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
                     {
+                        logger.logWarning("SQLITE_CONSTRAINT_UNIQUE violated. "
+                        				"Query:\"%s\""
+                        				"Error message:%s.", writeDimsQuery.c_str(), errorMessage);
                     	rc  = SQLITE_OK;
                     }
                     else

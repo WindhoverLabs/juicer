@@ -38,38 +38,47 @@
  *      Author: lgomez
  */
 
-#include "Dimension.h"
+#include <DimensionList.h>
 
-Dimension::Dimension(uint32_t inUpperBound): upperBound{inUpperBound}{
+DimensionList::DimensionList(){
 	// TODO Auto-generated constructor stub
 
 }
-uint32_t Dimension::getUpperBound() const {
-	return upperBound;
-}
 
-Dimension::~Dimension() {
+DimensionList::~DimensionList() {
 	// TODO Auto-generated destructor stub
 }
 
-std::string Dimension::toString()
+std::string DimensionList::toString()
 {
-	std::string str{};
+	std::string dimListStr{"{"};
+	for(auto dim: dimensions)
+	{
+		dimListStr += dim.toString();
+		dimListStr += ",";
+	}
 
-	str += "{";
-	str += "upperBound:";
-	str += std::to_string(upperBound);
-	str += "}";
+	dimListStr += "}";
 
-	return str;
+	return dimListStr;
 }
 
-uint32_t Dimension::getId() const {
+uint32_t DimensionList::getId() const {
 	return id;
 }
 
-void Dimension::setId(uint32_t id) {
+void DimensionList::setId(uint32_t id) {
 	this->id = id;
+}
+
+void DimensionList::addDimension(uint32_t upperBound)
+{
+	dimensions.push_back(Dimension{upperBound});
+}
+
+const std::vector<DimensionList::Dimension>& DimensionList::getDimensions() const
+{
+	return dimensions;
 }
 
 
