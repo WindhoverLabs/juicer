@@ -13,22 +13,28 @@
 #define TEST_FILE_H_
 #include "stdint.h"
 
+/**
+ *The fields padding1 and padding2(as the name implies) are to prevent
+ *gcc from inserting padding at compile-time and altering the expected results in our tests.
+ */
 typedef struct
 {
     int32_t width = 101;
-    uint8_t stuff;
+    uint16_t stuff;
+    uint16_t padding1;
     int32_t length;
-    uint8_t more_stuff;
+    uint16_t more_stuff;
+    uint16_t padding2;
     float 	floating_stuff;
-    float 	matrix3D[3][4][5];
-    float 	matrix1D[3];
+    float 	matrix3D[2][4][4];
+    float 	matrix1D[2];
 }Square;
 
 struct Circle
 {
-    float diameter = 7;
-    float radius;
-    int points[128];
+    float 	diameter = 7;
+    float 	radius;
+    int 	points[128];
 };
 
 enum Color
