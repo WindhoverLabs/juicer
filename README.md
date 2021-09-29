@@ -63,29 +63,25 @@ juicer extracts structs, arrays, enumerations and intrinsic types(support for ev
 ### An Example
 Imagine we wrote some elf_file.cpp that looks like this.
 ```
-#include<libelf.h>
-#include <libdwarf.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
+#include "stdint.h"
 
 typedef struct
 {
     int32_t width = 101;
-    uint8_t stuff;
+    uint16_t stuff;
+    uint16_t padding1;
     int32_t length;
-    uint8_t more_stuff;
-    float floating_stuff;
+    uint16_t more_stuff;
+    uint16_t padding2;
+    float       floating_stuff;
+    float       matrix3D[2][4][4];
+    float       matrix1D[2];
 }Square;
 
 Square sq = {};
-
-int flat_array[] = {1,2,3,4,5,6};
 ```
 
-`juicer` uses DWARF debug information to extract all of the information. Because of this, you *must* pass the `-g` flag to `gcc` when compiling your source code:
+`juicer` uses DWARF debug information to extract all the information. Because of this, you *must* pass the `-g` flag to `gcc` when compiling your source code:
 
 ```
 g++ -std=c++14  elf_file.cpp -g -c -o elf_file
@@ -118,9 +114,14 @@ After juicer is done, you will find a database populated with data about our bin
 | INTEGER | INTEGER | INTEGER |
 
 ### fields
-| id* | name | symbol+ | byte_offset | type+ | multiplicity | little_endian | bit_size | bit_offset |
-| --- | --- | --- | ---| --- | --- | --- | --- | --- |
-| INTEGER | TEXT | INTEGER |INTEGER | INTEGER | INTEGER | BOOLEAN | INTEGER | INTEGER |
+| id* | name | symbol+ | byte_offset | type+ | little_endian | bit_size | bit_offset |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| INTEGER | TEXT | INTEGER |INTEGER | INTEGER | BOOLEAN | INTEGER | INTEGER |
+
+### dimension_lists
+| id* | field_id+ | dim_order | upper_bound |
+| ---| --- | --- | --- |
+| INTEGER | INTEGER | TEXT | INTEGER 
 
 ### symbols
 | id* | elf+ | name | byte_size |
@@ -133,13 +134,22 @@ In our specific example, the **symbols** and **fields** tables are the ones we a
 
 ![symbols](Images/symbols_table.png "symbols-table")
 
-As you can see in the image above, our `Square` struct that we defined in our source file is in row 16!
+As you can see in the image above, our `Square` struct that we defined in our source file is in row 15!
 
 You might ask where are its members...that's what the **fields** table is for.
 
-![symbols](Images/fields_table.png "symbols-table")
+![symbols](Images/fields_table.png "fields-table")
 
-As you can see we have a few fields that match our Square struct's id, which is 16. Those fields belong to our struct `Square`. Also note the **type** column; this tells us the particular type a field is. A *type* is the type of a field as it appears in source code. This is simply an external key to the **symbols** table. Also note our **flat_array** field; it has the *same* key for type and symbol; this is how arrays are stored, its size can be seen in the `multiplicity` column.
+As you can see we have a few fields that match our Square struct's id, which is 15. Those fields belong to our struct `Square`. Also note the **type** column; this tells us the particular type a field is. 
+
+What about our matrix arrays such as `matrix3D` and `matrix1D`? That's what the **dimension_lists** table is for.
+
+![symbols](Images/dimension_lists_table.png "dimension_lists-table")
+
+Notice how the three records in dimension_lists have a `field_id` of `8`. If we look at our fields table we notice that
+`matrix3D` has an id of `8` as well. The dimension_lists tells us that field with id `8` is 3 dimensional array; the first
+dimension has an upper bound of 1(inclusive; size 2); the second one(which has dim_order of 1) is 3; the third one has
+an upper bound of 3. These are the dimensions of `matrix3D`. This design is modeled after the DWARF4 and XTCE standards. Hopefully this schema is clear enough.
 
 This is how juicer stores data in the database.
 
@@ -300,4 +310,4 @@ juicer behaves accordingly. If a pointer does not have a type(meaning it does no
 At the moment vxWorks support is a work in progress. Support is currently *not* tested, so at the moment it is on its own [branch]
 (https://github.com/WindhoverLabs/juicer/tree/vxWorks).
 
-Documentation updated on September 20, 2021
+Documentation updated on September 29, 2021
