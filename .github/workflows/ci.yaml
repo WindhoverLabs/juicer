@@ -31,11 +31,8 @@ jobs:
         run: git submodule update --init --recursive
       - name: Run tests
         run: make coverage
-      - name: coveralls
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERALLS_SERVICE_NAME: github
-        run:  |
-          cd build
-          coveralls
+      - name: publish to coveralls.io
+        uses: coverallsapp/github-action@v1.1.2
+        with:
+          github-token: ${{ github.token }}
 
