@@ -31,8 +31,8 @@ jobs:
         run: git submodule update --init --recursive
       - name: Run tests
         run: make coverage
-      - name: publish to coveralls.io
-        uses: coverallsapp/github-action@v1.1.2
-        with:
-          github-token: ${{ github.token }}
+        #- name: publish to coveralls.io
+        #uses: coverallsapp/github-action@v1.1.2
+        #with:
+        #  github-token: ${{ github.token }}
 
