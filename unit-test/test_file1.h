@@ -16,6 +16,7 @@
 /**
  *The fields padding1 and padding2(as the name implies) are to prevent
  *gcc from inserting padding at compile-time and altering the expected results in our tests.
+ * Tested on Ubuntu 20.04 and Ubuntu 18.04.
  */
 typedef struct
 {
