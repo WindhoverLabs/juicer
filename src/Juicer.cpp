@@ -31,18 +31,25 @@
  *
  *****************************************************************************/
 
-#include "Juicer.h"
 #include <string.h>
 #include <errno.h>
 #include <libelf.h>
 #include <ctype.h>
 #include <memory.h>
+#include <cmath>
+#include <iostream>
+#include <vector>
+#include <numeric>
+#include <string>
+#include <functional>
+
+#include "Juicer.h"
 #include "IDataContainer.h"
 #include "Symbol.h"
 #include "Field.h"
 #include "Enumeration.h"
 #include "ElfFile.h"
-#include <cmath>
+
 
 
 Juicer::Juicer()
@@ -160,7 +167,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 {
 	Dwarf_Die 		dieSubrangeType;
 	Dwarf_Unsigned 	dwfUpperBound = 0;
-	uint32_t 		multiplicity = 0;
+	DimensionList 		dimList{};
 	Dwarf_Error     error = 0;
 	Dwarf_Attribute attr_struct = 0;
 	char* 			arrayName = nullptr;
@@ -224,7 +231,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 		/* Set the multiplicity, the array's size. */
 		if(res == DW_DLV_OK)
 		{
-			multiplicity = dwfUpperBound + 1;
+			dimList = getDimList(dbg, dieSubrangeType);
 		}
 	}
 
@@ -250,7 +257,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 			 */
 			std::string stdString{arrayName};
 
-			Symbol* 	arraySymbol =  getBaseTypeSymbol(elf, inDie, multiplicity);
+			Symbol* 	arraySymbol =  getBaseTypeSymbol(elf, inDie, dimList);
 
 			if(nullptr == arraySymbol)
 			{
@@ -262,7 +269,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 			{
 				std::string arrayBaseType{arraySymbol->getName().c_str()};
 				outSymbol = elf.getSymbol(arrayBaseType);
-				outSymbol->addField(stdString, 0, *outSymbol, multiplicity, elf.isLittleEndian());
+				outSymbol->addField(stdString, 0, *outSymbol, dimList, elf.isLittleEndian());
 			}
 		}
     }
@@ -436,7 +443,7 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
 
 
 
-Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &multiplicity)
+Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &dimList)
 {
     int             res = DW_DLV_OK;
     Dwarf_Attribute attr_struct;
@@ -689,72 +696,14 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
 
             case DW_TAG_array_type:
             {
-                Dwarf_Die dieSubrangeType;
-                Dwarf_Unsigned dwfUpperBound = 0;
-
                 /* First get the base type itself. */
-                outSymbol = getBaseTypeSymbol(elf, typeDie, multiplicity);
+                outSymbol = getBaseTypeSymbol(elf, typeDie, dimList);
 
-                /* Now lets get the array size.  Get the array size by getting
-                 * the first child, which should be the subrange_type. */
-                if(res == DW_DLV_OK)
-                {
-                    res = dwarf_child(typeDie, &dieSubrangeType, &error);
-                    if(res == DW_DLV_ERROR)
-                    {
-                        logger.logError("Error in dwarf_child. errno=%u %s", dwarf_errno(error),
-                                dwarf_errmsg(error));
-                    }
-                }
-
-                /* Make sure this is the subrange_type tag. */
-                if(res == DW_DLV_OK)
-                {
-                    Dwarf_Half childTag;
-
-                    res = dwarf_tag(dieSubrangeType, &childTag, &error);
-                    if(res != DW_DLV_OK)
-                    {
-                        logger.logError("Error in dwarf_tag.  %u  errno=%u %s", __LINE__, dwarf_errno(error),
-                            dwarf_errmsg(error));
-                    }
-                    else
-                    {
-                        if(childTag != DW_TAG_subrange_type)
-                        {
-                            logger.logError("Unexpected child in array.  tag=%u", tag);
-
-                            res = DW_DLV_ERROR;
-                        }
-                    }
-                }
-
-                /* Get the upper bound. */
-                if(res == DW_DLV_OK)
-                {
-                    res = dwarf_attr(dieSubrangeType, DW_AT_upper_bound, &attr_struct, &error);
-                    if(res != DW_DLV_OK)
-                    {
-                        logger.logError("Error in dwarf_attr(DW_AT_upper_bound).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
-                            dwarf_errmsg(error));
-                    }
-
-                    if(res == DW_DLV_OK)
-                    {
-                        res = dwarf_formudata(attr_struct, &dwfUpperBound, &error);
-                        if(res != DW_DLV_OK)
-                        {
-            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                    dwarf_errmsg(error));
-                        }
-                    }
-
-                    /* Set the multiplicity argument. */
-                    if(res == DW_DLV_OK)
-                    {
-                        multiplicity = dwfUpperBound + 1;
-                    }
-                }
+				/* Set the multiplicity argument. */
+				if(res == DW_DLV_OK)
+				{
+					dimList = getDimList(dbg, typeDie);
+				}
 
                 break;
             }
@@ -771,7 +720,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &mult
                 /* Get the type attribute. */
                 res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
 
-                getBaseTypeSymbol(elf, typeDie, multiplicity);
+                getBaseTypeSymbol(elf, typeDie, dimList);
 
                 break;
             }
@@ -821,7 +770,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
 {
     int             res = DW_DLV_OK;
     Dwarf_Attribute *attribs;
-    Dwarf_Signed    attribCount = 20;
+    Dwarf_Signed    attribCount = 0;
     Dwarf_Off       globalOffset;
     Dwarf_Off       localOffset;
     Dwarf_Attribute attr_struct;
@@ -1135,14 +1084,45 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
 
         abbrevCode = dwarf_die_abbrev_code(inDie);
 
+
+        res = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
+        if(res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_die_abbrev_children_flag.  errno=%u %s", dwarf_errno(error),
+                    dwarf_errmsg(error));
+        }
+        else
+        {
+        	logger.logDebug("  Has children:        %s\n", hasChildrenFlag ? "True" : "False");
+        }
+
+        res = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
+        if(res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_die_abbrev_children_flag.  errno=%u %s", dwarf_errno(error),
+                    dwarf_errmsg(error));
+        }
+        else
+        {
+        	logger.logDebug("  Has children:        %s\n", hasChildrenFlag ? "True" : "False");
+        }
+
         sprintf(line, "<%u><%x>: Abbrev Number: %u (%s)\n", level, globalOffset, abbrevCode, tagName);
         strcpy(output, line);
 
         res = dwarf_attrlist(inDie, &attribs, &attribCount, &error);
         if(res != DW_DLV_OK)
         {
-            logger.logError("Error in dwarf_attrlist.  errno=%u %s", dwarf_errno(error),
-            dwarf_errmsg(error));
+        	if(res == DW_DLV_ERROR)
+        	{
+        		logger.logError("Error in dwarf_attrlist.  errno=%u %s", dwarf_errno(error),
+        				dwarf_errmsg(error));
+        	}
+        	else if(res == DW_DLV_NO_ENTRY)
+        	{
+        		logger.logWarning("No Entry in dwarf_attrlist.  errno=%u %s", dwarf_errno(error),
+        		        				dwarf_errmsg(error));
+        	}
         }
         else
         {
@@ -2762,9 +2742,9 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
     /* Get the base type die. */
     if(res == DW_DLV_OK)
     {
-        uint32_t multiplicity;
+        DimensionList dimensionList{};
 
-        baseTypeSymbol = getBaseTypeSymbol(elf ,inDie, multiplicity);
+        baseTypeSymbol = getBaseTypeSymbol(elf ,inDie, dimensionList);
         if(baseTypeSymbol == 0)
         {
             /* Set the error code so we don't do anymore processing. */
@@ -2800,6 +2780,8 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
     int             res = DW_DLV_OK;
     Dwarf_Attribute attr_struct = nullptr;
     Dwarf_Die       memberDie = 0;
+
+    Dwarf_Unsigned udata = 0;
 
     /* Get the fields by getting the first child. */
     if(res == DW_DLV_OK)
@@ -2854,7 +2836,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
 
                     case DW_TAG_member:
                     {
-                        uint32_t multiplicity = 0;
+                        DimensionList dimensionList{};
 
                         /* Get the name attribute of this Die. */
 
@@ -2893,106 +2875,24 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                         }
 
                         /* Get the actual data member location of this member. */
-                        if(res == DW_DLV_OK)
-                        {
-                            Dwarf_Half formID;
-
-                            res = dwarf_whatform(attr_struct, &formID, &error);
-                            if(res != DW_DLV_OK)
-                            {
-                                logger.logError("Error in dwarf_whatform.  errno=%u line=%u  %s", dwarf_errno(error),
-                                        __LINE__, dwarf_errmsg(error));
-                            }
-
-                            switch(formID)
-                            {
-                                case DW_FORM_udata:
-                                {
-                                    Dwarf_Unsigned udata = 0;
-
-                                    res = dwarf_formudata(attr_struct, &udata, &error);
-                                    if(res != DW_DLV_OK)
-                                    {
-                            	        DisplayDie(memberDie, 99);
-
-                				        logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                            dwarf_errmsg(error));
-                                    }
-                                    else
-                                    {
-                                    	memberLocation = (uint32_t) udata;
-                                    }
-
-                                    break;
-                                }
-
-                                case DW_FORM_block1:
-                                {
-                                    Dwarf_Block *bdata = 0;
-
-                                    res = dwarf_formblock(attr_struct, &bdata, &error);
-                                    if(res != DW_DLV_OK)
-                                    {
-                        				logger.logError("Error in dwarf_formblock.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                dwarf_errmsg(error));
-                                    }
-                                    else
-                                    {
-                                    	if(bdata->bl_from_loclist == 0)
-                                    	{
-                                    		/*
-                                    		7.6 Variable Length Data
-                                    		Integers may be encoded using “Little Endian Base 128” (LEB128) numbers. LEB128 is a
-                                    		scheme for encoding integers densely that exploits the assumption that most integers are small in
-                                    		magnitude.
-                                    		This encoding is equally suitable whether the target machine architecture represents data in big-
-                                    		endian or little-endian order. It is “little-endian” only in the sense that it avoids using space to
-                                    		represent the “big” end of an unsigned integer, when the big end is all zeroes or sign extension
-                                    		bits.
-                                    		Unsigned LEB128 (ULEB128) numbers are encoded as follows: start at the low order end of an
-                                    		unsigned integer and chop it into 7-bit chunks. Place each chunk into the low order 7 bits of a
-                                    		byte. Typically, several of the high order bytes will be zero; discard them. Emit the remaining
-                                    		bytes in a stream, starting with the low order byte; set the high order bit on each byte except the
-                                    		last emitted byte. The high bit of zero on the last byte indicates to the decoder that it has
-                                    		encountered the last byte.
-                                    		The integer zero is a special case, consisting of a single zero byte.
-                                    		*/
-
-                                    	    uint8_t *data = (uint8_t*)bdata->bl_data;
-                                    		if(DW_OP_plus_uconst == data[0])
-                                    		{
-                                    			 int i = 0;
-                                    			 int shift = 0;
-                                    			 uint8_t *leb128 = &data[1];
-                                    			 memberLocation = 0;
-
-                                    			 for (i = 1; i < bdata->bl_len; ++i)
-                                    			 {
-                                    				 memberLocation |= (*leb128++ & ((1 << 7) - 1)) << shift; shift += 7;
-                                    			 }
-                                    		 }
-                                    	}
-                                    	else
-                                    	{
-                            				logger.logError("Cannot parse %s.  loclist %d not supported.  line=%u", memberName, __LINE__, bdata->bl_from_loclist);
-                                    	}
-
-                                    }
-
-                                    break;
-                                }
-
-                                default:
-                                {
-                    				logger.logError("Unable to parse '%s' member location. Unsupported form 0x%0x", memberName, formID);
-                                }
-                            }
-                        }
+						if(res == DW_DLV_OK)
+						{
+							res = dwarf_formudata(attr_struct, &udata, &error);
+							if(res != DW_DLV_OK)
+							{
+								logger.logError("Error in dwarf_formudata , level %d.  errno=%u %s", dwarf_errno(error),
+									dwarf_errmsg(error));
+							}
+							else
+							{
+								memberLocation = (uint32_t) udata;
+							}
+						}
 
                         /* Get the base type die. */
                         if(res == DW_DLV_OK)
                         {
-                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, multiplicity);
+                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList);
                             if(memberBaseTypeSymbol == 0)
                             {
                                 logger.logWarning("Couldn't find base type for %s:%s.", symbol.getName().c_str(), memberName);
@@ -3008,7 +2908,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
 
 							std::string sMemberName = memberName;
 
-							Field memberField{symbol, sMemberName, (uint32_t) memberLocation, *memberBaseTypeSymbol, multiplicity, elf.isLittleEndian()};
+							Field memberField{symbol, sMemberName, (uint32_t) memberLocation, *memberBaseTypeSymbol, dimensionList, elf.isLittleEndian()};
 
 							addBitFields(memberDie, memberField);
 							symbol.addField(memberField);
@@ -3076,9 +2976,9 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 
 			uint32_t previousFieldSize = symbol.getFields().at(i-1)->getType().getByteSize();
 
-			if(symbol.getFields().at(i-1)->getMultiplicity()>0)
+			if(symbol.getFields().at(i-1)->isArray()>0)
 			{
-				previousFieldSize = symbol.getFields().at(i-1)->getMultiplicity() * previousFieldSize ;
+				previousFieldSize = symbol.getFields().at(i-1)->getArraySize() * previousFieldSize ;
 			}
 
 			uint32_t lastFieldOffset = symbol.getFields().at(i-1)->getByteOffset();
@@ -3111,7 +3011,7 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 				auto fields_it = fields.begin();
 
 				fields.insert(fields_it+i, std::make_unique<Field>(symbol,spareName, (uint32_t)memberLocation,
-						*paddingSymbol, 0, symbol.getElf().isLittleEndian()));
+						*paddingSymbol, symbol.getElf().isLittleEndian()));
 
 				fieldsSize++;
 				i++;
@@ -3147,10 +3047,10 @@ void Juicer::addPaddingEndToStruct(Symbol& symbol)
 	{
 		symbolSize = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize();
 
-		if(symbol.getFields().back()->getMultiplicity()>0)
+		if(symbol.getFields().back()->getArraySize()>0)
 		{
 			symbolSize = symbol.getFields().back()->getByteOffset() + (symbol.getFields().back()->getType().getByteSize()
-						 * symbol.getFields().back()->getMultiplicity()) ;
+						 * symbol.getFields().back()->getArraySize()) ;
 		}
 
 		sizeDelta = symbol.getByteSize() - symbolSize;
@@ -3171,7 +3071,7 @@ void Juicer::addPaddingEndToStruct(Symbol& symbol)
 
 			uint32_t newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
 
-			symbol.addField(paddingFieldName,newFieldByteOffset, *paddingSymbol, 0, symbol.getElf().isLittleEndian(), 0,0);
+			symbol.addField(paddingFieldName,newFieldByteOffset, *paddingSymbol, symbol.getElf().isLittleEndian(), 0,0);
 
 		}
 	}
@@ -3284,11 +3184,6 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
         }
 
     	DisplayDie(cur_die, in_level);
-
-        if(offset == 0x3ad6b)
-        {
-        	printf("Hello\n");
-        }
 
         res = dwarf_tag(cur_die, &tag, &error);
         if(res != DW_DLV_OK)
@@ -3717,8 +3612,207 @@ int Juicer::parse( std::string& elfFilePath)
     return return_value;
 }
 
+uint32_t Juicer::calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die dieSubrangeType)
+{
+
+    Dwarf_Unsigned  dwfUpperBound = 0;
+    Dwarf_Attribute attr_struct;
+
+    int res = DW_DLV_OK;
+    uint32_t dimSize = 0;
+    /* Now lets get the array size.  Get the array size by getting
+     * the first child, which should be the subrange_type. */
+
+    /* Make sure this is the subrange_type tag. */
+    if(res == DW_DLV_OK)
+    {
+        Dwarf_Half childTag;
+
+        res = dwarf_tag(dieSubrangeType, &childTag, &error);
+        if(res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_tag.  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                dwarf_errmsg(error));
+        }
+        else
+        {
+            if(childTag != DW_TAG_subrange_type)
+            {
+                logger.logError("Unexpected child in array.  tag=%u", childTag);
+
+                res = DW_DLV_ERROR;
+            }
+        }
+    }
+
+    /* Get the upper bound. */
+    if(res == DW_DLV_OK)
+    {
+        res = dwarf_attr(dieSubrangeType, DW_AT_upper_bound, &attr_struct, &error);
+        if(res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_attr(DW_AT_upper_bound).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                dwarf_errmsg(error));
+        }
+
+        if(res == DW_DLV_OK)
+        {
+            res = dwarf_formudata(attr_struct, &dwfUpperBound, &error);
+            if(res != DW_DLV_OK)
+            {
+                logger.logError("Error in dwarf_formudata.  errno=%u %s", dwarf_errno(error),
+                        dwarf_errmsg(error));
+            }
+        }
+
+        /* Set the multiplicity argument. */
+        if(res == DW_DLV_OK)
+        {
+        	dimSize += dwfUpperBound + 1;
+        }
+    }
+
+    return dimSize;
+}
+
+/**
+ *
+ * @return The number of elements in the die array entry, including all dimensions. It is assumed that die is of type
+ * DW_TAG_array_type.
+ */
+int Juicer::calcArraySizeForAllDims(Dwarf_Debug dbg, Dwarf_Die die)
+{
+    int arraySize = 0;
+    std::vector<Dwarf_Die>  children = getChildrenVector(dbg, die);
+
+    for(auto child: children)
+    {
+    	if (arraySize == 0)
+    			arraySize = 1;
+
+    	arraySize = arraySize * calcArraySizeForDimension(dbg, child);
+    }
+
+    return arraySize;
+
+}
+
+/**
+ * Assuming that die is a DW_TAG_array_type, iterate through each  DW_TAG_subrange_type and return
+ * a std::vector with all them as Dimension objects
+ */
+DimensionList Juicer::getDimList(Dwarf_Debug dbg, Dwarf_Die die)
+{
+	DimensionList dimList{};
+    std::vector<Dwarf_Die>  children = getChildrenVector(dbg, die);
+    for(auto child: children)
+    {
+    	dimList.addDimension(calcArraySizeForDimension(dbg, child) - 1);
+    }
+
+    return dimList;
+}
+
+/**
+ *Very useful for counting sibling sibling with tags such as DW_TAG_subrange_type
+ *to figure out the size of multidimensional arrays.
+ */
+int Juicer::getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die)
+{
+    int res = DW_DLV_OK;
+    int siblingCount = 0;
+
+    Dwarf_Die   sibling_die;
+
+    res = dwarf_siblingof(dbg, die, &sibling_die, &error);
+
+    if(res != DW_DLV_OK)
+    {
+        logger.logWarning("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error),
+                dwarf_errmsg(error));
+    }
+    else
+    {
+    	siblingCount = 1;
+    	return siblingCount += getNumberOfSiblingsForDie(dbg, sibling_die);
+    }
+
+    return siblingCount;
+}
+
+std::vector<Dwarf_Die> Juicer::getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die)
+{
+    int res = DW_DLV_OK;
+    std::vector<Dwarf_Die> siblingList{};
+
+    Dwarf_Die   sibling_die;
+
+    int siblingCount =  getNumberOfSiblingsForDie(dbg, die);
+
+    for(int sibling =0; sibling<siblingCount; sibling++)
+    {
+    	res = dwarf_siblingof(dbg, die, &sibling_die, &error);
+        if(res != DW_DLV_OK)
+        {
+            logger.logWarning("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error),
+                    dwarf_errmsg(error));
+        }
+        else
+        {
+        	siblingList.push_back(sibling_die);
+        	die = sibling_die;
+        }
+    }
+
+    return siblingList;
+}
+
+/**
+ *@brief Get all of the children of the die in a nice STL vector.
+ */
+std::vector<Dwarf_Die> Juicer::getChildrenVector(Dwarf_Debug dbg, Dwarf_Die parentDie)
+{
+    int res = DW_DLV_OK;
+    std::vector<Dwarf_Die> childList{};
+
+    Dwarf_Die   childDie;
+
+    int childCount = 0;
+
+    //Get the first sibling
+    res = dwarf_child(parentDie, &childDie, &error);
+    if(res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_child. errno=%u %s", dwarf_errno(error),
+                dwarf_errmsg(error));
+    }
+
+    if(res == DW_DLV_OK)
+    {
+		childList.push_back(childDie);
+        childCount = getNumberOfSiblingsForDie(dbg, childDie) + 1;
+    	//Get all of the siblings, including the very first one.
+        Dwarf_Die siblingDie;
+		for(int child =0; child<childCount; child++)
+		{
+			res = dwarf_siblingof(dbg, childDie, &siblingDie, &error);
+			if(res != DW_DLV_OK)
+			{
+				logger.logWarning("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error),
+						dwarf_errmsg(error));
+			}
+			else
+			{
+				childList.push_back(siblingDie);
+				childDie = siblingDie;
+			}
+		}
+    }
+
+    return childList;
+}
+
 void Juicer::setIDC(IDataContainer *inIdc)
 {
     idc = inIdc;
 }
-

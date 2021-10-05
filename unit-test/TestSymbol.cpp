@@ -74,26 +74,26 @@ TEST_CASE( "Test addField(std::string& inName, uint32_t inByteOffset, "
                                             "Symbol &inType, uint32_t inMultiplicity, "
                                             "bool inLittleEndian) method ", "[Symbol]" )
 {
-    std::string fieldName{"intField"};
-    std::string            newElfName{"ABC"};
-    std::string            newSymbolName{"string"};
-    std::string            newTypeName{"Shape"};
+    std::string 			fieldName{"intField"};
+    std::string         	newElfName{"ABC"};
+    std::string            	newSymbolName{"string"};
+    std::string            	newTypeName{"Shape"};
     ElfFile                 myelf{newElfName};
-    bool                     littleEndian = true;
-    uint32_t               byteOffset{32};
-    uint32_t               multiplicity{2};
+    bool                    littleEndian = true;
+    uint32_t                byteOffset{32};
+    DimensionList	dimList{};
 
     Symbol newSymbol{myelf};
     Symbol newType{myelf};
 
     newType.setName(newTypeName);
 
-    newSymbol.addField(fieldName, byteOffset, newType, multiplicity, littleEndian);
+    newSymbol.addField(fieldName, byteOffset, newType, dimList, littleEndian);
 
     REQUIRE(newSymbol.getFields().back()->getName() == fieldName);
     REQUIRE(newSymbol.getFields().back()->getByteOffset() == byteOffset);
     REQUIRE(newSymbol.getFields().back()->getType().getName() == newTypeName);
-    REQUIRE(newSymbol.getFields().back()->getMultiplicity() == multiplicity);
+//    REQUIRE(newSymbol.getFields().back()->getDimensionList().size()== dimList.size());
     REQUIRE(newSymbol.getFields().back()->isLittleEndian() == littleEndian);
 }
 

@@ -18,7 +18,6 @@ Symbol::Symbol(ElfFile& inElf) :
 }
 
 
-
 Symbol::Symbol(ElfFile& inElf, std::string &inName, uint32_t inByteSize) :
     elf{inElf}, // @suppress("Symbol is not resolved")
     name{inName}, // @suppress("Symbol is not resolved")
@@ -26,7 +25,6 @@ Symbol::Symbol(ElfFile& inElf, std::string &inName, uint32_t inByteSize) :
 {
     logger.logDebug("Symbol %s::%s (%u bytes) created.", elf.getName().c_str(), name.c_str(), byte_size);
 }
-
 
 
 Symbol::~Symbol()
@@ -37,11 +35,9 @@ void Symbol::addField( Field& inField)
 {
 	logger.logDebug("Adding Field %s to Symbol %s.", inField.getName().c_str(), name.c_str());
 
-	addField(inField.getName(), inField.getByteOffset(), inField.getType(), inField.getMultiplicity(), inField.isLittleEndian(),
+	addField(inField.getName(), inField.getByteOffset(), inField.getType(), inField.getDimensionList(), inField.isLittleEndian(),
 			inField.getBitSize(), inField.getBitOffset());
 }
-
-
 
 
 /**
@@ -53,7 +49,7 @@ void Symbol::addField( Field& inField)
 void Symbol::addField(std::string& inName,
 		              uint32_t inByteOffset,
 					  Symbol &inType,
-					  uint32_t inMultiplicity,
+					  DimensionList& dimensionList,
 					  bool inLittleEndian,
 					  uint32_t inBitSize,
 					  uint32_t inBitOffset)
@@ -63,7 +59,30 @@ void Symbol::addField(std::string& inName,
 
     if(field == nullptr)
     {
-        fields.push_back(std::make_unique<Field>(*this, inName, inByteOffset, inType, inMultiplicity, inLittleEndian,
+        fields.push_back(std::make_unique<Field>(*this, inName, inByteOffset, inType, dimensionList, inLittleEndian,
+        		inBitSize, inBitOffset));
+    }
+}
+
+/**
+ *@note There is another function in the <memory.h> API,
+ *which is used by the smart pointers such as
+ *unique_ptr, which is also called addField. Maybe we should place our
+ *elf data structures inside a namespace called ElfData?
+ */
+void Symbol::addField(std::string& inName,
+		              uint32_t inByteOffset,
+					  Symbol &inType,
+					  bool inLittleEndian,
+					  uint32_t inBitSize,
+					  uint32_t inBitOffset)
+{
+
+    Field *field = getField(inName);
+
+    if(field == nullptr)
+    {
+        fields.push_back(std::make_unique<Field>(*this, inName, inByteOffset, inType, inLittleEndian,
         		inBitSize, inBitOffset));
     }
 }

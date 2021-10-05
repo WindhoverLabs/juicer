@@ -43,7 +43,9 @@
 #include <sys/types.h> /* For open() */
 #include <sys/stat.h>  /* For open() */
 #include <fcntl.h>
+#include <stdint.h>
 
+#include "DimensionList.h"
 #include "Field.h"
 #include "ElfFile.h"
 #include "Logger.h"
@@ -99,7 +101,7 @@ private:
 	Dwarf_Debug dbg = 0;
 	int res = DW_DLV_ERROR;
 	Dwarf_Error error = 0;
-	Dwarf_Handler errhand = 0;
+	Dwarf_Handler errhand;
 	Dwarf_Ptr errarg = 0;
 	int readCUList(ElfFile& elf, Dwarf_Debug dbg);
 	int getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level);
@@ -120,9 +122,17 @@ private:
 	Logger logger;
 	IDataContainer *idc = 0;
 	bool isIDCSet(void);
-	Symbol * getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, uint32_t &multiplicity);
+	Symbol * getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &multiplicity);
 	void DisplayDie(Dwarf_Die inDie, uint32_t level);
 
+    std::vector<Dwarf_Die> getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die);
+    std::vector<Dwarf_Die> getChildrenVector(Dwarf_Debug dbg, Dwarf_Die die);
+    int getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die);
+
+    uint32_t calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);
+    int calcArraySizeForAllDims(Dwarf_Debug dbg,Dwarf_Die die);
+
+    DimensionList getDimList(Dwarf_Debug dbg, Dwarf_Die die);
 };
 
 #endif /* JUICER_H_ */

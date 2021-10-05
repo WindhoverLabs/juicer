@@ -12,6 +12,7 @@
 #include <vector>
 #include <memory>
 
+#include "DimensionList.h"
 #include "ElfFile.h"
 #include "Logger.h"
 #include "Enumeration.h"
@@ -39,7 +40,13 @@ public:
 	void addField(std::string& inName,
 			uint32_t inByteOffset,
 			Symbol &inType,
-			uint32_t inMultiplicity,
+			DimensionList& dimensionList,
+			bool inLittleEndian,
+			uint32_t inBitSize = 0,
+			uint32_t inBitOffset = 0);
+	void addField(std::string& inName,
+			uint32_t inByteOffset,
+			Symbol &inType,
 			bool inLittleEndian,
 			uint32_t inBitSize = 0,
 			uint32_t inBitOffset = 0);
