@@ -1,5 +1,5 @@
 
-[![Build Status](https://travis-ci.com/WindhoverLabs/juicer.svg?branch=develop)](https://travis-ci.com/WindhoverLabs/juicer)
+[![Run juicer tests](https://github.com/WindhoverLabs/juicer/actions/workflows/ci.yaml/badge.svg)](https://github.com/WindhoverLabs/juicer/actions/workflows/ci.yaml)
 
 # Table of Contents
 1. [Dependencies](#dependencies)
