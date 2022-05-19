@@ -31,11 +31,25 @@ typedef struct
     float 	matrix1D[2];
 }Square;
 
+
+enum ModeSlot_t
+{
+    MODE_SLOT_NONE                           = -1,
+    MODE_SLOT_1                              =  0,
+    MODE_SLOT_2                              =  1,
+    MODE_SLOT_3                              =  2,
+    MODE_SLOT_4                              =  3,
+    MODE_SLOT_5                              =  4,
+    MODE_SLOT_6                              =  5,
+    MODE_SLOT_MAX                            =  6
+} ;
+
 struct Circle
 {
     float 	diameter = 7;
     float 	radius;
     int 	points[128];
+    ModeSlot_t mode;
 };
 
 enum Color
@@ -44,6 +58,7 @@ enum Color
   BLUE,
   YELLOW
 };
+
 
 struct S {
 uint8_t before;

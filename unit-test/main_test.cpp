@@ -257,7 +257,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(rc == SQLITE_OK);
 
-    REQUIRE(fieldsRecords.size() == 3);
+    REQUIRE(fieldsRecords.size() == 4);
 
     //Enforce order of records by offset
     std::sort(fieldsRecords.begin(), fieldsRecords.end(),
@@ -421,6 +421,100 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(pointsFieldTypesRecords.at(0)["name"] == "int");
     REQUIRE(pointsFieldTypesRecords.at(0)["byte_size"] == std::to_string(sizeof(int)));
 
+
+    REQUIRE(fieldsRecords.at(3)["name"] == "mode");
+
+    std::string getModeType{"SELECT * FROM symbols where id="};
+
+    getModeType += fieldsRecords.at(3)["type"];
+    getModeType += ";";
+
+    std::vector<std::map<std::string, std::string>> modeSymbolRecord{};
+
+    rc = sqlite3_exec(database, getModeType.c_str(), selectCallbackUsingColNameAsKey, &modeSymbolRecord,
+                               &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    std::string  modeType{modeSymbolRecord.at(0)["id"]};
+
+    /*
+     *Verify the mode field is an enumeration
+     */
+    std::string getModeFieldTypes{"SELECT * FROM symbols WHERE id = "};
+    getModeFieldTypes += modeType;
+    getRadiusFieldTypes += ";";
+
+    std::vector<std::map<std::string, std::string>> modeFieldTypesRecords{};
+
+    rc = sqlite3_exec(database, getModeFieldTypes.c_str(), selectCallbackUsingColNameAsKey, &modeFieldTypesRecords,
+                             &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(modeFieldTypesRecords.size() == 1);
+
+    /**
+     * Ensure that we have all of the expected keys in our map; these are the column names.
+     * Don't love doing this kind of thing in tests...
+     */
+    for(auto record: modeFieldTypesRecords)
+    {
+        REQUIRE(record.find("id") != record.end());
+        REQUIRE(record.find("name") != record.end());
+        REQUIRE(record.find("byte_size") != record.end());
+        REQUIRE(record.find("elf") != record.end());
+    }
+
+    std::string getModeEnums{"SELECT * FROM enumerations WHERE symbol = "};
+    getModeEnums += modeType;
+    getModeEnums += ";";
+
+    std::vector<std::map<std::string, std::string>> modeEnumsRecords{};
+
+    rc = sqlite3_exec(database, getModeEnums.c_str(), selectCallbackUsingColNameAsKey, &modeEnumsRecords,
+                             &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(modeType == "31");
+
+    REQUIRE(modeEnumsRecords.size() == 8);
+
+    /**
+     * Ensure that we have all of the expected keys in our map; these are the column names.
+     * Don't love doing this kind of thing in tests...
+     */
+    for(auto record: modeEnumsRecords)
+    {
+        REQUIRE(record.find("id") != record.end());
+        REQUIRE(record.find("symbol") != record.end());
+        REQUIRE(record.find("value") != record.end());
+        REQUIRE(record.find("name") != record.end());
+    }
+
+    //Enforce order of records by value
+    std::sort(modeEnumsRecords.begin(), modeEnumsRecords.end(),
+              [](std::map<std::string, std::string> a, std::map<std::string, std::string> b)
+              {
+                return std::stoi(a["value"]) < std::stoi(b["value"]);
+              });
+
+    REQUIRE(modeEnumsRecords[0]["name"] == "MODE_SLOT_NONE");
+    REQUIRE(modeEnumsRecords[0]["value"] == "-1");
+    REQUIRE(modeEnumsRecords[1]["name"] == "MODE_SLOT_1");
+    REQUIRE(modeEnumsRecords[1]["value"] == "0");
+    REQUIRE(modeEnumsRecords[2]["name"] == "MODE_SLOT_2");
+    REQUIRE(modeEnumsRecords[2]["value"] == "1");
+    REQUIRE(modeEnumsRecords[3]["name"] == "MODE_SLOT_3");
+    REQUIRE(modeEnumsRecords[3]["value"] == "2");
+    REQUIRE(modeEnumsRecords[4]["name"] == "MODE_SLOT_4");
+    REQUIRE(modeEnumsRecords[4]["value"] == "3");
+    REQUIRE(modeEnumsRecords[5]["name"] == "MODE_SLOT_5");
+    REQUIRE(modeEnumsRecords[5]["value"] == "4");
+    REQUIRE(modeEnumsRecords[6]["name"] == "MODE_SLOT_6");
+    REQUIRE(modeEnumsRecords[6]["value"] == "5");
+    REQUIRE(modeEnumsRecords[7]["name"] == "MODE_SLOT_MAX");
+    REQUIRE(modeEnumsRecords[7]["value"] == "6");
+
     /**
      * *Clean up our database handle and objects in memory.
      */
@@ -507,7 +601,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(circleFieldsRecords.size() == 3);
+    REQUIRE(circleFieldsRecords.size() == 4);
 
     //Enforce order of records by offset
     std::sort(circleFieldsRecords.begin(), circleFieldsRecords.end(),
@@ -857,7 +951,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     delete idc;
 }
 
-TEST_CASE("Write keys to database that already exist" ,"[main_test#6]")
+TEST_CASE("Write keys to database that already exist" ,"[main_test#5]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -889,7 +983,7 @@ TEST_CASE("Write keys to database that already exist" ,"[main_test#6]")
 
 }
 //
-TEST_CASE("Write Elf File to database with a log file", "[main_test#7]")
+TEST_CASE("Write Elf File to database with a log file", "[main_test#6]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -918,7 +1012,7 @@ TEST_CASE("Write Elf File to database with a log file", "[main_test#7]")
 	REQUIRE(remove("./test_db.sqlite")==0);
 }
 
-TEST_CASE("Write Elf File to database with verbosity set to INFO", "[main_test#8]")
+TEST_CASE("Write Elf File to database with verbosity set to INFO", "[main_test#7]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -941,7 +1035,7 @@ TEST_CASE("Write Elf File to database with verbosity set to INFO", "[main_test#8
 	REQUIRE(remove("./test_db.sqlite")==0);
 }
 
-TEST_CASE("Write Elf File to database with invalid verbosity", "[main_test#9]")
+TEST_CASE("Write Elf File to database with invalid verbosity", "[main_test#8]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
