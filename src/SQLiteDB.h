@@ -61,12 +61,12 @@
                                   UNIQUE (symbol, name));"
 
 #define CREATE_ENUMERATION_TABLE "CREATE TABLE IF NOT EXISTS enumerations(\
+                                  id INTEGER PRIMARY KEY,\
                                   symbol INTEGER NOT NULL,\
                                   value INTEGER NOT NULL,\
                                   name TEXT NOT NULL,\
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
-                                  PRIMARY KEY (symbol, name)\
-                                  );"
+                                  UNIQUE (symbol, name));"
 
 #define SQLiteDB_TRUE 1
 #define SQLiteDB_FALSE 0

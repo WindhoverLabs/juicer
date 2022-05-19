@@ -262,9 +262,10 @@ int SQLiteDB::write(ElfFile& inElf)
 
                         rc = writeEnumerationsToDatabase(inElf);
 
-                        if(SQLITEDB_OK == rc)
+                        if(SQLITEDB_ERROR != rc)
                         {
-                        	logger.logInfo("Enumeration entry already exists in the database.");
+                            logger.logInfo("Enumeration entries were written to the fields schema "
+                                           "with SQLITE_OK status.");
                         	rc = SQLITE_OK;
                         }
                         else
@@ -601,12 +602,10 @@ int SQLiteDB::writeDimensionsListToDatabase(ElfFile& inElf)
                 rc = sqlite3_exec(database, writeDimsQuery.c_str(), NULL, NULL,
                                   &errorMessage);
 
-                if(SQLITE_OK != rc)
+                if(SQLITE_OK == rc)
                 {
-                	logger.logError("There was an error while writing data to the dimension table. "
-                					"Query:\"%s\""
-                					"Error message:%s.", writeDimsQuery.c_str(), errorMessage);
-                    rc = SQLITEDB_ERROR;
+                    logger.logDebug("DimensionList values were written to the symbols schema with "
+                                     "SQLITE_OK status.");
                 }
                 else
                 {
@@ -619,7 +618,10 @@ int SQLiteDB::writeDimensionsListToDatabase(ElfFile& inElf)
                     }
                     else
                     {
-                    	rc = SQLITEDB_ERROR;
+                        logger.logError("There was an error while writing data to the dimension table. "
+                                        "Query:\"%s\""
+                                        "Error message:%s.", writeDimsQuery.c_str(), errorMessage);
+                        rc = SQLITEDB_ERROR;
                     }
                 }
             	dimOrder++;
