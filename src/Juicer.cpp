@@ -2605,7 +2605,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf
     for(;;)
     {
         char           *enumeratorName = 0;
-        Dwarf_Unsigned enumeratorValue = 0;
+        Dwarf_Signed enumeratorValue = 0;
 
         /* Make sure this is a member tag. */
         if(res == DW_DLV_OK)
@@ -2664,7 +2664,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf
         /* Get the actual value of this enumerator. */
         if(res == DW_DLV_OK)
         {
-            res = dwarf_formudata(attr_struct, &enumeratorValue, &error);
+            res = dwarf_formsdata(attr_struct, &enumeratorValue, &error);
             if(res != DW_DLV_OK)
             {
 				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),

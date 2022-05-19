@@ -18,14 +18,14 @@ class Enumeration
 {
 public:
 	Enumeration(Symbol &symbol);
-	Enumeration(Symbol &symbol, std::string &name, uint64_t value);
+    Enumeration(Symbol &symbol, std::string &name, int64_t value);
 	virtual ~Enumeration();
 	Enumeration(Enumeration &enumeration);
 	std::string& getName();
 	void setName(std::string& name);
 	Symbol& getSymbol();
-	uint64_t getValue();
-	void setValue(uint64_t value);
+    int64_t getValue();
+    void setValue(int64_t value);
 
 private:
 	Symbol&     symbol;
@@ -35,7 +35,7 @@ private:
 	 *types such as Dwarf_Unsigned, we should use those data types directly
 	 *to avoid casting and ambiguity when passing data around.
 	 */
-	uint64_t     value;
+    int64_t     value;
 	Logger      logger;
 };
 

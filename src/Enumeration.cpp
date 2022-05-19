@@ -15,7 +15,7 @@ Enumeration::Enumeration(Symbol& inSymbol) :
     logger.logDebug("ENUM %s:%s  value:%u  created.", symbol.getName().c_str(), name.c_str(), value);
 }
 
-Enumeration::Enumeration(Symbol& inSymbol, std::string &inName, uint64_t inValue) :
+Enumeration::Enumeration(Symbol& inSymbol, std::string &inName, int64_t inValue) :
     symbol{inSymbol}, // @suppress("Symbol is not resolved")
     name{inName}, // @suppress("Symbol is not resolved")
     value{inValue}
@@ -51,12 +51,12 @@ Symbol& Enumeration::getSymbol()
 	return symbol;
 }
 
-uint64_t Enumeration::getValue()
+int64_t Enumeration::getValue()
 {
 	return value;
 }
 
-void Enumeration::setValue(uint64_t inValue)
+void Enumeration::setValue(int64_t inValue)
 {
     logger.logDebug("ENUM %s:%s value changed from %i to %i.", symbol.getName().c_str(), name.c_str(), value, inValue);
 
