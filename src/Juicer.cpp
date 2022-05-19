@@ -2589,6 +2589,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf
     int             res = DW_DLV_OK;
     Dwarf_Attribute attr_struct = 0;
     Dwarf_Die       enumeratorDie = 0;
+    Dwarf_Signed encodingValue;
 
     /* Get the fields by getting the first child. */
     if(res == DW_DLV_OK)
@@ -2598,6 +2599,25 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf
         {
             logger.logError("Error in dwarf_child. errno=%u %s", dwarf_errno(error),
                     dwarf_errmsg(error));
+        }
+        else
+        {
+            res = dwarf_attr(inDie, DW_AT_encoding, &attr_struct, &error);
+            if(res != DW_DLV_OK)
+            {
+                logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                    dwarf_errmsg(error));
+            }
+
+            if(res == DW_DLV_OK)
+            {
+                res = dwarf_formsdata(attr_struct, &encodingValue, &error);
+                if(res != DW_DLV_OK)
+                {
+                    logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
+                            dwarf_errmsg(error));
+                }
+            }
         }
     }
 
@@ -2664,7 +2684,26 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf
         /* Get the actual value of this enumerator. */
         if(res == DW_DLV_OK)
         {
-            res = dwarf_formsdata(attr_struct, &enumeratorValue, &error);
+            switch(encodingValue)
+            {
+                case DW_ATE_signed:
+                {
+                    res = dwarf_formsdata(attr_struct, &enumeratorValue, &error);
+                    break;
+                }
+
+                case DW_ATE_unsigned:
+                {
+                    res = dwarf_formudata(attr_struct, (Dwarf_Unsigned*)&enumeratorValue, &error);
+                    break;
+                }
+                default:
+                {
+                //Shoul not happen
+                logger.logError("Encoding not supported for enums:%d", encodingValue);
+                }
+
+            }
             if(res != DW_DLV_OK)
             {
 				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
