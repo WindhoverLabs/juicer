@@ -1651,6 +1651,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
 
                             default:
 							    sprintf(attribName, "UNKNOWN (%x)", attrNum);
+							    break;
                         }
 
                         res = dwarf_whatform(attribs[i], &attrNum, &error);
@@ -2528,9 +2529,9 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
 {
     int             res = DW_DLV_OK;
     Dwarf_Unsigned  byteSize = 0;
-    char            *dieName = 0;
+    char            *dieName = nullptr;
     Dwarf_Attribute attr_struct;
-    Symbol          *outSymbol;
+    Symbol          *outSymbol = nullptr;
     std::string     cName;
 
     /* Get the name attribute of this Die. */
@@ -2550,7 +2551,27 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
             logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
                     dwarf_errmsg(error));
         }
-        else
+    }
+
+    /* See if we already have this symbol. */
+    if(dieName == nullptr)
+    {
+        logger.logDebug("dieName is null.");
+    }
+
+    else
+    {
+        cName = dieName;
+    }
+
+    outSymbol = elf.getSymbol(cName);
+
+    if(outSymbol == 0)
+    {
+        /* No.  This is new.  Process it. */
+
+        /* Get the size of this datatype. */
+        if(res == DW_DLV_OK)
         {
 			/* See if we already have this symbol. */
 			cName = dieName;
@@ -2840,6 +2861,8 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
         Symbol         *memberBaseTypeSymbol = nullptr;
         uint32_t        memberLocation = 0;
 
+        Dwarf_Unsigned udata = 0;
+
         if(res == DW_DLV_OK)
         {
             Dwarf_Half tag;
@@ -2913,20 +2936,139 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                             }
                         }
 
+
                         /* Get the actual data member location of this member. */
-						if(res == DW_DLV_OK)
-						{
-							res = dwarf_formudata(attr_struct, &udata, &error);
-							if(res != DW_DLV_OK)
-							{
-								logger.logError("Error in dwarf_formudata , level %d.  errno=%u %s", dwarf_errno(error),
-									dwarf_errmsg(error));
-							}
-							else
-							{
-								memberLocation = (uint32_t) udata;
-							}
-						}
+                        if(res == DW_DLV_OK)
+                        {
+                            res = dwarf_formudata(attr_struct, &udata, &error);
+                            if(res != DW_DLV_OK)
+                            {
+                                logger.logError("Error in dwarf_formudata , level %d.  errno=%u %s", dwarf_errno(error),
+                                    dwarf_errmsg(error));
+                            }
+                            else
+                            {
+                            	memberLocation = (uint32_t) udata;
+                            }
+                        }
+
+                        /* Get the actual data member location of this member. */
+                        if(res == DW_DLV_OK)
+                        {
+                            Dwarf_Half formID;
+
+                            res = dwarf_whatform(attr_struct, &formID, &error);
+                            if(res != DW_DLV_OK)
+                            {
+                                logger.logError("Error in dwarf_whatform.  errno=%u line=%u  %s", dwarf_errno(error),
+                                        __LINE__, dwarf_errmsg(error));
+                            }
+
+                            switch(formID)
+                            {
+
+                            	case DW_FORM_data1:
+                            	{
+
+                                    res = dwarf_formudata(attr_struct, &udata, &error);
+                                    if(res != DW_DLV_OK)
+                                    {
+                            	        DisplayDie(memberDie, 99);
+
+                				        logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+                                            dwarf_errmsg(error));
+                                    }
+                                    else
+                                    {
+                                    	memberLocation = (uint32_t) udata;
+                                    }
+
+                                    break;
+                            	}
+
+                                case DW_FORM_udata:
+                                {
+                                    Dwarf_Unsigned udata = 0;
+
+                                    res = dwarf_formudata(attr_struct, &udata, &error);
+                                    if(res != DW_DLV_OK)
+                                    {
+                            	        DisplayDie(memberDie, 99);
+
+                			logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+                                            dwarf_errmsg(error));
+                                    }
+                                    else
+                                    {
+                                    	memberLocation = (uint32_t) udata;
+                                    }
+
+                                    break;
+                                }
+#ifdef VX_WORKS
+                                case DW_FORM_block1:
+                                {
+                                    Dwarf_Block *bdata = 0;
+
+                                    res = dwarf_formblock(attr_struct, &bdata, &error);
+                                    if(res != DW_DLV_OK)
+                                    {
+               				logger.logError("Error in dwarf_formblock.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+                                                dwarf_errmsg(error));
+                                    }
+                                    else
+                                    {
+                                    	if(bdata->bl_from_loclist == 0)
+                                    	{
+                                    	    /*
+                                    	    7.6 Variable Length Data
+                                    	    Integers may be encoded using “Little Endian Base 128” (LEB128) numbers. LEB128 is a
+                                    	    scheme for encoding integers densely that exploits the assumption that most integers are small in
+                                    	    magnitude.
+                                    	    This encoding is equally suitable whether the target machine architecture represents data in big-
+                                    	    endian or little-endian order. It is “little-endian” only in the sense that it avoids using space to
+                                    	    represent the “big” end of an unsigned integer, when the big end is all zeroes or sign extension
+                                    	    bits.
+                                    	    Unsigned LEB128 (ULEB128) numbers are encoded as follows: start at the low order end of an
+                                    	    unsigned integer and chop it into 7-bit chunks. Place each chunk into the low order 7 bits of a
+                                    	    byte. Typically, several of the high order bytes will be zero; discard them. Emit the remaining
+                                    	    bytes in a stream, starting with the low order byte; set the high order bit on each byte except the
+                                    	    last emitted byte. The high bit of zero on the last byte indicates to the decoder that it has
+                                    	    encountered the last byte.
+                                    	    The integer zero is a special case, consisting of a single zero byte.
+                                    	    */
+
+                                    	    uint8_t *data = (uint8_t*)bdata->bl_data;
+                               		    if(DW_OP_plus_uconst == data[0])
+                                    	    {
+                                    		int i = 0;
+                                                int shift = 0;
+                                                uint8_t *leb128 = &data[1];
+                                                memberLocation = 0;
+
+                                                for (i = 1; i < bdata->bl_len; ++i)
+                                    		{
+                                                    memberLocation |= (*leb128++ & ((1 << 7) - 1)) << shift; shift += 7;
+                                                }
+                                            }
+                                        }
+                                        else
+                                    	{
+                                            logger.logError("Cannot parse %s.  loclist %d not supported.  line=%u", memberName, __LINE__, bdata->bl_from_loclist);
+                                    	}
+                                    }
+
+                                    break;
+                                }
+#endif
+
+                                default:
+                                {
+                                    logger.logError("Unable to parse '%s' member location. Unsupported form 0x%0x", memberName, formID);
+                                    break;
+                                }
+                            }
+                        }
 
                         /* Get the base type die. */
                         if(res == DW_DLV_OK)
@@ -2967,12 +3109,9 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                     }
 
                     default:
-                    {
-                        logger.logError("Unexpected Die found in struct. 0x%02x", tag);
-                        res = DW_DLV_ERROR;
-                        break;
-                    }
-                }
+                    	break;
+
+                 }
             }
 
             res = dwarf_siblingof(dbg, memberDie, &siblingDie, &error);
@@ -2989,15 +3128,19 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
             }
 
             memberDie = siblingDie;
-        }
+
+    }
+
 
         /* Don't continue looping if there was a problem. */
         if(res != DW_DLV_OK)
         {
             break;
         }
-    }
 }
+}
+
+
 
 void Juicer::addPaddingToStruct(Symbol& symbol)
 {
@@ -3472,18 +3615,17 @@ JuicerEndianness_t Juicer::getEndianness()
 			elf_hdr_64 = elf64_getehdr(elf);
 
 			ident_buffer = elf_hdr_64->e_ident;
-
-			if(ident_buffer[EI_DATA] == ELFDATA2MSB)
+			if(ident_buffer[EI_DATA] == ELFDATA2LSB)
 			{
 				rc = JUICER_ENDIAN_BIG;
 			}
-			else if(ident_buffer[EI_DATA] == ELFDATA2LSB)
+			else if(ident_buffer[EI_DATA] == ELFDATA2MSB)
 			{
 				rc = JUICER_ENDIAN_LITTLE;
 			}
 			else
 			{
-				rc = JUICER_ENDIAN_UNKNOWN;
+				rc = JUICER_ENDIAN_BIG;
 			}
 			elf_end(elf);
 		}
@@ -3502,13 +3644,13 @@ JuicerEndianness_t Juicer::getEndianness()
 
 			ident_buffer = elf_hdr_32->e_ident;
 
-			if(ident_buffer[EI_DATA] == ELFDATA2MSB)
-			{
-				rc = JUICER_ENDIAN_BIG;
-			}
-			else if(ident_buffer[EI_DATA] == ELFDATA2LSB)
+			if(ident_buffer[EI_DATA] == ELFDATA2LSB)
 			{
 				rc = JUICER_ENDIAN_LITTLE;
+			}
+			else if(ident_buffer[EI_DATA] == ELFDATA2MSB)
+			{
+				rc =  JUICER_ENDIAN_BIG;
 			}
 			else
 			{
