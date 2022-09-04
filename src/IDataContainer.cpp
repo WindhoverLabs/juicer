@@ -72,7 +72,7 @@ IDataContainer* IDataContainer::Create(IDataContainer_Type_t containerType, cons
 			{
 				logger.logError("Failed to create SQLiteDB data container. '%i'", rc);
 				delete container;
-				container = 0;
+				container = nullptr;
 			}
 
 			logger.logDebug("Created SQLiteDB IDC.");

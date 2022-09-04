@@ -21,6 +21,9 @@
 #define TEST_FILE_1 "ut_obj/test_file1.o"
 #define TEST_FILE_2 "ut_obj/test_file2.o"
 
+//DO NOT rename this macro to something like SQLITE_NULL as that is a macro that exists in sqlite3
+#define TEST_NULL_STR "NULL"
+
 /**
  *Checks if the platform is little endian.
  *This is used as a source of truth for our unit tests.
@@ -31,30 +34,127 @@ bool is_little_endian()
 	return (*(char *)&n == 1);
 }
 
-
-static int selectCallbackUsingNameAsKey(void *veryUsed, int argc, char **argv, char **azColName)
+/**
+ *@brief This callback returns the record inside of a std::vector<std::string>
+ *
+ */
+static int selectVectorCallback(void *veryUsed, int argc, char **argv, char **azColName)
 {
-  auto* row = (std::map<std::string, std::vector<std::string> >*)veryUsed ;
-  int key_index  = 0;
-  std::vector<std::string> tableData{};
+  int   i;
+  auto* tableData = ( std::vector<std::vector<std::string>>*)veryUsed;
 
-  for(int i=0; i<argc; i++)
+  std::vector<std::string> recordVector{};
+
+  for(i=0; i<argc; i++)
   {
-	  std::string tempData{argv[i]};
+	  std::string tempData {TEST_NULL_STR};
+	  if(argv[i] != nullptr)
+	  {
+		  tempData = argv[i];
+	  }
 
-	  if (strcmp("name", azColName[i]) == 0)
+	  recordVector.push_back(tempData);
+  }
+
+  tableData->push_back(recordVector);
+  return 0;
+}
+
+struct columnNameToRowMap
+{
+	std::string colName{};
+	std::map<std::string, std::vector<std::string> > recordMap{};
+};
+
+/**
+ * Scans every column in the record and stores as a map in veryUsed.
+ *
+ * The map looks like this:
+ *
+ * {"symbol": ["col_val_1", "col_val_2", "col_val_3", col_val_N]}
+ *
+ * columns that are of value NULL the value will be set to "NULL".
+ *
+ * For example; the symbol record {"19"	"1"	"char"	"1"}, assuming that
+ * columnNameToRowMap.colName = "name", will be added to the map as:
+ * {"char": ["19", "1", "char", "1"]}
+ *
+ * the one and only key to the map is configurable via the colName field of columnNameToRowMap structure.
+ */
+static int selectCallbackUsingCustomColNameAsKey(void *veryUsed, int argc, char **argv, char **azColName)
+{
+	columnNameToRowMap* mappingData = (columnNameToRowMap*) veryUsed;
+	auto* row = (std::map<std::string, std::vector<std::string> >*)(&mappingData->recordMap);
+	int key_index  = 0;
+	std::vector<std::string> tableData{};
+
+	for(int i=0; i<argc; i++)
+	{
+	  std::string tempData {TEST_NULL_STR};
+	  if(argv[i] != nullptr)
+	  {
+		  tempData.assign(argv[i]);
+	  }
+
+	  if (strcmp(mappingData->colName.c_str(), azColName[i]) == 0)
 	  {
 		  key_index = i;
 	  }
 		  tableData.push_back(tempData);
-  }
+	}
 
-  std::string id{argv[key_index]};
+	std::string id{argv[key_index]};
 
-  (*row)[id] = tableData;
+	(*row)[id] = tableData;
 
-  return 0;
+	return 0;
 }
+
+/**
+ * Scans every column in the record and stores as a vector of map objects in veryUsed.
+ *
+ * The map looks like this:
+ *
+ * [ {"columnName1": "value", "columnName2": "value", "columnName3": "value"},
+ * 	 {"columnName1": "value", "columnName2": "value", "columnName3": "value"},
+ * 	 {"columnName1": "value", "columnName2": "value", "columnName3": "value"}
+ * ]
+ *
+ * columns that are of value NULL the value will be set to "NULL". Note that every map in the vector
+ * is a record in the database.
+ *
+ * For example; the symbol record {"19"	"1"	"char"	"1"} will be added to the vector as:
+ *
+ *   REQUIRE(circleRecords.at(0)["name"] == "Circle");
+ *   REQUIRE(circleRecords.at(0)["byte_size"] == std::to_string(sizeof(Circle)));
+ *
+ *[ {"id:" "elf": "1", "name": "char", "byte_size":"1"} ]
+ *
+ */
+static int selectCallbackUsingColNameAsKey(void *veryUsed, int argc, char **argv, char **azColName)
+{
+	auto* allRecords = (std::vector<std::map<std::string, std::string>>*) veryUsed;
+
+	std::map<std::string, std::string> newRecord{};
+
+	std::vector<std::string> tableData{};
+
+	for(int i=0; i<argc; i++)
+	{
+	  std::string tempData {TEST_NULL_STR};
+	  if(argv[i] != nullptr)
+	  {
+		  tempData.assign(argv[i]);
+	  }
+
+	newRecord[azColName[i]] = tempData;
+	}
+
+	allRecords->push_back(newRecord);
+
+	return 0;
+}
+
 
 TEST_CASE("Test Juicer at the highest level with SQLiteDB" ,"[main_test#1]")
 {
@@ -88,7 +188,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 {
 	/**
 	 * This assumes that the test_file was compiled on
-	 * gcc (Ubuntu 5.4.0-6ubuntu1~16.04.12) 5.4.0 20160609
+	 * gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
 	 *  little-endian machine.
 	 */
 
@@ -120,118 +220,133 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(rc == SQLITE_OK);
 
-    std::map<std::string, std::vector<std::string>> circleMap{};
+    std::vector<std::map<std::string, std::string>> circleRecords{};
 
-    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), selectCallbackUsingNameAsKey, &circleMap,
+    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), selectCallbackUsingColNameAsKey, &circleRecords,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
 
+    REQUIRE(circleRecords.size() == 1);
     /**
      * Check the correctness of Circle struct.
      */
 
-    REQUIRE(circleMap.find("Circle") != circleMap.end());
+   REQUIRE(circleRecords.at(0).find("name") != circleRecords.at(0).end());
+   REQUIRE(circleRecords.at(0).find("byte_size") != circleRecords.at(0).end());
+   REQUIRE(circleRecords.at(0).find("id") != circleRecords.at(0).end());
 
-    REQUIRE(circleMap["Circle"].at(2) == "Circle");
-    REQUIRE(circleMap["Circle"].at(3) == std::to_string(sizeof(Circle)));
-
+   REQUIRE(circleRecords.at(0)["name"] == "Circle");
+   REQUIRE(circleRecords.at(0)["byte_size"] == std::to_string(sizeof(Circle)));
 
     /**
      *Check the fields of the Circle struct.
      */
 
-    std::string circle_id = circleMap["Circle"].at(0);
+    std::string circle_id = circleRecords.at(0)["id"];
 
     std::string getCircleFields{"SELECT * FROM fields WHERE symbol = "};
 
     getCircleFields += circle_id;
     getCircleFields += ";";
 
-    std::map<std::string, std::vector<std::string>> fieldsMap{};
+    std::vector<std::map<std::string, std::string>> fieldsRecords{};
 
-    rc = sqlite3_exec(database, getCircleFields.c_str(), selectCallbackUsingNameAsKey, &fieldsMap,
+    rc = sqlite3_exec(database, getCircleFields.c_str(), selectCallbackUsingColNameAsKey, &fieldsRecords,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
 
-    /**
-     * Ensure that we have all of the expected keys in our map; these are the field names.
-     */
-    REQUIRE(fieldsMap.find("diameter") != fieldsMap.end());
-    REQUIRE(fieldsMap.find("radius") != fieldsMap.end());
-    REQUIRE(fieldsMap.find("points") != fieldsMap.end());
+    REQUIRE(fieldsRecords.size() == 3);
 
+    //Enforce order of records by offset
+    std::sort(fieldsRecords.begin(), fieldsRecords.end(),
+    		  [](std::map<std::string, std::string> a, std::map<std::string, std::string> b)
+			  {
+    			return std::stoi(a["byte_offset"]) < std::stoi(b["byte_offset"]);
+			  });
+
+    /**
+     * Ensure that we have all of the expected keys in our map; these are the column names.
+     * Don't love doing this kind of thing in tests...
+     */
+    for(auto record: fieldsRecords)
+    {
+        REQUIRE(record.find("symbol") != record.end());
+        REQUIRE(record.find("name") != record.end());
+        REQUIRE(record.find("byte_offset") != record.end());
+        REQUIRE(record.find("type") != record.end());
+    }
+
+    REQUIRE(fieldsRecords.at(0)["name"] == "diameter");
     /**
      *Check the correctness of the fields
      */
 
     std::string getDiameterType{"SELECT * FROM symbols where id="};
 
-    getDiameterType += fieldsMap["diameter"].at(4);
+    getDiameterType += fieldsRecords.at(0)["type"];
     getDiameterType += ";";
 
-    std::map<std::string, std::vector<std::string>> diameterTypeMap{};
+    std::vector<std::map<std::string, std::string>> dimaterSymbolRecords{};
 
-
-    rc = sqlite3_exec(database, getDiameterType.c_str(), selectCallbackUsingNameAsKey, &diameterTypeMap,
+    rc = sqlite3_exec(database, getDiameterType.c_str(), selectCallbackUsingColNameAsKey, &dimaterSymbolRecords,
                                &errorMessage);
 
-      REQUIRE(rc == SQLITE_OK);
+    REQUIRE(rc == SQLITE_OK);
 
-    std::string  diameterType{diameterTypeMap["float"].at(0)};
+    REQUIRE(dimaterSymbolRecords.size() == 1);
 
-    REQUIRE(fieldsMap["diameter"].at(1) == circleMap["Circle"].at(0));
-    REQUIRE(fieldsMap["diameter"].at(2) == "diameter");
-    REQUIRE(fieldsMap["diameter"].at(3) == std::to_string(offsetof(Circle, diameter)));
-    REQUIRE(fieldsMap["diameter"].at(4) == diameterType);
-    REQUIRE(fieldsMap["diameter"].at(5) == "0");
-    REQUIRE(fieldsMap["diameter"].at(6) == little_endian);
+    std::string  diameterType{dimaterSymbolRecords.at(0).at("id")};
+
+    REQUIRE(fieldsRecords.at(0)["symbol"] == circleRecords.at(0)["id"]);
+    REQUIRE(fieldsRecords.at(0)["name"]   == "diameter");
+    REQUIRE(fieldsRecords.at(0)["byte_offset"] == std::to_string(offsetof(Circle, diameter)));
+    REQUIRE(fieldsRecords.at(0)["type"] == diameterType);
+    REQUIRE(fieldsRecords.at(0)["little_endian"] == little_endian);
+
+    REQUIRE(fieldsRecords.at(1)["name"] == "radius");
 
     std::string getRadiusType{"SELECT * FROM symbols where id="};
 
-    getRadiusType += fieldsMap["diameter"].at(4);
+    getRadiusType += fieldsRecords.at(1)["type"];
     getRadiusType += ";";
 
-    std::map<std::string, std::vector<std::string>> radiusTypeMap{};
+    std::vector<std::map<std::string, std::string>> radiusSymbolRecord{};
 
-
-    rc = sqlite3_exec(database, getRadiusType.c_str(), selectCallbackUsingNameAsKey, &radiusTypeMap,
+    rc = sqlite3_exec(database, getRadiusType.c_str(), selectCallbackUsingColNameAsKey, &radiusSymbolRecord,
                                &errorMessage);
 
-      REQUIRE(rc == SQLITE_OK);
+    REQUIRE(rc == SQLITE_OK);
 
-    std::string  radiusType{radiusTypeMap["float"].at(0)};
+    std::string  radiusType{radiusSymbolRecord.at(0)["id"]};
 
-    REQUIRE(fieldsMap["radius"].at(1) == circleMap["Circle"].at(0));
-    REQUIRE(fieldsMap["radius"].at(2) == "radius");
-    REQUIRE(fieldsMap["radius"].at(3) == std::to_string(offsetof(Circle, radius)));
-    REQUIRE(fieldsMap["radius"].at(4) == radiusType);
-    REQUIRE(fieldsMap["radius"].at(5) == "0");
-    REQUIRE(fieldsMap["radius"].at(6) == little_endian);
+    REQUIRE(fieldsRecords.at(1)["symbol"] == circleRecords.at(0)["id"]);
+    REQUIRE(fieldsRecords.at(1)["name"] == "radius");
+    REQUIRE(fieldsRecords.at(1)["byte_offset"] == std::to_string(offsetof(Circle, radius)));
+    REQUIRE(fieldsRecords.at(1)["type"] == radiusType);
+    REQUIRE(fieldsRecords.at(1)["little_endian"] == little_endian);
 
     std::string getPointsType{"SELECT * FROM symbols where id="};
 
-    getPointsType += fieldsMap["points"].at(4);
+    getPointsType += fieldsRecords.at(2)["type"];
     getPointsType += ";";
 
-    std::map<std::string, std::vector<std::string>> PointsTypeMap{};
+    std::vector<std::map<std::string, std::string>> pointsSymbolRecord{};
 
-    rc = sqlite3_exec(database, getPointsType.c_str(), selectCallbackUsingNameAsKey, &PointsTypeMap,
+    rc = sqlite3_exec(database, getPointsType.c_str(), selectCallbackUsingColNameAsKey, &pointsSymbolRecord,
                                &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
 
 
+    std::string  PointsType{pointsSymbolRecord.at(0)["id"]};
 
-    std::string  PointsType{PointsTypeMap["int"].at(0)};
-
-    REQUIRE(fieldsMap["points"].at(1) == circleMap["Circle"].at(0));
-    REQUIRE(fieldsMap["points"].at(2) == "points");
-    REQUIRE(fieldsMap["points"].at(3) == std::to_string(offsetof(Circle, points)));
-    REQUIRE(fieldsMap["points"].at(4) == PointsType);
-    REQUIRE(fieldsMap["points"].at(5) == "128");
-    REQUIRE(fieldsMap["points"].at(6) == little_endian);
+    REQUIRE(fieldsRecords.at(2)["symbol"] == circleRecords.at(0)["id"]);
+    REQUIRE(fieldsRecords.at(2)["name"] == "points");
+    REQUIRE(fieldsRecords.at(2)["byte_offset"] == std::to_string(offsetof(Circle, points)));
+    REQUIRE(fieldsRecords.at(2)["type"] == PointsType);
+    REQUIRE(fieldsRecords.at(2)["little_endian"] == little_endian);
 
     /**
      *Check the correctness of the types
@@ -240,43 +355,71 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     getDiameterFieldTypes += diameterType;
     getDiameterFieldTypes += ";";
 
-    std::map<std::string, std::vector<std::string>> diameterFieldTypesMap{};
+    std::vector<std::map<std::string, std::string>> diameterFieldSymbolRecord{};
 
-    rc = sqlite3_exec(database, getDiameterFieldTypes.c_str(), selectCallbackUsingNameAsKey, &diameterFieldTypesMap,
+    rc = sqlite3_exec(database, getDiameterFieldTypes.c_str(), selectCallbackUsingColNameAsKey, &diameterFieldSymbolRecord,
                              &errorMessage);
+
+
     REQUIRE(rc == SQLITE_OK);
+    REQUIRE(diameterFieldSymbolRecord.size() == 1);
 
-    REQUIRE(diameterFieldTypesMap.find("float") != diameterFieldTypesMap.end());
+    /**
+     * Ensure that we have all of the expected keys in our map; these are the column names.
+     * Don't love doing this kind of thing in tests...
+     */
+    for(auto record: diameterFieldSymbolRecord)
+    {
+        REQUIRE(record.find("id") != record.end());
+        REQUIRE(record.find("name") != record.end());
+        REQUIRE(record.find("byte_size") != record.end());
+        REQUIRE(record.find("elf") != record.end());
+    }
 
-    REQUIRE(diameterFieldTypesMap["float"].at(2) == "float");
-    REQUIRE(diameterFieldTypesMap["float"].at(3) == std::to_string(sizeof(float)));
+    REQUIRE(diameterFieldSymbolRecord.at(0)["name"] == "float");
+    REQUIRE(diameterFieldSymbolRecord.at(0)["byte_size"] == std::to_string(sizeof(float)));
 
     std::string getRadiusFieldTypes{"SELECT * FROM symbols WHERE id = "};
     getRadiusFieldTypes += radiusType;
     getRadiusFieldTypes += ";";
 
-    std::map<std::string, std::vector<std::string>> radiusFieldTypesMap{};
+    std::vector<std::map<std::string, std::string>> radiusFieldTypesRecords{};
 
-    rc = sqlite3_exec(database, getRadiusFieldTypes.c_str(), selectCallbackUsingNameAsKey, &radiusFieldTypesMap,
+    rc = sqlite3_exec(database, getRadiusFieldTypes.c_str(), selectCallbackUsingColNameAsKey, &radiusFieldTypesRecords,
                              &errorMessage);
     REQUIRE(rc == SQLITE_OK);
 
-    REQUIRE(radiusFieldTypesMap["float"].at(2) == "float");
-    REQUIRE(radiusFieldTypesMap["float"].at(3) == std::to_string(sizeof(float)));
+    REQUIRE(radiusFieldTypesRecords.size() == 1);
+    /**
+     * Ensure that we have all of the expected keys in our map; these are the column names.
+     * Don't love doing this kind of thing in tests...
+     */
+    for(auto record: radiusFieldTypesRecords)
+    {
+        REQUIRE(record.find("id") != record.end());
+        REQUIRE(record.find("name") != record.end());
+        REQUIRE(record.find("byte_size") != record.end());
+        REQUIRE(record.find("elf") != record.end());
+    }
 
+    REQUIRE(radiusFieldTypesRecords.at(0)["name"] == "float");
+    REQUIRE(radiusFieldTypesRecords.at(0)["byte_size"] == std::to_string(sizeof(float)));
 
     std::string getPointsFieldTypes{"SELECT * FROM symbols WHERE id = "};
     getPointsFieldTypes += PointsType;
     getPointsFieldTypes += ";";
 
-    std::map<std::string, std::vector<std::string>> pointsFieldTypesMap{};
 
-    rc = sqlite3_exec(database, getPointsFieldTypes.c_str(), selectCallbackUsingNameAsKey, &pointsFieldTypesMap,
+    std::vector<std::map<std::string, std::string>> pointsFieldTypesRecords{};
+
+    rc = sqlite3_exec(database, getPointsFieldTypes.c_str(), selectCallbackUsingColNameAsKey, &pointsFieldTypesRecords,
                              &errorMessage);
     REQUIRE(rc == SQLITE_OK);
 
-    REQUIRE(pointsFieldTypesMap["int"].at(2) == "int");
-    REQUIRE(pointsFieldTypesMap["int"].at(3) == std::to_string(sizeof(int)));
+    REQUIRE(pointsFieldTypesRecords.size() == 1);
+
+    REQUIRE(pointsFieldTypesRecords.at(0)["name"] == "int");
+    REQUIRE(pointsFieldTypesRecords.at(0)["byte_size"] == std::to_string(sizeof(int)));
 
     /**
      * *Clean up our database handle and objects in memory.
@@ -290,7 +433,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 {
 	/**
 	 * This assumes that the test_file was compiled on
-	 * gcc (Ubuntu 5.4.0-6ubuntu1~16.04.12) 5.4.0 20160609
+	 * gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
 	 *  little-endian machine.
 	 */
 
@@ -328,37 +471,50 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(rc == SQLITE_OK);
 
-    std::map<std::string, std::vector<std::string>> circleMap{};
+    columnNameToRowMap circleDataMap{};
+    circleDataMap.colName = "name";
 
-    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), selectCallbackUsingNameAsKey, &circleMap,
+    std::vector<std::map<std::string, std::string>> circleRecords{};
+
+
+    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), selectCallbackUsingColNameAsKey, &circleRecords,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
-
+    REQUIRE(circleRecords.size() == 1);
     /**
      * Check the correctness of Circle struct.
      */
 
-    REQUIRE(circleMap["Circle"].at(2) == "Circle");
-    REQUIRE(circleMap["Circle"].at(3) == std::to_string(sizeof(Circle)));
+    REQUIRE(circleRecords.at(0)["name"] == "Circle");
+    REQUIRE(circleRecords.at(0)["byte_size"] == std::to_string(sizeof(Circle)));
 
     /**
      *Check the fields of the Circle struct.
     */
 
-    std::string circle_id = circleMap["Circle"].at(0);
+    std::string circle_id = circleRecords.at(0)["id"];
 
     std::string getCircleFields{"SELECT * FROM fields WHERE symbol = "};
 
     getCircleFields += circle_id;
     getCircleFields += ";";
 
-    std::map<std::string, std::vector<std::string>> fieldsMap{};
 
-    rc = sqlite3_exec(database, getCircleFields.c_str(), selectCallbackUsingNameAsKey, &fieldsMap,
+    std::vector<std::map<std::string, std::string>> circleFieldsRecords{};
+
+    rc = sqlite3_exec(database, getCircleFields.c_str(), selectCallbackUsingColNameAsKey, &circleFieldsRecords,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
+    REQUIRE(circleFieldsRecords.size() == 3);
+
+    //Enforce order of records by offset
+    std::sort(circleFieldsRecords.begin(), circleFieldsRecords.end(),
+    		  [](std::map<std::string, std::string> a, std::map<std::string, std::string> b)
+			  {
+    			return std::stoi(a["byte_offset"]) < std::stoi(b["byte_offset"]);
+			  });
 
     /**
      *Check the correctness of the fields
@@ -366,47 +522,46 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     std::string getDiameterType{"SELECT * FROM symbols where id="};
 
-    getDiameterType += fieldsMap["diameter"].at(4);
+    getDiameterType += circleFieldsRecords.at(0)["type"];
     getDiameterType += ";";
 
-    std::map<std::string, std::vector<std::string>> diameterTypeMap{};
+    std::vector<std::map<std::string, std::string>> diameterTypeRecords{};
 
-
-    rc = sqlite3_exec(database, getDiameterType.c_str(), selectCallbackUsingNameAsKey, &diameterTypeMap,
+    rc = sqlite3_exec(database, getDiameterType.c_str(), selectCallbackUsingColNameAsKey, &diameterTypeRecords,
                                &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
+    REQUIRE(diameterTypeRecords.size() == 1);
 
-    std::string  diameterType{diameterTypeMap["float"].at(0)};
+    std::string  diameterType{diameterTypeRecords.at(0)["id"]};
 
-    REQUIRE(fieldsMap["diameter"].at(1) == circleMap["Circle"].at(0));
-    REQUIRE(fieldsMap["diameter"].at(2) == "diameter");
-    REQUIRE(fieldsMap["diameter"].at(3) == std::to_string(offsetof(Circle, diameter)));
-    REQUIRE(fieldsMap["diameter"].at(4) == diameterType);
-    REQUIRE(fieldsMap["diameter"].at(5) == "0");
-    REQUIRE(fieldsMap["diameter"].at(6) == little_endian);
+    REQUIRE(circleFieldsRecords.at(0)["symbol"] == circleRecords.at(0)["id"]);
+    REQUIRE(circleFieldsRecords.at(0)["name"] == "diameter");
+    REQUIRE(circleFieldsRecords.at(0)["byte_offset"] == std::to_string(offsetof(Circle, diameter)));
+    REQUIRE(circleFieldsRecords.at(0)["type"] == diameterType);
+    REQUIRE(circleFieldsRecords.at(0)["little_endian"] == little_endian);
 
     std::string getRadiusType{"SELECT * FROM symbols where id="};
 
-    getRadiusType += fieldsMap["diameter"].at(4);
+    getRadiusType += circleFieldsRecords.at(1)["type"];
     getRadiusType += ";";
 
-    std::map<std::string, std::vector<std::string>> radiusTypeMap{};
+    std::vector<std::map<std::string, std::string>> radiusTypeRecords{};
 
-
-    rc = sqlite3_exec(database, getRadiusType.c_str(), selectCallbackUsingNameAsKey, &radiusTypeMap,
+    rc = sqlite3_exec(database, getRadiusType.c_str(), selectCallbackUsingColNameAsKey, &radiusTypeRecords,
                                &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
+    REQUIRE(radiusTypeRecords.size() == 1);
+    REQUIRE(radiusTypeRecords.at(0).find("id") != radiusTypeRecords.at(0).end());
 
-    std::string  radiusType{radiusTypeMap["float"].at(0)};
+    std::string  radiusType{radiusTypeRecords.at(0)["id"]};
 
-    REQUIRE(fieldsMap["radius"].at(1) == circleMap["Circle"].at(0));
-    REQUIRE(fieldsMap["radius"].at(2) == "radius");
-    REQUIRE(fieldsMap["radius"].at(3) == std::to_string(offsetof(Circle, radius)));
-    REQUIRE(fieldsMap["radius"].at(4) == radiusType);
-    REQUIRE(fieldsMap["radius"].at(5) == "0");
-    REQUIRE(fieldsMap["radius"].at(6) == little_endian);
+    REQUIRE(circleFieldsRecords.at(1)["symbol"] == circleRecords.at(0)["id"]);
+    REQUIRE(circleFieldsRecords.at(1)["name"] == "radius");
+    REQUIRE(circleFieldsRecords.at(1)["byte_offset"] == std::to_string(offsetof(Circle, radius)));
+    REQUIRE(circleFieldsRecords.at(1)["type"] == radiusType);
+    REQUIRE(circleFieldsRecords.at(1)["little_endian"] == little_endian);
 
     /**
      *Check the correctness of the types
@@ -415,14 +570,16 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     getDiameterFieldTypes += diameterType;
     getDiameterFieldTypes += ";";
 
-    std::map<std::string, std::vector<std::string>> diameterFieldTypesMap{};
+    std::vector<std::map<std::string, std::string>> diameterFieldTypeRecords{};
 
-    rc = sqlite3_exec(database, getDiameterFieldTypes.c_str(), selectCallbackUsingNameAsKey, &diameterFieldTypesMap,
+    rc = sqlite3_exec(database, getDiameterFieldTypes.c_str(), selectCallbackUsingColNameAsKey, &diameterFieldTypeRecords,
                              &errorMessage);
     REQUIRE(rc == SQLITE_OK);
 
-    REQUIRE(diameterFieldTypesMap["float"].at(2) == "float");
-    REQUIRE(diameterFieldTypesMap["float"].at(3) == std::to_string(sizeof(float)));
+    REQUIRE(diameterFieldTypeRecords.size() == 1);
+
+    REQUIRE(diameterFieldTypeRecords.at(0)["name"] == "float");
+    REQUIRE(diameterFieldTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(float)));
 
     /**
      * *Clean up our database handle and objects in memory.
@@ -436,7 +593,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 {
 	/**
 	 * This assumes that the test_file was compiled on
-	 * gcc (Ubuntu 5.4.0-6ubuntu1~16.04.12) 5.4.0 20160609
+	 * gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
 	 *  little-endian machine.
 	 * @todo Implement
 	 */
@@ -461,7 +618,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     REQUIRE(rc == JUICER_OK);
 
-    std::string getCircleStructQuery{"SELECT * FROM symbols WHERE name = \"Square\"; "};
+    std::string getSquareStructQuery{"SELECT * FROM symbols WHERE name = \"Square\"; "};
 
     /**
      *Clean up our database handle and objects in memory.
@@ -474,222 +631,232 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     REQUIRE(rc == SQLITE_OK);
 
-    std::map<std::string, std::vector<std::string>> squareMap{};
+    std::vector<std::map<std::string, std::string>> squareRecords{};
 
-    rc = sqlite3_exec(database, getCircleStructQuery.c_str(), selectCallbackUsingNameAsKey, &squareMap,
+    rc = sqlite3_exec(database, getSquareStructQuery.c_str(), selectCallbackUsingColNameAsKey, &squareRecords,
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
-//
+    REQUIRE(squareRecords.size() ==  1);
     /**
      * Check the correctness of Square struct.
      */
-    REQUIRE(squareMap["Square"].at(2) == "Square");
-    REQUIRE(squareMap["Square"].at(3) == std::to_string(sizeof(Square)));
+
+    REQUIRE(squareRecords.at(0)["name"] == "Square");
+    REQUIRE(squareRecords.at(0)["byte_size"] == std::to_string(sizeof(Square)));
 
 
-    std::string square_id = squareMap["Square"].at(0);
-//
+    std::string square_id = squareRecords.at(0)["id"];
+
     std::string getSquareFields{"SELECT * FROM fields WHERE symbol = "};
-//
+
     getSquareFields += square_id;
     getSquareFields += ";";
-//
-    std::map<std::string, std::vector<std::string>> fieldsMap{};
-//
-    rc = sqlite3_exec(database, getSquareFields.c_str(), selectCallbackUsingNameAsKey, &fieldsMap,
+
+    std::vector<std::map<std::string, std::string>> squareFieldsRecords{};
+
+    rc = sqlite3_exec(database, getSquareFields.c_str(), selectCallbackUsingColNameAsKey, &squareFieldsRecords,
                              &errorMessage);
-//
+
     REQUIRE(rc == SQLITE_OK);
+    REQUIRE(squareFieldsRecords.size() == 9);
+
+    //Enforce order of records by offset
+    std::sort(squareFieldsRecords.begin(), squareFieldsRecords.end(),
+    		  [](std::map<std::string, std::string> a, std::map<std::string, std::string> b)
+			  {
+    			return std::stoi(a["byte_offset"]) < std::stoi(b["byte_offset"]);
+			  });
 
     std::string getWidthType{"SELECT * FROM symbols where id="};
-
-    getWidthType += fieldsMap["width"].at(4);
+    getWidthType += squareFieldsRecords.at(0)["type"];
     getWidthType += ";";
 
-    std::map<std::string, std::vector<std::string>> widthTypeMap{};
+    std::vector<std::map<std::string, std::string>> widthTypeRecords{};
 
-
-    rc = sqlite3_exec(database, getWidthType.c_str(), selectCallbackUsingNameAsKey, &widthTypeMap,
+    rc = sqlite3_exec(database, getWidthType.c_str(), selectCallbackUsingColNameAsKey, &widthTypeRecords,
                                &errorMessage);
-
     REQUIRE(rc == SQLITE_OK);
+    REQUIRE(widthTypeRecords.size() == 1);
 
-    std::string  widthType{widthTypeMap["int32_t"].at(0)};
+    std::string  widthType{widthTypeRecords.at(0)["id"]};
 
-    REQUIRE(fieldsMap["width"].at(1) == squareMap["Square"].at(0));
-    REQUIRE(fieldsMap["width"].at(2) == "width");
-    REQUIRE(fieldsMap["width"].at(3) == std::to_string(offsetof(Square, width)));
-    REQUIRE(fieldsMap["width"].at(4) == widthType);
-    REQUIRE(fieldsMap["width"].at(5) == "0");
-    REQUIRE(fieldsMap["width"].at(6) == little_endian);
+    REQUIRE(squareFieldsRecords.at(0)["symbol"] == squareRecords.at(0)["id"]);
+    REQUIRE(squareFieldsRecords.at(0)["name"] == "width");
+    REQUIRE(squareFieldsRecords.at(0)["byte_offset"] == std::to_string(offsetof(Square, width)));
+    REQUIRE(squareFieldsRecords.at(0)["type"] == widthType);
+    REQUIRE(squareFieldsRecords.at(0)["little_endian"] == little_endian);
 
 
-//
-//    /**
-//     *Check the fields of the Square struct.
-//     */
-//    std::string getCircleFields{"SELECT * FROM fields WHERE symbol = 18;"};
-//
-//    std::map<std::string, std::vector<std::string>> fieldsMap{};
-//
-//    rc = sqlite3_exec(database, getCircleFields.c_str(), selectCallbackUsingNameAsKey, &fieldsMap,
-//                             &errorMessage);
-//
-//    REQUIRE(rc == SQLITE_OK);
-//
-//    /**
-//     *Check the correctness of the fields
-//     */
-//    REQUIRE(fieldsMap.at("4").at(0) == "18");
-//    REQUIRE(fieldsMap.at("4").at(1) == "width");
-//    REQUIRE(fieldsMap.at("4").at(2) == std::to_string(offsetof(Square, width)));
-//    REQUIRE(fieldsMap.at("4").at(3) == "6");
-//    REQUIRE(fieldsMap.at("4").at(4) == "0");
-//    REQUIRE(fieldsMap.at("4").at(5) == little_endian);
-//
-//    REQUIRE(fieldsMap["5"].at(0) == "18");
-//    REQUIRE(fieldsMap["5"].at(1) == "stuff");
-//    REQUIRE(fieldsMap["5"].at(2) == std::to_string(offsetof(Square, stuff)));
-//    REQUIRE(fieldsMap["5"].at(3) == "10");
-//    REQUIRE(fieldsMap["5"].at(4) == "0");
-//    REQUIRE(fieldsMap["5"].at(5) == little_endian);
-//
-//
-//    REQUIRE(fieldsMap["6"].at(0) == "18");
-//    REQUIRE(fieldsMap["6"].at(1) == "length");
-//    REQUIRE(fieldsMap["6"].at(2) == std::to_string(offsetof(Square, length)));
-//    REQUIRE(fieldsMap["6"].at(3) == "6");
-//    REQUIRE(fieldsMap["6"].at(4) == "0");
-//    REQUIRE(fieldsMap["6"].at(5) == little_endian);
-//
-//    REQUIRE(fieldsMap["7"].at(0) == "18");
-//    REQUIRE(fieldsMap["7"].at(1) == "more_stuff");
-//    REQUIRE(fieldsMap["7"].at(2) == std::to_string(offsetof(Square, more_stuff)));
-//    REQUIRE(fieldsMap["7"].at(3) == "10");
-//    REQUIRE(fieldsMap["7"].at(4) == "0");
-//    REQUIRE(fieldsMap["7"].at(5) == little_endian);
-//
-//
-//    REQUIRE(fieldsMap["8"].at(0) == "18");
-//    REQUIRE(fieldsMap["8"].at(1) == "floating_stuff");
-//    REQUIRE(fieldsMap["8"].at(2) == std::to_string(offsetof(Square, floating_stuff)));
-//    REQUIRE(fieldsMap["8"].at(3) == "17");
-//    REQUIRE(fieldsMap["8"].at(4) == "0");
-//    REQUIRE(fieldsMap["8"].at(5) == little_endian);
-//
-//    /**
-//     *Check the correctness of the types
-//     */
-//    std::string getFieldsSymbols{"SELECT * FROM symbols WHERE id = 6;"
-//    						     "SELECT * FROM symbols WHERE id = 10;"
-//		 	 	 	 	 	 	 "SELECT * FROM symbols WHERE id = 17;"};
-//
-//    std::map<std::string, std::vector<std::string>> typesMap{};
-//
-//    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), selectCallbackUsingNameAsKey, &typesMap,
-//                             &errorMessage);
-//
-//    REQUIRE(rc == SQLITE_OK);
-//
-//    REQUIRE(typesMap["6"].at(0) == "1");
-//    REQUIRE(typesMap["6"].at(1) == "int32_t");
-//    REQUIRE(typesMap["6"].at(2) == std::to_string(sizeof(int32_t)));
-//
-//    REQUIRE(typesMap["10"].at(0) == "1");
-//    REQUIRE(typesMap["10"].at(1) == "uint8_t");
-//    REQUIRE(typesMap["10"].at(2) == std::to_string(sizeof(uint8_t)));
-//
-//    REQUIRE(typesMap["17"].at(0) == "1");
-//    REQUIRE(typesMap["17"].at(1) == "float");
-//    REQUIRE(typesMap["17"].at(2) == std::to_string(sizeof(float)));
-//
+    std::string getStuffType{"SELECT * FROM symbols where id="};
+    getStuffType += squareFieldsRecords.at(1)["type"];
+    getStuffType += ";";
+
+    std::vector<std::map<std::string, std::string>> stuffTypeRecords{};
+
+    rc = sqlite3_exec(database, getStuffType.c_str(), selectCallbackUsingColNameAsKey, &stuffTypeRecords,
+                                &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(stuffTypeRecords.size() == 1);
+
+    std::string  stuffType{stuffTypeRecords.at(0)["id"]};
+
+    REQUIRE(squareFieldsRecords.at(1)["name"] == "stuff");
+    REQUIRE(squareFieldsRecords.at(1)["byte_offset"] == std::to_string(offsetof(Square, stuff)));
+	REQUIRE(squareFieldsRecords.at(1)["type"] == stuffType);
+	REQUIRE(squareFieldsRecords.at(1)["little_endian"] == little_endian);
+
+
+	std::string getPadding1Type{"SELECT * FROM symbols where id="};
+	getPadding1Type += squareFieldsRecords.at(2)["type"];
+	getPadding1Type += ";";
+
+	std::vector<std::map<std::string, std::string>> padding1TypeRecords{};
+
+	rc = sqlite3_exec(database, getPadding1Type.c_str(), selectCallbackUsingColNameAsKey, &padding1TypeRecords,
+							 &errorMessage);
+	REQUIRE(rc == SQLITE_OK);
+	REQUIRE(padding1TypeRecords.size() == 1);
+
+	std::string  padding1Type{padding1TypeRecords.at(0)["id"]};
+
+	REQUIRE(squareFieldsRecords.at(2)["name"] == "padding1");
+	REQUIRE(squareFieldsRecords.at(2)["byte_offset"] == std::to_string(offsetof(Square, padding1)));
+	REQUIRE(squareFieldsRecords.at(2)["type"] == padding1Type);
+	REQUIRE(squareFieldsRecords.at(2)["little_endian"] == little_endian);
+
+	std::string getLengthType{"SELECT * FROM symbols where id="};
+	getLengthType += squareFieldsRecords.at(3)["type"];
+	getLengthType += ";";
+
+	std::vector<std::map<std::string, std::string>> lengthTypeRecords{};
+
+	rc = sqlite3_exec(database, getLengthType.c_str(), selectCallbackUsingColNameAsKey, &lengthTypeRecords,
+							  &errorMessage);
+	REQUIRE(rc == SQLITE_OK);
+	REQUIRE(lengthTypeRecords.size() == 1);
+
+	std::string  lengthType{lengthTypeRecords.at(0)["id"]};
+
+	REQUIRE(squareFieldsRecords.at(3)["name"] == "length");
+	REQUIRE(squareFieldsRecords.at(3)["byte_offset"] == std::to_string(offsetof(Square, length)));
+	REQUIRE(squareFieldsRecords.at(3)["type"] == lengthType);
+	REQUIRE(squareFieldsRecords.at(3)["little_endian"] == little_endian);
+
+	std::string getMoreStuffType{"SELECT * FROM symbols where id="};
+	getMoreStuffType += squareFieldsRecords.at(4)["type"];
+	getMoreStuffType += ";";
+
+	std::vector<std::map<std::string, std::string>> moreStuffTypeRecords{};
+
+	rc = sqlite3_exec(database, getMoreStuffType.c_str(), selectCallbackUsingColNameAsKey, &moreStuffTypeRecords,
+							  &errorMessage);
+	REQUIRE(rc == SQLITE_OK);
+	REQUIRE(moreStuffTypeRecords.size() == 1);
+
+	std::string  moreStuffType{moreStuffTypeRecords.at(0)["id"]};
+
+	REQUIRE(squareFieldsRecords.at(4)["name"] == "more_stuff");
+	REQUIRE(squareFieldsRecords.at(4)["byte_offset"] == std::to_string(offsetof(Square, more_stuff)));
+	REQUIRE(squareFieldsRecords.at(4)["type"] == moreStuffType);
+	REQUIRE(squareFieldsRecords.at(4)["little_endian"] == little_endian);
+
+
+	std::string getPadding2Type{"SELECT * FROM symbols where id="};
+	getPadding2Type += squareFieldsRecords.at(5)["type"];
+	getPadding2Type += ";";
+
+	std::vector<std::map<std::string, std::string>> padding2TypeRecords{};
+
+	rc = sqlite3_exec(database, getPadding2Type.c_str(), selectCallbackUsingColNameAsKey, &padding2TypeRecords,
+							  &errorMessage);
+	REQUIRE(rc == SQLITE_OK);
+	REQUIRE(padding2TypeRecords.size() == 1);
+
+	std::string  padding2Type{padding2TypeRecords.at(0)["id"]};
+
+	REQUIRE(squareFieldsRecords.at(5)["name"] == "padding2");
+	REQUIRE(squareFieldsRecords.at(5)["byte_offset"] == std::to_string(offsetof(Square, padding2)));
+	REQUIRE(squareFieldsRecords.at(5)["type"] == padding2Type);
+	REQUIRE(squareFieldsRecords.at(5)["little_endian"] == little_endian);
+
+	std::string getFloatingStuffType{"SELECT * FROM symbols where id="};
+	getFloatingStuffType += squareFieldsRecords.at(6)["type"];
+	getFloatingStuffType += ";";
+
+	std::vector<std::map<std::string, std::string>> floatingStuffTypeRecords{};
+
+	rc = sqlite3_exec(database, getFloatingStuffType.c_str(), selectCallbackUsingColNameAsKey, &floatingStuffTypeRecords,
+							  &errorMessage);
+	REQUIRE(rc == SQLITE_OK);
+	REQUIRE(floatingStuffTypeRecords.size() == 1);
+
+	std::string  floatingStuffType{floatingStuffTypeRecords.at(0)["id"]};
+
+	REQUIRE(squareFieldsRecords.at(6)["name"] == "floating_stuff");
+	REQUIRE(squareFieldsRecords.at(6)["byte_offset"] == std::to_string(offsetof(Square, floating_stuff)));
+	REQUIRE(squareFieldsRecords.at(6)["type"] == floatingStuffType);
+	REQUIRE(squareFieldsRecords.at(6)["little_endian"] == little_endian);
+
+	//Test matrix3D[2][4][4]
+	std::string getMatrix3DDimensionLists{"SELECT * FROM dimension_lists WHERE field_id="};
+	getMatrix3DDimensionLists += squareFieldsRecords.at(7)["id"];
+	getMatrix3DDimensionLists += ";";
+
+	std::vector<std::map<std::string, std::string>> matrix3DDimensionListsRecords{};
+
+	rc = sqlite3_exec(database, getMatrix3DDimensionLists.c_str(), selectCallbackUsingColNameAsKey, &matrix3DDimensionListsRecords,
+						 &errorMessage);
+	REQUIRE(rc == SQLITE_OK);
+	REQUIRE(matrix3DDimensionListsRecords.size() == 3);
+
+	//Enforce order of records by dim_order
+	std::sort(matrix3DDimensionListsRecords.begin(), matrix3DDimensionListsRecords.end(),
+		  [](std::map<std::string, std::string> a, std::map<std::string, std::string> b)
+		  {
+			return std::stoi(a["dim_order"]) < std::stoi(b["dim_order"]);
+		  });
+
+	REQUIRE(matrix3DDimensionListsRecords.at(0)["field_id"] == squareFieldsRecords.at(7)["id"]);
+	REQUIRE(matrix3DDimensionListsRecords.at(0)["dim_order"] == "0");
+	REQUIRE(matrix3DDimensionListsRecords.at(0)["upper_bound"] == "1");
+
+	REQUIRE(matrix3DDimensionListsRecords.at(1)["field_id"] == squareFieldsRecords.at(7)["id"]);
+	REQUIRE(matrix3DDimensionListsRecords.at(1)["dim_order"] == "1");
+	REQUIRE(matrix3DDimensionListsRecords.at(1)["upper_bound"] == "3");
+
+	REQUIRE(matrix3DDimensionListsRecords.at(2)["field_id"] == squareFieldsRecords.at(7)["id"]);
+	REQUIRE(matrix3DDimensionListsRecords.at(2)["dim_order"] == "2");
+	REQUIRE(matrix3DDimensionListsRecords.at(2)["upper_bound"] == "3");
+
+
+	//Test matrix3D[2][4][4]
+	std::string getMatrix1DDimensionLists{"SELECT * FROM dimension_lists WHERE field_id="};
+	getMatrix1DDimensionLists += squareFieldsRecords.at(8)["id"];
+	getMatrix1DDimensionLists += ";";
+
+	std::vector<std::map<std::string, std::string>> matrix1DDimensionListsRecords{};
+
+	rc = sqlite3_exec(database, getMatrix1DDimensionLists.c_str(), selectCallbackUsingColNameAsKey, &matrix1DDimensionListsRecords,
+						 &errorMessage);
+	REQUIRE(rc == SQLITE_OK);
+	REQUIRE(matrix1DDimensionListsRecords.size() == 1);
+
+	//Enforce order of records by dim_order
+	std::sort(matrix1DDimensionListsRecords.begin(), matrix1DDimensionListsRecords.end(),
+		  [](std::map<std::string, std::string> a, std::map<std::string, std::string> b)
+		  {
+			return std::stoi(a["dim_order"]) < std::stoi(b["dim_order"]);
+		  });
+
+	REQUIRE(matrix1DDimensionListsRecords.at(0)["field_id"] == squareFieldsRecords.at(8)["id"]);
+	REQUIRE(matrix1DDimensionListsRecords.at(0)["dim_order"] == "0");
+	REQUIRE(matrix1DDimensionListsRecords.at(0)["upper_bound"] == "1");
+
     REQUIRE(remove("./test_db.sqlite")==0);
     delete idc;
 }
-//
-//
-//TEST_CASE("Test the correctness of the flat_array array after Juicer has processed it." ,"[main_test#5]")
-//{
-//	/**
-//	 * This assumes that the test_file was compiled on
-//	 * gcc (Ubuntu 5.4.0-6ubuntu1~16.04.12) 5.4.0 20160609
-//	 *  little-endian machine.
-//	 */
-//    Juicer          juicer;
-//    IDataContainer* idc = 0;
-//    Logger          logger;
-//    int 			rc;
-//    char* 			errorMessage = nullptr;
-//    std::string 	little_endian = is_little_endian()? "1": "0";
-//
-//    logger.logWarning("This is just a test.");
-//
-//    std::string inputFile{TEST_FILE_1};
-//
-//
-//    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
-//    REQUIRE(idc!=nullptr);
-//    logger.logInfo("IDataContainer was constructed successfully for unit test.");
-//
-//    juicer.setIDC(idc);
-//
-//    rc = juicer.parse(inputFile);
-//
-//    REQUIRE(rc == JUICER_OK);
-//
-//    std::string getFlatArrayQuery{"SELECT * FROM fields WHERE name = \"flat_array\"; "};
-//
-//    ((SQLiteDB*)(idc))->close();
-//
-//    sqlite3 *database;
-//
-//    rc = sqlite3_open("./test_db.sqlite", &database);
-//
-//    REQUIRE(rc == SQLITE_OK);
-//
-//    std::map<std::string, std::vector<std::string>> flatArrayMap{};
-//
-//    rc = sqlite3_exec(database, getFlatArrayQuery.c_str(), selectCallbackUsingNameAsKey, &flatArrayMap,
-//                             &errorMessage);
-//
-//    REQUIRE(rc == SQLITE_OK);
-//
-//    /**
-//     * Check the correctness of Circle struct.
-//     */
-//
-//    REQUIRE(flatArrayMap["2"].at(0) == "5");
-//    REQUIRE(flatArrayMap["2"].at(1) == "flat_array");
-//    REQUIRE(flatArrayMap["2"].at(2) == "0");
-//    REQUIRE(flatArrayMap["2"].at(3) == "5");
-//    REQUIRE(flatArrayMap["2"].at(4) == "6");
-//    REQUIRE(flatArrayMap["2"].at(5) == little_endian);
-//
-//    /**
-//     *Check the correctness of the type
-//     */
-//    std::string getFieldsSymbols{"SELECT * FROM symbols WHERE id = 5;"};
-//
-//    std::map<std::string, std::vector<std::string>> typesMap{};
-//
-//    rc = sqlite3_exec(database, getFieldsSymbols.c_str(), selectCallbackUsingNameAsKey, &typesMap,
-//                             &errorMessage);
-//
-//    REQUIRE(rc == SQLITE_OK);
-//
-//    REQUIRE(typesMap["5"].at(0) == "1");
-//    REQUIRE(typesMap["5"].at(1) == "int");
-//    REQUIRE(typesMap["5"].at(2) == std::to_string(sizeof(int)));
-//
-//    /**
-//     * *Clean up our database handle and objects in memory.
-//     */
-//
-//    REQUIRE(remove("./test_db.sqlite")==0);
-//    delete idc;
-//}
-//
+
 TEST_CASE("Write keys to database that already exist" ,"[main_test#6]")
 {
     Juicer          juicer;

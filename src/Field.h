@@ -1,8 +1,10 @@
+
+
 /*
  * Field.h
  *
  *  Created on: Aug 1, 2020
- *      Author: vagrant
+ *      Author: lgomez
  */
 
 #ifndef FIELD_H_
@@ -10,6 +12,8 @@
 
 #include <stdint.h>
 #include <vector>
+
+#include "DimensionList.h"
 #include "Symbol.h"
 #include "Logger.h"
 
@@ -29,7 +33,14 @@ public:
 		  std::string &name,
 		  uint32_t byte_offset,
 		  Symbol &type,
-		  uint32_t multiplicity,
+		  DimensionList& dimensionList,
+		  bool little_endian,
+		  uint32_t inBitSize = 0,
+		  uint32_t inBitOffset = 0);
+	Field(Symbol &symbol,
+		  std::string &name,
+		  uint32_t byte_offset,
+		  Symbol &type,
 		  bool little_endian,
 		  uint32_t inBitSize = 0,
 		  uint32_t inBitOffset = 0);
@@ -39,6 +50,7 @@ public:
 	bool isLittleEndian() const;
 	void setLittleEndian(bool littleEndian);
 	uint32_t getMultiplicity() const;
+	uint32_t getArraySize() const;
 	void setMultiplicity(uint32_t multiplicity);
 	std::string& getName();
 	void setName(const std::string& name);
@@ -52,14 +64,16 @@ public:
 	void setBitSize(uint32_t bitSize);
 	Field(Field& field);
 	bool isBitField(void);
-
+	DimensionList& getDimensionList();
+	bool		isArray(void) const;
+	std::string getDimensionListStr();
 
 private:
 	Symbol 		 					       &symbol;
 	std::string  						    name;
 	uint32_t     						    byte_offset;
 	Symbol 		 						   &type;
-	uint32_t     						    multiplicity;
+	DimensionList							dimensionList;
 	bool         							little_endian;
 	/*bit fields members.
 	 * If this field is not bit-packed, then the bit_size and bit_offset are 0.*/
