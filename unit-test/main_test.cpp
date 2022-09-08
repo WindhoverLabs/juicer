@@ -257,7 +257,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(rc == SQLITE_OK);
 
-    REQUIRE(fieldsRecords.size() == 4);
+    REQUIRE(fieldsRecords.size() == 5);
 
     //Enforce order of records by offset
     std::sort(fieldsRecords.begin(), fieldsRecords.end(),
@@ -601,7 +601,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
                              &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(circleFieldsRecords.size() == 4);
+    REQUIRE(circleFieldsRecords.size() == 5);
 
     //Enforce order of records by offset
     std::sort(circleFieldsRecords.begin(), circleFieldsRecords.end(),

@@ -734,6 +734,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
             case DW_TAG_union_type:
             {
                 /* TODO */
+                outSymbol = process_DW_TAG_base_type(elf, dbg, typeDie);
                 break;
             }
 

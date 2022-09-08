@@ -13,6 +13,14 @@
 #define TEST_FILE_H_
 #include "stdint.h"
 
+union Oject
+{
+   int32_t id;
+   char data[16];
+};
+
+
+
 /**
  *The fields padding1 and padding2(as the name implies) are to prevent
  *gcc from inserting padding at compile-time and altering the expected results in our tests.
@@ -50,6 +58,7 @@ struct Circle
     float 	radius;
     int 	points[128];
     ModeSlot_t mode;
+    Oject o;
 };
 
 enum Color
