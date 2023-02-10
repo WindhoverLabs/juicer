@@ -613,7 +613,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
             {
                 Dwarf_Bool     structHasName = false;
                 Dwarf_Bool     parentHasName = false;
-                Dwarf_Unsigned byteSize = 0;
+                Dwarf_Signed byteSize = 0;
 
                 /* Does the structure type itself have the name? */
                 res = dwarf_hasattr(typeDie, DW_AT_name, &structHasName, &error);
@@ -677,11 +677,27 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
 
                 if(res == DW_DLV_OK)
                 {
-                    res = dwarf_bytesize(typeDie, &byteSize, &error);
+                    res = dwarf_bytesize(typeDie,(Dwarf_Unsigned*) &byteSize, &error);
                     if(res != DW_DLV_OK)
                     {
-                        logger.logError("Error in dwarf_bytesize.  %u  errno=%u %s", __LINE__, dwarf_errno(error),
-                            dwarf_errmsg(error));
+                        /* In arm-xilinx-eabi-gcc.real (GCC) 11.2.0 compiler, the dwarf_bytesize method does not work.
+                         * The known working solution is to use dwarf_attr and look at DW_AT_byte_size, as we are doing
+                         * in the code below. This became a particular issue with enums such as PX4_SwitchPos_t.
+                         * The compiler was used on the following host system:   
+                         *  Ubuntu 20.04.5 LTS Kernel
+                         *  Linux 5.15.0-58-generic
+                         *  Architecture: x86-64
+                         * 
+                         * Relevant DWARF4 Section:
+                         * "5.7 Enumeration Type Entries"
+                         */
+                        res = dwarf_attr(typeDie, DW_AT_byte_size, &attr_struct, &error);
+                        if(res == DW_DLV_OK)
+                        {
+                            res = dwarf_formsdata(attr_struct, &byteSize, &error);
+                        }
+                        logger.logError("Error in dwarf_attr(DW_AT_byte_size).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
+                        dwarf_errmsg(error));
                     }
                 }
 
