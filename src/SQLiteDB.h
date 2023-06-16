@@ -68,7 +68,7 @@
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"
 
-#define CREATE_ARTIFACTS_TABLE "CREATE TABLE IF NOT EXISTS artifacts(\
+#define CREATE_ARTIFACTS_TABLE   "CREATE TABLE IF NOT EXISTS artifacts(\
                                   id INTEGER PRIMARY KEY,\
                                   elf INTEGER NOT NULL,\
                                   path TEXT NOT NULL,\
