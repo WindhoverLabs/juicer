@@ -12,6 +12,7 @@
 #include <vector>
 #include <memory>
 
+#include "Artifact.h"
 #include "DimensionList.h"
 #include "ElfFile.h"
 #include "Logger.h"
@@ -59,8 +60,9 @@ public:
     Field* getField(std::string &name) const;
     bool hasFields(void);
     bool isEnumerated(void);
+    void setArtifact(Artifact& newArtifact);
 
-protected:
+//protected:
 
 private:
 	ElfFile       &elf;
@@ -70,6 +72,7 @@ private:
     uint32_t     id;
     std::vector<std::unique_ptr<Field>> fields;
     std::vector<std::unique_ptr<Enumeration>> enumerations;
+    Artifact artifact;
 
 };
 

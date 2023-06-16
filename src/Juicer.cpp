@@ -49,6 +49,7 @@
 #include "Field.h"
 #include "Enumeration.h"
 #include "ElfFile.h"
+#include "Artifact.h"
 
 
 Juicer::Juicer()
@@ -2838,6 +2839,69 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
     {
         std::string sDieName = dieName;
         outSymbol = elf.addSymbol(sDieName, byteSize);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
+
+        if(DW_DLV_OK == res)
+        {
+        	unsigned long long file_path_numbr = 0;
+        	char** filePaths = 0;
+        	Dwarf_Signed fileCount = 0;
+        	res = dwarf_formudata(attr_struct, &file_path_numbr, &error);
+
+        	/**
+        	 * According to 6.2 Line Number Information in DWARF 4:
+        	 * Line number information generated for a compilation unit is represented in the .debug_line
+        	 * section of an object file and is referenced by a corresponding compilation unit debugging
+        	 * information entry (see Section 3.1.1) in the .debug_info section.
+        	 * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
+        	 * the is_info to true.
+        	 *
+        	 * We are using a new Dwarf_Die because if we use cur_die, we segfault.
+        	 *
+        	 * My theory on this is that even though when we initially call dwarf_siblingof on
+        	 * cur_die and as we read different kinds of tags/attributes(in particular type-related),
+        	 * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
+        	 *
+        	 * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+        	 *
+        	 * This is just a a theory, however. In the future we may revisit this
+        	 * to figure out the root cause of this.
+        	 *
+        	 */
+        	// TODO: Move logic to the place where we load the CU die for the first time
+        	// and make filePaths a field that all methods can access. Then, I think,
+        	// we can index into that array with file_path_numbr and don't have iterate through the
+        	// entire list every time we find a new symbol.
+        	Dwarf_Die src_die = 0;
+            int sres = dwarf_siblingof_b(dbg, NULL, true, &src_die, &error);
+             if (sres == DW_DLV_OK) {
+        	dwarf_srcfiles(src_die, &filePaths, &fileCount, &error);
+             }
+
+        	if(filePaths != 0 && file_path_numbr != 0)
+        	{
+
+            		std::cout << "*********file path:" << filePaths[file_path_numbr -1]
+							  << " for symbol:" << outSymbol->getName()
+							  << std::endl;
+        	}
+        }
+
+
     }
 
     return outSymbol;
@@ -3467,17 +3531,26 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                         	 */
                         	// TODO: Move logic to the place where we load the CU die for the first time
                         	// and make filePaths a field that all methods can access. Then, I think,
-                        	// we can index into that array with file_path_numbr and don't have iterate through the
+                        	// we can index into that array with file_path_numbr and don't have to iterate through the
                         	// entire list every time we find a new symbol.
                         	Dwarf_Die src_die = 0;
                             int sres = dwarf_siblingof_b(dbg, NULL, true, &src_die, &error);
-                             if (sres == DW_DLV_OK) {
-                        	dwarf_srcfiles(src_die, &filePaths, &fileCount, &error);
+
+                            if (sres == DW_DLV_OK)
+                             {
+                            	 dwarf_srcfiles(src_die, &filePaths, &fileCount, &error);
                              }
 
                         	if(filePaths != 0 && file_path_numbr != 0)
                         	{
-                        		std::cout << "file path:" << filePaths[file_path_numbr -1] << std::endl;
+                        		Artifact artifact{outSymbol->getElf(), filePaths[file_path_numbr -1]};
+
+//                        		if(outSymbol->getName().compare("CFE_ES_AppInfo_t") == 0)
+//                        		{
+//                            		std::cout << "*********file path:" << filePaths[file_path_numbr -1]
+//    										  << " for symbol:" << outSymbol->getName()
+//    										  << std::endl;
+//                        		}
                         	}
                         }
 

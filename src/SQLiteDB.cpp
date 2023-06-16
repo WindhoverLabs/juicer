@@ -40,6 +40,14 @@ int SQLiteDB::selectCallback(void *veryUsed, int argc, char **argv, char **azCol
 
   for(i=1; i<argc; i++)
   {
+	  if(argv[i] == nullptr)
+	  {
+		  std::cout<< "String:*********-->" << "NULL" << std::endl;
+	  }
+	  else
+	  {
+		  std::cout<< "String:*********-->" << argv[i] << std::endl;
+	  }
 	  std::string tempData{argv[i]};
 
 	  tableData.push_back(tempData);

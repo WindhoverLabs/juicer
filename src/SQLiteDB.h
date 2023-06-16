@@ -36,7 +36,9 @@
                                   elf INTEGER NOT NULL,\
                                   name TEXT UNIQUE NOT NULL,\
                                   byte_size INTEGER NOT NULL,\
-                                  FOREIGN KEY(elf) REFERENCES elfs(id)\
+								  artifact INTEGER,\
+                                  FOREIGN KEY(elf) REFERENCES elfs(id),\
+								  FOREIGN KEY(artifact) REFERENCES artifacts(id)\
                                   UNIQUE(name));"
 
 #define CREATE_DIMENSION_TABLE   "CREATE TABLE IF NOT EXISTS dimension_lists (\
@@ -72,10 +74,8 @@
                                   id INTEGER PRIMARY KEY,\
                                   elf INTEGER NOT NULL,\
                                   path TEXT NOT NULL,\
-								  symbol INTEGER NOT NULL,\
                                   FOREIGN KEY (elf) REFERENCES elfs(id),\
-								  FOREIGN KEY (symbol) REFERENCES symbols(id),\
-                                  UNIQUE (path, symbol, elf));"
+                                  UNIQUE (path, elf));"
 
 #define SQLiteDB_TRUE 1
 #define SQLiteDB_FALSE 0
