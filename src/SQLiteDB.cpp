@@ -736,14 +736,28 @@ int SQLiteDB::createSchemas(void)
 
     				if(SQLITE_OK == rc)
     				{
-    					logger.logDebug("createBitFiledSchema() created the bit_fields schema "
+    					logger.logDebug("createDimensionsSchema() created the dimensions schema "
     									"successfully.");
 
     					rc = createEnumerationSchema();
     					if(SQLITE_OK == rc)
     					{
-    						logger.logDebug("createEnumerationSchema() created the bit_fields schema "
+    						logger.logDebug("createEnumerationSchema() created the enumerations schema "
     										"successfully.");
+
+        					rc = createArtifactsSchema();
+        					if(SQLITE_OK == rc)
+        					{
+        						logger.logDebug("createArtifactsSchema() created the artifacts schema "
+        										"successfully.");
+
+        					}
+        					else
+        					{
+        						logger.logDebug("createArtifactsSchema() failed.");
+        						rc = SQLITEDB_ERROR;
+        					}
+
     					}
     					else
     					{
@@ -942,11 +956,46 @@ int SQLiteDB::createEnumerationSchema(void)
 
     if(SQLITE_OK==rc)
     {
-        logger.logDebug("Created table \"Enumerations\" with OK status");
+        logger.logDebug("Created table \"enumerations\" with OK status");
     }
     else
     {
         logger.logError("Failed to create the enumerations table. '%s'",
+                sqlite3_errmsg(database));
+        rc = SQLITEDB_ERROR;
+    }
+
+    return rc;
+}
+
+/**
+ *@brief Creates the enumerations schema.
+ *If the schema already exists, then this method does nothing.
+ *This method assumes the sqlite handle database has been initialized
+ *previously with a call to initialize().
+ *
+ *@return Returns SQLITE_OK created the elfs schema successfully.
+ *If an error occurs, SQLITEDB_ERROR returns.
+ */
+int SQLiteDB::createArtifactsSchema(void)
+{
+    std::string createArtifactsTableQuery{CREATE_ARTIFACTS_TABLE};
+
+    int         rc = SQLITE_OK;
+
+    /*@todo The last argument for sqlite3_exec is an error handler that is not
+     * necessary to pass in, but I really think we should for better error
+     * logging.*/
+    rc = sqlite3_exec(database, createArtifactsTableQuery.c_str(), NULL,
+                      NULL, NULL);
+
+    if(SQLITE_OK==rc)
+    {
+        logger.logDebug("Created table \"artifacts\" with OK status");
+    }
+    else
+    {
+        logger.logError("Failed to create the artifacts table. '%s'",
                 sqlite3_errmsg(database));
         rc = SQLITEDB_ERROR;
     }

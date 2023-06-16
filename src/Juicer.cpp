@@ -51,7 +51,6 @@
 #include "ElfFile.h"
 
 
-
 Juicer::Juicer()
 {
 }
@@ -3435,6 +3434,21 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                     	std::string stdString{dieName};
 
                         Symbol* outSymbol = elf.addSymbol(stdString,(uint32_t) bytesize);
+
+
+                        res = dwarf_attr(cur_die, DW_AT_decl_file, &attr_struct, &error);
+
+                        if(DW_DLV_OK == res)
+                        {
+                        	printf("*********************\n");
+                        	char* file_path;
+                        	unsigned long long file_path_numbr = 0;
+                        	res = dwarf_formstring(attr_struct, &file_path, &error);
+                        	printf("file_path-->%s\n", file_path);
+                        	res = dwarf_formudata(attr_struct, &file_path_numbr, &error);
+                        	printf("file_path number-->%u\n", file_path_numbr);
+                        }
+
 
                         process_DW_TAG_structure_type(elf, *outSymbol, dbg, cur_die);
 

@@ -68,6 +68,15 @@
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"
 
+#define CREATE_ARTIFACTS_TABLE "CREATE TABLE IF NOT EXISTS artifacts(\
+                                  id INTEGER PRIMARY KEY,\
+                                  elf INTEGER NOT NULL,\
+                                  path TEXT NOT NULL,\
+								  symbol INTEGER NOT NULL,\
+                                  FOREIGN KEY (elf) REFERENCES elfs(id),\
+								  FOREIGN KEY (symbol) REFERENCES symbols(id),\
+                                  UNIQUE (path, symbol, elf));"
+
 #define SQLiteDB_TRUE 1
 #define SQLiteDB_FALSE 0
 
@@ -90,6 +99,7 @@ private:
     int createFieldsSchema(void);
     int createDimensionsSchema(void);
     int createEnumerationSchema(void);
+    int createArtifactsSchema(void);
     int writeElfToDatabase(ElfFile& inModule);
     int writeSymbolsToDatabase(ElfFile& inModule);
     int writeFieldsToDatabase(ElfFile& inModule);
