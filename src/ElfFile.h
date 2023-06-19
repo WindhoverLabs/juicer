@@ -45,7 +45,7 @@ public:
 	uint32_t                               getId(void) const;
 	void                                   setId(uint32_t newId);
 	Symbol *                               addSymbol(std::unique_ptr<Symbol> symbol);
-	Symbol *                               addSymbol(std::string& name, uint32_t byte_size);
+	Symbol *                               addSymbol(std::string& name, uint32_t byte_size, Artifact newArtifact);
 	std::vector<Field*>                    getFields();
 	std::vector<Enumeration*>              getEnumerations();
     bool                                   isSymbolUnique(std::string &name);

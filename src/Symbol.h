@@ -27,7 +27,7 @@ class Symbol
 {
 public:
 	Symbol(ElfFile &elf);
-	Symbol(ElfFile &elf, std::string &name, uint32_t byte_size);
+	Symbol(ElfFile &elf, std::string &name, uint32_t byte_size, Artifact);
 	virtual ~Symbol();
 	const std::string& getName(void) const;
 	void setName(std::string &name);
@@ -60,7 +60,6 @@ public:
     Field* getField(std::string &name) const;
     bool hasFields(void);
     bool isEnumerated(void);
-    void setArtifact(Artifact& newArtifact);
 
 //protected:
 

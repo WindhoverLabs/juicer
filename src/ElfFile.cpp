@@ -173,13 +173,14 @@ Symbol * ElfFile::addSymbol(std::unique_ptr<Symbol> inSymbol)
 }
 
 Symbol * ElfFile::addSymbol(std::string& inName,
-		                uint32_t inByteSize)
+		                uint32_t inByteSize,
+						Artifact newArtifact)
 {
     Symbol *symbol = getSymbol(inName);
 
     if(symbol == nullptr)
     {
-        std::unique_ptr<Symbol> newSymbol = std::make_unique<Symbol>(*this, inName, inByteSize);
+        std::unique_ptr<Symbol> newSymbol = std::make_unique<Symbol>(*this, inName, inByteSize, newArtifact);
 
 	    symbols.push_back(std::move(newSymbol));
 

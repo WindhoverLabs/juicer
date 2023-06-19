@@ -19,11 +19,11 @@ Symbol::Symbol(ElfFile& inElf) :
 }
 
 
-Symbol::Symbol(ElfFile& inElf, std::string &inName, uint32_t inByteSize) :
+Symbol::Symbol(ElfFile& inElf, std::string &inName, uint32_t inByteSize, Artifact inArtifact) :
     elf{inElf}, // @suppress("Symbol is not resolved")
     name{inName}, // @suppress("Symbol is not resolved")
     byte_size{inByteSize},
-	artifact{elf}
+	artifact{inArtifact}
 {
     logger.logDebug("Symbol %s::%s (%u bytes) created.", elf.getName().c_str(), name.c_str(), byte_size);
 }
@@ -273,9 +273,4 @@ bool Symbol::hasBitFields(void)
 	}
 
 	return hasBitField;
-}
-
-void Symbol::setArtifact(Artifact& newArtifact)
-{
-//	artifact = newArtifact;
 }

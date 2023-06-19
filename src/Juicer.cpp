@@ -385,9 +385,13 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
 
         	if(DW_DLV_OK == voidRes)
         	{
+
+				uint32_t pathIndex = 0;
+		//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
+				Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
             	/* This branch represents a "void*" since there is no valid type.
             	 * Read section 5.2 of DWARF4 for details on this.*/
-                outSymbol = elf.addSymbol(voidType, byteSize);
+                outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
 
         	}
         }
@@ -434,7 +438,11 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
 
         if(res == DW_DLV_OK)
         {
-            outSymbol = elf.addSymbol(name, byteSize);
+
+			uint32_t pathIndex = 0;
+	//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
+			Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+            outSymbol = elf.addSymbol(name, byteSize, newArtifact);
         }
     }
 
@@ -587,7 +595,10 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
                 if(res == DW_DLV_OK)
                 {
                     std::string cName = dieName;
-                    outSymbol = elf.addSymbol(cName, byteSize);
+					uint32_t pathIndex = 0;
+			//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
+					Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
 
                     if(nullptr != outSymbol)
                     {
@@ -704,7 +715,12 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
                 if(res == DW_DLV_OK)
                 {
                     std::string cName = dieName;
-                    outSymbol = elf.addSymbol(cName, byteSize);
+
+
+					uint32_t pathIndex = 0;
+			//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
+					Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
                     process_DW_TAG_enumeration_type(elf, *outSymbol, dbg, typeDie);
                 }
                 break;
@@ -2611,7 +2627,12 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
 				if(res == DW_DLV_OK)
 				{
 					std::string sDieName = dieName;
-					outSymbol = elf.addSymbol(sDieName, byteSize);
+
+					uint32_t pathIndex = 0;
+			//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
+					Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+
+					outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
 				}
 			}
         }
@@ -2838,14 +2859,13 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
     if(res == DW_DLV_OK)
     {
         std::string sDieName = dieName;
-        outSymbol = elf.addSymbol(sDieName, byteSize);
 
 
+		uint32_t pathIndex = 0;
+//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
+		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
 
-
-
-
-
+        outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
 
 
 
@@ -3264,7 +3284,11 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 
 				if(paddingSymbol == nullptr)
 				{
-					paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize);
+
+					uint32_t pathIndex = 0;
+	//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
+					Artifact newArtifact{symbol.getElf(), dbgSourceFiles.at(pathIndex)};
+					paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize, newArtifact);
 				}
 
 				auto&& fields  = symbol.getFields();
@@ -3327,7 +3351,10 @@ void Juicer::addPaddingEndToStruct(Symbol& symbol)
 
 			if(paddingSymbol == nullptr)
 			{
-				paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta);
+				uint32_t pathIndex = 0;
+//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
+				Artifact newArtifact{symbol.getElf(), dbgSourceFiles.at(pathIndex)};
+				paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta, newArtifact);
 			}
 
 			uint32_t newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize() ;
@@ -3494,17 +3521,18 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                     else
                     {
                     	Dwarf_Unsigned bytesize;
+                    	unsigned long long file_path_numbr = 0;
                     	res = dwarf_bytesize(cur_die, &bytesize, &error);
                     	std::string stdString{dieName};
-
-                        Symbol* outSymbol = elf.addSymbol(stdString,(uint32_t) bytesize);
+                    	Artifact newArtifact{elf, dbgSourceFiles.at(file_path_numbr)};
+                        Symbol* outSymbol = elf.addSymbol(stdString,(uint32_t) bytesize, newArtifact);
 
 
                         res = dwarf_attr(cur_die, DW_AT_decl_file, &attr_struct, &error);
 
                         if(DW_DLV_OK == res)
                         {
-                        	unsigned long long file_path_numbr = 0;
+//                        	unsigned long long file_path_numbr = 0;
                         	char** filePaths = 0;
                         	Dwarf_Signed fileCount = 0;
                         	res = dwarf_formudata(attr_struct, &file_path_numbr, &error);
