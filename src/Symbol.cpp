@@ -274,3 +274,8 @@ bool Symbol::hasBitFields(void)
 
 	return hasBitField;
 }
+
+Artifact& Symbol::getArtifact()
+{
+	return artifact;
+}

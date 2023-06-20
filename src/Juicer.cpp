@@ -116,6 +116,52 @@ int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg)
 
         if(JUICER_OK == return_value)
         {
+
+
+
+			char** filePaths = nullptr;
+			Dwarf_Signed fileCount = 0;
+
+			/**
+			 * According to 6.2 Line Number Information in DWARF 4:
+			 * Line number information generated for a compilation unit is represented in the .debug_line
+			 * section of an object file and is referenced by a corresponding compilation unit debugging
+			 * information entry (see Section 3.1.1) in the .debug_info section.
+			 * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
+			 * the is_info to true.
+			 *
+			 * We are using a new Dwarf_Die because if we use cur_die, we segfault.
+			 *
+			 * My theory on this is that even though when we initially call dwarf_siblingof on
+			 * cur_die and as we read different kinds of tags/attributes(in particular type-related),
+			 * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
+			 *
+			 * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+			 *
+			 * This is just a a theory, however. In the future we may revisit this
+			 * to figure out the root cause of this.
+			 *
+			 */
+			// TODO: Move logic to the place where we load the CU die for the first time
+			// and make filePaths a field that all methods can access. Then, I think,
+			// we can index into that array with file_path_numbr and don't have to iterate through the
+			// entire list every time we find a new symbol.
+			Dwarf_Die src_die = 0;
+			int sres = dwarf_siblingof_b(dbg, NULL, true, &src_die, &error);
+
+			if (sres == DW_DLV_OK)
+			 {
+				 dwarf_srcfiles(src_die, &filePaths, &fileCount, &error);
+			 }
+
+
+			if(filePaths != nullptr)
+			{
+
+				dbgSourceFiles.insert(dbgSourceFiles.begin(), filePaths, &filePaths[fileCount]);
+			}
+
+
             return_value = getDieAndSiblings(elf, dbg, cu_die, 0);
         }
 
@@ -385,13 +431,46 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
 
         	if(DW_DLV_OK == voidRes)
         	{
+//				TODO:Not sure how to deal with this in the case of void* at the moment...
 
-				uint32_t pathIndex = 0;
-		//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
-				Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
-            	/* This branch represents a "void*" since there is no valid type.
-            	 * Read section 5.2 of DWARF4 for details on this.*/
-                outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
+	        	unsigned long long pathIndex = 0;
+				res = dwarf_formudata(attr_struct, &pathIndex, &error);
+	        	/**
+	        	 * According to 6.2 Line Number Information in DWARF 4:
+	        	 * Line number information generated for a compilation unit is represented in the .debug_line
+	        	 * section of an object file and is referenced by a corresponding compilation unit debugging
+	        	 * information entry (see Section 3.1.1) in the .debug_info section.
+	        	 * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
+	        	 * the is_info to true.
+	        	 *
+	        	 * We are using a new Dwarf_Die because if we use cur_die, we segfault.
+	        	 *
+	        	 * My theory on this is that even though when we initially call dwarf_siblingof on
+	        	 * cur_die and as we read different kinds of tags/attributes(in particular type-related),
+	        	 * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
+	        	 *
+	        	 * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+	        	 *
+	        	 * This is just a theory, however. In the future we may revisit this
+	        	 * to figure out the root cause of this.
+	        	 *
+	        	 */
+
+	        	if(pathIndex != 0)
+	        	{
+
+	            	/* This branch represents a "void*" since there is no valid type.
+	            	 * Read section 5.2 of DWARF4 for details on this.*/
+	        		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+	                outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
+	        	}
+	        	else
+	        	{
+	            	/* This branch represents a "void*" since there is no valid type.
+	            	 * Read section 5.2 of DWARF4 for details on this.*/
+	        		Artifact newArtifact{elf, "NOT_FOUND:" + voidType};
+	        		outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
+	        	}
 
         	}
         }
@@ -439,10 +518,41 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
         if(res == DW_DLV_OK)
         {
 
-			uint32_t pathIndex = 0;
+        	unsigned long long pathIndex = 0;
+			res = dwarf_formudata(attr_struct, &pathIndex, &error);
 	//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
-			Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
-            outSymbol = elf.addSymbol(name, byteSize, newArtifact);
+        	/**
+        	 * According to 6.2 Line Number Information in DWARF 4:
+        	 * Line number information generated for a compilation unit is represented in the .debug_line
+        	 * section of an object file and is referenced by a corresponding compilation unit debugging
+        	 * information entry (see Section 3.1.1) in the .debug_info section.
+        	 * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
+        	 * the is_info to true.
+        	 *
+        	 * We are using a new Dwarf_Die because if we use cur_die, we segfault.
+        	 *
+        	 * My theory on this is that even though when we initially call dwarf_siblingof on
+        	 * cur_die and as we read different kinds of tags/attributes(in particular type-related),
+        	 * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
+        	 *
+        	 * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+        	 *
+        	 * This is just a theory, however. In the future we may revisit this
+        	 * to figure out the root cause of this.
+        	 *
+        	 */
+
+        	if(pathIndex != 0)
+        	{
+        		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+                outSymbol = elf.addSymbol(name, byteSize, newArtifact);
+        	}
+        	else
+        	{
+        		Artifact newArtifact{elf, "NOT_FOUND:" + name};
+        		outSymbol = elf.addSymbol(name, byteSize, newArtifact);
+        	}
+
         }
     }
 
@@ -598,7 +708,46 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
 					uint32_t pathIndex = 0;
 			//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
 					Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
-                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+//                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                    res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
+
+                    if(DW_DLV_OK == res)
+                    {
+                    	unsigned long long pathIndex = 0;
+                    	res = dwarf_formudata(attr_struct, &pathIndex, &error);
+
+                    	/**
+                    	 * According to 6.2 Line Number Information in DWARF 4:
+                    	 * Line number information generated for a compilation unit is represented in the .debug_line
+                    	 * section of an object file and is referenced by a corresponding compilation unit debugging
+                    	 * information entry (see Section 3.1.1) in the .debug_info section.
+                    	 * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
+                    	 * the is_info to true.
+                    	 *
+                    	 * We are using a new Dwarf_Die because if we use cur_die, we segfault.
+                    	 *
+                    	 * My theory on this is that even though when we initially call dwarf_siblingof on
+                    	 * cur_die and as we read different kinds of tags/attributes(in particular type-related),
+                    	 * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
+                    	 *
+                    	 * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                    	 *
+                    	 * This is just a theory, however. In the future we may revisit this
+                    	 * to figure out the root cause of this.
+                    	 *
+                    	 */
+
+                    	if(pathIndex != 0)
+                    	{
+                    		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                    	}
+                    	else
+                    	{
+                    		Artifact newArtifact{elf, "NOT_FOUND:" + cName};
+                    		outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                    	}
+                    }
 
                     if(nullptr != outSymbol)
                     {
@@ -717,10 +866,61 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
                     std::string cName = dieName;
 
 
-					uint32_t pathIndex = 0;
-			//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
-					Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
-                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+//					uint32_t pathIndex = 0;
+//			//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
+//					Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+//                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+
+
+
+
+
+
+
+
+
+
+
+                    res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
+
+                    if(DW_DLV_OK == res)
+                    {
+                    	unsigned long long pathIndex = 0;
+                    	res = dwarf_formudata(attr_struct, &pathIndex, &error);
+
+                    	/**
+                    	 * According to 6.2 Line Number Information in DWARF 4:
+                    	 * Line number information generated for a compilation unit is represented in the .debug_line
+                    	 * section of an object file and is referenced by a corresponding compilation unit debugging
+                    	 * information entry (see Section 3.1.1) in the .debug_info section.
+                    	 * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
+                    	 * the is_info to true.
+                    	 *
+                    	 * We are using a new Dwarf_Die because if we use cur_die, we segfault.
+                    	 *
+                    	 * My theory on this is that even though when we initially call dwarf_siblingof on
+                    	 * cur_die and as we read different kinds of tags/attributes(in particular type-related),
+                    	 * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
+                    	 *
+                    	 * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                    	 *
+                    	 * This is just a theory, however. In the future we may revisit this
+                    	 * to figure out the root cause of this.
+                    	 *
+                    	 */
+
+                    	if(pathIndex != 0)
+                    	{
+                    		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                    	}
+                    	else
+                    	{
+                    		Artifact newArtifact{elf, "NOT_FOUND:" + cName};
+                    		outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                    	}
+                    }
+
                     process_DW_TAG_enumeration_type(elf, *outSymbol, dbg, typeDie);
                 }
                 break;
@@ -2628,11 +2828,53 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
 				{
 					std::string sDieName = dieName;
 
-					uint32_t pathIndex = 0;
 			//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
-					Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
 
-					outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+//					outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+
+
+
+
+			        res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
+
+			        if(DW_DLV_OK == res)
+			        {
+			        	unsigned long long pathIndex = 0;
+			        	res = dwarf_formudata(attr_struct, &pathIndex, &error);
+
+			        	/**
+			        	 * According to 6.2 Line Number Information in DWARF 4:
+			        	 * Line number information generated for a compilation unit is represented in the .debug_line
+			        	 * section of an object file and is referenced by a corresponding compilation unit debugging
+			        	 * information entry (see Section 3.1.1) in the .debug_info section.
+			        	 * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
+			        	 * the is_info to true.
+			        	 *
+			        	 * We are using a new Dwarf_Die because if we use cur_die, we segfault.
+			        	 *
+			        	 * My theory on this is that even though when we initially call dwarf_siblingof on
+			        	 * cur_die and as we read different kinds of tags/attributes(in particular type-related),
+			        	 * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
+			        	 *
+			        	 * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+			        	 *
+			        	 * This is just a theory, however. In the future we may revisit this
+			        	 * to figure out the root cause of this.
+			        	 *
+			        	 */
+
+			        	if(pathIndex != 0)
+			        	{
+			        		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+			                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+			        	}
+			        	else
+			        	{
+			        		Artifact newArtifact{elf, "NOT_FOUND:" + sDieName};
+			        		outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+			        	}
+			        }
+
 				}
 			}
         }
@@ -2860,27 +3102,12 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
     {
         std::string sDieName = dieName;
 
-
-		uint32_t pathIndex = 0;
-//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
-		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
-
-        outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
-
-
-
-
-
-
-
         res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
 
         if(DW_DLV_OK == res)
         {
-        	unsigned long long file_path_numbr = 0;
-        	char** filePaths = 0;
-        	Dwarf_Signed fileCount = 0;
-        	res = dwarf_formudata(attr_struct, &file_path_numbr, &error);
+        	unsigned long long pathIndex = 0;
+        	res = dwarf_formudata(attr_struct, &pathIndex, &error);
 
         	/**
         	 * According to 6.2 Line Number Information in DWARF 4:
@@ -2898,26 +3125,20 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
         	 *
         	 * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
         	 *
-        	 * This is just a a theory, however. In the future we may revisit this
+        	 * This is just a theory, however. In the future we may revisit this
         	 * to figure out the root cause of this.
         	 *
         	 */
-        	// TODO: Move logic to the place where we load the CU die for the first time
-        	// and make filePaths a field that all methods can access. Then, I think,
-        	// we can index into that array with file_path_numbr and don't have iterate through the
-        	// entire list every time we find a new symbol.
-        	Dwarf_Die src_die = 0;
-            int sres = dwarf_siblingof_b(dbg, NULL, true, &src_die, &error);
-             if (sres == DW_DLV_OK) {
-        	dwarf_srcfiles(src_die, &filePaths, &fileCount, &error);
-             }
 
-        	if(filePaths != 0 && file_path_numbr != 0)
+        	if(pathIndex != 0)
         	{
-
-            		std::cout << "*********file path:" << filePaths[file_path_numbr -1]
-							  << " for symbol:" << outSymbol->getName()
-							  << std::endl;
+        		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+        	}
+        	else
+        	{
+        		Artifact newArtifact{elf, "NOT_FOUND:" + sDieName};
+        		outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
         	}
         }
 
@@ -3248,7 +3469,7 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 	/*Add padding between fields */
 	if (symbol.getFields().size()>0 && !symbol.hasBitFields())
 	{
-		uint32_t fieldsSize= symbol.getFields().size();
+		uint32_t fieldsSize = symbol.getFields().size();
 
 		for(uint32_t i= 1;i<fieldsSize;i++)
 		{
@@ -3285,9 +3506,8 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 				if(paddingSymbol == nullptr)
 				{
 
-					uint32_t pathIndex = 0;
-	//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
-					Artifact newArtifact{symbol.getElf(), dbgSourceFiles.at(pathIndex)};
+					Artifact newArtifact{symbol.getElf(), symbol.getArtifact().getFilePath()};
+
 					paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize, newArtifact);
 				}
 
@@ -3351,9 +3571,7 @@ void Juicer::addPaddingEndToStruct(Symbol& symbol)
 
 			if(paddingSymbol == nullptr)
 			{
-				uint32_t pathIndex = 0;
-//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
-				Artifact newArtifact{symbol.getElf(), dbgSourceFiles.at(pathIndex)};
+				Artifact newArtifact{symbol.getElf(), symbol.getArtifact().getFilePath()};
 				paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta, newArtifact);
 			}
 
@@ -3457,6 +3675,8 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
     Dwarf_Attribute attr_struct;
     int return_value = JUICER_OK;
 
+    Symbol* outSymbol = nullptr;
+
     for(;;)
     {
         Dwarf_Die sib_die = 0;
@@ -3520,22 +3740,17 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                     }
                     else
                     {
-                    	Dwarf_Unsigned bytesize;
+                    	Dwarf_Unsigned byteSize;
                     	unsigned long long file_path_numbr = 0;
-                    	res = dwarf_bytesize(cur_die, &bytesize, &error);
-                    	std::string stdString{dieName};
-                    	Artifact newArtifact{elf, dbgSourceFiles.at(file_path_numbr)};
-                        Symbol* outSymbol = elf.addSymbol(stdString,(uint32_t) bytesize, newArtifact);
-
+                    	res = dwarf_bytesize(cur_die, &byteSize, &error);
+                    	std::string sDieName{dieName};
 
                         res = dwarf_attr(cur_die, DW_AT_decl_file, &attr_struct, &error);
 
                         if(DW_DLV_OK == res)
                         {
-//                        	unsigned long long file_path_numbr = 0;
-                        	char** filePaths = 0;
-                        	Dwarf_Signed fileCount = 0;
-                        	res = dwarf_formudata(attr_struct, &file_path_numbr, &error);
+                        	unsigned long long pathIndex = 0;
+                        	res = dwarf_formudata(attr_struct, &pathIndex, &error);
 
                         	/**
                         	 * According to 6.2 Line Number Information in DWARF 4:
@@ -3557,31 +3772,21 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                         	 * to figure out the root cause of this.
                         	 *
                         	 */
-                        	// TODO: Move logic to the place where we load the CU die for the first time
-                        	// and make filePaths a field that all methods can access. Then, I think,
-                        	// we can index into that array with file_path_numbr and don't have to iterate through the
-                        	// entire list every time we find a new symbol.
-                        	Dwarf_Die src_die = 0;
-                            int sres = dwarf_siblingof_b(dbg, NULL, true, &src_die, &error);
 
-                            if (sres == DW_DLV_OK)
-                             {
-                            	 dwarf_srcfiles(src_die, &filePaths, &fileCount, &error);
-                             }
 
-                        	if(filePaths != 0 && file_path_numbr != 0)
+                        	if(pathIndex != 0)
                         	{
-                        		Artifact artifact{outSymbol->getElf(), filePaths[file_path_numbr -1]};
-
-//                        		if(outSymbol->getName().compare("CFE_ES_AppInfo_t") == 0)
-//                        		{
-//                            		std::cout << "*********file path:" << filePaths[file_path_numbr -1]
-//    										  << " for symbol:" << outSymbol->getName()
-//    										  << std::endl;
-//                        		}
+                        		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+                                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
                         	}
-                        }
+                        	else
+                        	{
+                        		Artifact newArtifact{elf, "NOT_FOUND:" + sDieName};
+                        		outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                        	}
 
+
+                        }
 
                         process_DW_TAG_structure_type(elf, *outSymbol, dbg, cur_die);
 

@@ -40,14 +40,6 @@ int SQLiteDB::selectCallback(void *veryUsed, int argc, char **argv, char **azCol
 
   for(i=1; i<argc; i++)
   {
-	  if(argv[i] == nullptr)
-	  {
-		  std::cout<< "String:*********-->" << "NULL" << std::endl;
-	  }
-	  else
-	  {
-		  std::cout<< "String:*********-->" << argv[i] << std::endl;
-	  }
 	  std::string tempData{argv[i]};
 
 	  tableData.push_back(tempData);
@@ -101,6 +93,43 @@ bool SQLiteDB::doesSymbolExist(std::string name)
 	std::string countRowsQuery{"SELECT COUNT(*) FROM symbols"};
 	countRowsQuery += " WHERE name=\"";
 	countRowsQuery += name + "\";";
+
+    rc = sqlite3_exec(database, countRowsQuery.c_str(), SQLiteDB::doesRowExistCallback, &row_count,
+            &errorMessage);
+
+    if(SQLITE_OK != rc)
+    {
+    	logger.logWarning("Looks like there was a problem sending query \"%s\" "
+    			"to the database.", countRowsQuery.c_str());
+    	logger.logError("%s", errorMessage);
+    	row_count = 0;
+    }
+
+    return row_count==0? false: true;
+}
+
+
+/**
+ *@brief Checks if the symbol called name exists on the symbols table.
+ *
+ *@param name The name of the symbol to check for.
+ *
+ *@return If the symbol with the name of name exists, this function returns true. Otherwise,
+ *this function returns false.
+ *@note Please note that this function assumes that ALL symbols in our table
+ *are universally unique across all Elf files.
+ */
+bool SQLiteDB::doesArtifactExist(std::string filePath)
+{
+	int32_t row_count = 0;
+
+    int 	rc = SQLITE_OK;
+
+    char* 	errorMessage = nullptr;
+
+	std::string countRowsQuery{"SELECT COUNT(*) FROM artifacts"};
+	countRowsQuery += " WHERE path=\"";
+	countRowsQuery += filePath + "\";";
 
     rc = sqlite3_exec(database, countRowsQuery.c_str(), SQLiteDB::doesRowExistCallback, &row_count,
             &errorMessage);
@@ -252,6 +281,20 @@ int SQLiteDB::write(ElfFile& inElf)
 
         if(SQLITEDB_ERROR != rc)
         {
+
+        	rc = writeElfToDatabase(inElf);
+
+        	if(SQLITEDB_ERROR != rc)
+        	{
+        		 rc = writeArtifactsToDatabase(inElf);
+        	}
+        	else
+        	{
+                logger.logDebug("There was an error while writing field entries to the"
+                                " database.");
+                rc = SQLITEDB_ERROR;
+        	}
+
             rc = writeSymbolsToDatabase(inElf);
 
             if(SQLITEDB_ERROR != rc)
@@ -377,6 +420,117 @@ int SQLiteDB::writeElfToDatabase(ElfFile& inElf)
 
 
 /**
+ *@brief Iterates through all of the Artifact entries in
+ *inElf and writes each one to the "artifacts" table.
+ *
+ *@param inElf The elf that has the Elf data.
+ *
+ *@return Returns SQLITEDB_OK if all of the artifact entries are written to the
+ *database successfully. If the method fails to write at least one of the
+ *elf entries to the database, then SQLITEDB_ERROR is returned.
+ */
+int SQLiteDB::writeArtifactsToDatabase(ElfFile& inElf)
+{
+   int      rc  = SQLITEDB_OK;
+   char* errorMessage = NULL;
+
+   /*
+	* @todo I want to store these SQLite magical values into MACROS,
+	* but I'm not sure what is the best way to do that without it being
+	* messy.
+	*/
+   std::string writArtifactQuery{};
+
+   for(auto&& s: inElf.getSymbols())
+   {
+	   Artifact& ar = s->getArtifact();
+
+		bool artifacExists = doesArtifactExist(ar.getFilePath());
+
+		/**
+		 *First check if the symbol already exists in the database.
+		 *If it does we don't need to write to the database. In that case, all we need is
+		 *to get the id which will be used by other tables such as enumerations and fields as
+		 * a foreign key.
+		 */
+		if(artifacExists)
+		{
+
+			std::map<std::string, std::vector<std::string>> artifactMap{};
+
+			std::string getArtifactIdQuery{"SELECT * FROM artifacts where path="};
+			getArtifactIdQuery += "\"";
+			getArtifactIdQuery += ar.getFilePath();
+
+			getArtifactIdQuery += "\";";
+			rc = sqlite3_exec(database, getArtifactIdQuery.c_str(), SQLiteDB::selectCallback, &artifactMap,
+					&errorMessage);
+
+			if(SQLITE_OK == rc)
+			{
+				/**
+				 * We know there is only one element in our map, since symbol names are unique.
+				 */
+				for(auto pair: artifactMap)
+				{
+					ar.setId(std::stoi(pair.first));
+				}
+			}
+		}
+
+	   writArtifactQuery += "INSERT INTO artifacts(elf, path) "
+						"VALUES(";
+	   writArtifactQuery += std::to_string(inElf.getId());
+	   writArtifactQuery += ",";
+	   writArtifactQuery += "\"";
+	   writArtifactQuery += s->getArtifact().getFilePath();
+	   writArtifactQuery +=	 "\"";
+	   writArtifactQuery += ");";
+
+	   logger.logDebug("Sending \"%s\" query to database.",writArtifactQuery.c_str());
+
+	   rc = sqlite3_exec(database, writArtifactQuery.c_str(), NULL, NULL,
+						 &errorMessage);
+	   if(SQLITE_OK == rc)
+	   {
+		   logger.logDebug("Elf values were written to the artifacts schema with "
+						   "SQLITE_OK status.");
+	       /*Write the id to this elf so that other tables can use it as
+	        *a foreign key */
+
+	       sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+	       if(s->getName().compare("CFE_ES_TaskInfo_t") == 0)
+	       {
+	    	   std::cout << "lastRowId" << lastRowId << std::endl;
+	       }
+	       ar.setId(lastRowId);
+	   }
+	   else
+	   {
+
+		   if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+		   {
+			   logger.logDebug("%s.", errorMessage);
+			   rc  = SQLITE_OK;
+		   }
+		   else
+		   {
+			   logger.logDebug("There was an error while writing data to the artifacts table.");
+			   logger.logDebug("%s.", errorMessage);
+			   rc = SQLITEDB_ERROR;
+		   }
+	   }
+
+	   writArtifactQuery.clear();
+   }
+
+
+   return rc;
+}
+
+
+
+/**
  *@brief Iterates through all of the symbols entries in
  *inElf and writes each one to the "symbols" table.
  *
@@ -433,7 +587,6 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 
 		   else
 		   {
-
 			   /*
 			* @todo I want to store these SQLite magical values into MACROS,
 			 * but I'm not sure what is the best way to do that without it being
@@ -441,7 +594,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 			 */
 			   std::string writeSymbolQuery{};
 
-			   writeSymbolQuery += "INSERT INTO symbols(elf, name, byte_size) "
+			   writeSymbolQuery += "INSERT INTO symbols(elf, name, byte_size, artifact) "
 									 "VALUES(";
 			   writeSymbolQuery += std::to_string(symbol->getElf().getId());
 			   writeSymbolQuery += ",\"";
@@ -449,6 +602,8 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 
 			   writeSymbolQuery += "\",";
 			   writeSymbolQuery += std::to_string(symbol->getByteSize());
+			   writeSymbolQuery += ",";
+			   writeSymbolQuery += std::to_string(symbol->getArtifact().getId());
 			   writeSymbolQuery += ")";
 
 			   rc = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL,

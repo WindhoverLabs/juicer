@@ -60,8 +60,7 @@ public:
     Field* getField(std::string &name) const;
     bool hasFields(void);
     bool isEnumerated(void);
-
-//protected:
+    Artifact& getArtifact();
 
 private:
 	ElfFile       &elf;

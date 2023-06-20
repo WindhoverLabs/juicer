@@ -18,6 +18,7 @@ class Artifact {
 	std::string filePath{};
 	ElfFile       &elf;
 	uint32_t     id;
+	uint32_t crc; //Add CRC:https://github.com/d-bahr/CRCpp
 
 public:
 	Artifact(ElfFile &elf, std::string path);

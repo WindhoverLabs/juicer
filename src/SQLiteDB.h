@@ -75,7 +75,7 @@
                                   elf INTEGER NOT NULL,\
                                   path TEXT NOT NULL,\
                                   FOREIGN KEY (elf) REFERENCES elfs(id),\
-                                  UNIQUE (path, elf));"
+                                  UNIQUE (path));"
 
 #define SQLiteDB_TRUE 1
 #define SQLiteDB_FALSE 0
@@ -101,12 +101,14 @@ private:
     int createEnumerationSchema(void);
     int createArtifactsSchema(void);
     int writeElfToDatabase(ElfFile& inModule);
+    int writeArtifactsToDatabase(ElfFile& inModule);
     int writeSymbolsToDatabase(ElfFile& inModule);
     int writeFieldsToDatabase(ElfFile& inModule);
     int writeEnumerationsToDatabase(ElfFile& inModule);
     int writeDimensionsListToDatabase(ElfFile& inElf);
     static int doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
     bool doesSymbolExist(std::string name);
+    bool doesArtifactExist(std::string name);
 
 public:
     SQLiteDB();
