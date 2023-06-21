@@ -20,6 +20,7 @@
 * `Catch2`
 * `g++>=5.4.0`
 * `gcovr`
+* `libarchive-zip-perl` (Needed for unit test verification of crc32)
 
 
 ## Building it <a name="building_it"></a>
