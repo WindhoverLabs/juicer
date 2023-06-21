@@ -13,6 +13,10 @@
 #include <stddef.h>
 #include <string.h>
 #include "test_file1.h"
+#include <limits.h>
+#include <cstdlib>
+#include <strstream>
+
 
 /**
  *These test file locations assumes that the tests are run
@@ -153,6 +157,19 @@ static int selectCallbackUsingColNameAsKey(void *veryUsed, int argc, char **argv
 	allRecords->push_back(newRecord);
 
 	return 0;
+}
+
+
+std::string getCRC32FromSystem(char resolvedPath[PATH_MAX]) {
+	std::string crc32CommandStr { "crc32 " };
+	crc32CommandStr += resolvedPath;
+	crc32CommandStr += " > crc32.txt";
+	std::system(crc32CommandStr.c_str()); // executes the UNIX command "ls -l >test.txt"
+	std::strstream expectedCRC32 { };
+	expectedCRC32 << std::ifstream("crc32.txt").rdbuf();
+	REQUIRE(remove("./crc32.txt") == 0);
+	std::string expectedCRC32Str { expectedCRC32.str() };
+	return expectedCRC32Str;
 }
 
 
@@ -589,6 +606,36 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     std::string circle_id = circleRecords.at(0)["id"];
 
+    std::string ciircle_artifact_id = circleRecords.at(0)["artifact"];
+
+    REQUIRE(!ciircle_artifact_id.empty());
+
+    std::string getCircleArtifact{"SELECT * FROM artifacts WHERE id = "};
+
+    getCircleArtifact += ciircle_artifact_id;
+    getCircleArtifact += ";";
+
+
+    std::vector<std::map<std::string, std::string>> circleArtifactRecords{};
+
+    rc = sqlite3_exec(database, getCircleArtifact.c_str(), selectCallbackUsingColNameAsKey, &circleArtifactRecords,
+                             &errorMessage);
+
+    REQUIRE(circleArtifactRecords.size() == 1);
+
+    std::string path{};
+    char resolvedPath[PATH_MAX];
+
+    realpath("../unit-test/test_file1.h", resolvedPath);
+
+    path.clear();
+    path.insert(0, resolvedPath);
+
+    REQUIRE(circleArtifactRecords.at(0)["path"] == path);
+
+	std::string expectedCRC32Str = getCRC32FromSystem(resolvedPath);
+    REQUIRE(expectedCRC32Str == circleArtifactRecords.at(0)["crc32"]);
+
     std::string getCircleFields{"SELECT * FROM fields WHERE symbol = "};
 
     getCircleFields += circle_id;
@@ -689,7 +736,6 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 	 * This assumes that the test_file was compiled on
 	 * gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
 	 *  little-endian machine.
-	 * @todo Implement
 	 */
 
     Juicer          juicer;
@@ -732,6 +778,16 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     REQUIRE(rc == SQLITE_OK);
     REQUIRE(squareRecords.size() ==  1);
+
+    uint32_t numberOfColumns = 0;
+
+    for(auto pair: squareRecords.at(0))
+    {
+    	numberOfColumns++;
+    }
+
+    REQUIRE(numberOfColumns == 5);
+
     /**
      * Check the correctness of Square struct.
      */
@@ -741,6 +797,35 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
 
     std::string square_id = squareRecords.at(0)["id"];
+
+    std::string square_artifact_id = squareRecords.at(0)["artifact"];
+
+    REQUIRE(!square_artifact_id.empty());
+
+    std::string getSquareArtifact{"SELECT * FROM artifacts WHERE id = "};
+
+    getSquareArtifact += square_artifact_id;
+    getSquareArtifact += ";";
+
+    std::vector<std::map<std::string, std::string>> squareArtifactRecords{};
+
+    rc = sqlite3_exec(database, getSquareArtifact.c_str(), selectCallbackUsingColNameAsKey, &squareArtifactRecords,
+                             &errorMessage);
+
+    REQUIRE(squareArtifactRecords.size() == 1);
+
+    std::string path{};
+    char resolvedPath[PATH_MAX];
+
+    realpath("../unit-test/test_file1.h", resolvedPath);
+
+    path.clear();
+    path.insert(0, resolvedPath);
+
+    REQUIRE(squareArtifactRecords.at(0)["path"] == path);
+
+	std::string expectedCRC32Str = getCRC32FromSystem(resolvedPath);
+    REQUIRE(expectedCRC32Str == squareArtifactRecords.at(0)["crc32"]);
 
     std::string getSquareFields{"SELECT * FROM fields WHERE symbol = "};
 
