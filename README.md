@@ -19,6 +19,7 @@
 * `C++14`
 * `Catch2`
 * `g++>=5.4.0`
+* `gcovr`
 
 
 ## Building it <a name="building_it"></a>
