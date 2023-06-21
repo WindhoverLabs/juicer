@@ -22,7 +22,7 @@ Artifact::Artifact(ElfFile& elf):
 }
 
 Artifact::Artifact(const Artifact &artifact):
-		 elf{artifact.elf}, filePath{artifact.filePath}
+		 elf{artifact.elf}, filePath{artifact.filePath}, crc{artifact.getCRC()}
 {
 
 }
@@ -41,12 +41,21 @@ uint32_t Artifact::getId()
 }
 
 
-const std::string Artifact::getFilePath()
+std::string Artifact::getFilePath() const
 {
 	return filePath;
 }
 ElfFile& Artifact::getElf()
 {
 	return elf;
+}
+
+void Artifact::setCRC(uint32_t newCRC)
+{
+	crc = newCRC;
+}
+uint32_t Artifact::getCRC() const
+{
+	return crc;
 }
 

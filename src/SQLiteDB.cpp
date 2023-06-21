@@ -6,8 +6,10 @@
  */
 
 #include<string>
+#include <iomanip>
 #include <stdio.h>
 #include "SQLiteDB.h"
+
 
 SQLiteDB::SQLiteDB() :
         database(0)
@@ -373,12 +375,17 @@ int SQLiteDB::writeElfToDatabase(ElfFile& inElf)
 	*/
    std::string writeElfQuery{};
 
-   writeElfQuery += "INSERT INTO elfs(name, checksum, little_endian) "
+   std::ostringstream out{};
+   out << std::hex << inElf.getCRC();
+
+   std::string checksum =  out.str();
+   writeElfQuery += "INSERT INTO elfs(name, crc32, little_endian) "
 					"VALUES(\"";
    writeElfQuery += inElf.getName();
    writeElfQuery += "\",";
-   writeElfQuery += std::to_string(inElf.getChecksum());
-   writeElfQuery += ",";
+   writeElfQuery += "\"";
+   writeElfQuery += checksum;
+   writeElfQuery += "\",";
    writeElfQuery += std::to_string(inElf.isLittleEndian()? SQLiteDB_TRUE: SQLiteDB_FALSE);
    writeElfQuery += ");";
 
@@ -439,8 +446,6 @@ int SQLiteDB::writeArtifactsToDatabase(ElfFile& inElf)
 	* but I'm not sure what is the best way to do that without it being
 	* messy.
 	*/
-   std::string writArtifactQuery{};
-
    for(auto&& s: inElf.getSymbols())
    {
 	   Artifact& ar = s->getArtifact();
@@ -469,59 +474,72 @@ int SQLiteDB::writeArtifactsToDatabase(ElfFile& inElf)
 			if(SQLITE_OK == rc)
 			{
 				/**
-				 * We know there is only one element in our map, since symbol names are unique.
+				 * We know there is only one element in our map, since paths are unique.
 				 */
 				for(auto pair: artifactMap)
 				{
-					ar.setId(std::stoi(pair.first));
+					ar.setId(std::stoul(pair.first));
 				}
+
+				 std::istringstream crcHex{artifactMap.at(std::to_string(ar.getId())).at(2)};
+				 uint32_t crc;
+				 crcHex >> std::dec >> crc;
+				 ar.setCRC(crc);
 			}
 		}
 
-	   writArtifactQuery += "INSERT INTO artifacts(elf, path) "
-						"VALUES(";
-	   writArtifactQuery += std::to_string(inElf.getId());
-	   writArtifactQuery += ",";
-	   writArtifactQuery += "\"";
-	   writArtifactQuery += s->getArtifact().getFilePath();
-	   writArtifactQuery +=	 "\"";
-	   writArtifactQuery += ");";
+		else
+		{
+			   std::string writArtifactQuery{};
 
-	   logger.logDebug("Sending \"%s\" query to database.",writArtifactQuery.c_str());
+			   uint32_t crc = ar.getCRC();
+			   std::ostringstream crcHex{};
+			   crcHex << std::hex << crc << std::endl;
 
-	   rc = sqlite3_exec(database, writArtifactQuery.c_str(), NULL, NULL,
-						 &errorMessage);
-	   if(SQLITE_OK == rc)
-	   {
-		   logger.logDebug("Elf values were written to the artifacts schema with "
-						   "SQLITE_OK status.");
-	       /*Write the id to this elf so that other tables can use it as
-	        *a foreign key */
+			   writArtifactQuery += "INSERT INTO artifacts(elf, path, crc32) "
+								"VALUES(";
+			   writArtifactQuery += std::to_string(inElf.getId());
+			   writArtifactQuery += ",";
+			   writArtifactQuery += "\"";
+			   writArtifactQuery += ar.getFilePath();
+			   writArtifactQuery +=	 "\"";
+			   writArtifactQuery += ",\"";
+			   writArtifactQuery += crcHex.str();
+			   writArtifactQuery += "\"";
+			   writArtifactQuery += ");";
 
-	       sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
-	       if(s->getName().compare("CFE_ES_TaskInfo_t") == 0)
-	       {
-	    	   std::cout << "lastRowId" << lastRowId << std::endl;
-	       }
-	       ar.setId(lastRowId);
-	   }
-	   else
-	   {
+			   logger.logDebug("Sending \"%s\" query to database.",writArtifactQuery.c_str());
 
-		   if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
-		   {
-			   logger.logDebug("%s.", errorMessage);
-			   rc  = SQLITE_OK;
-		   }
-		   else
-		   {
-			   logger.logDebug("There was an error while writing data to the artifacts table.");
-			   logger.logDebug("%s.", errorMessage);
-			   rc = SQLITEDB_ERROR;
-		   }
-	   }
+			   rc = sqlite3_exec(database, writArtifactQuery.c_str(), NULL, NULL,
+								 &errorMessage);
+			   if(SQLITE_OK == rc)
+			   {
+				   logger.logDebug("Elf values were written to the artifacts schema with "
+								   "SQLITE_OK status.");
+			       /*Write the id to this elf so that other tables can use it as
+			        *a foreign key */
 
-	   writArtifactQuery.clear();
+			       sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+			       ar.setId(lastRowId);
+			   }
+			   else
+			   {
+
+				   if(sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+				   {
+					   logger.logDebug("%s.", errorMessage);
+					   rc  = SQLITE_OK;
+				   }
+				   else
+				   {
+					   logger.logDebug("There was an error while writing data to the artifacts table.");
+					   logger.logDebug("%s.", errorMessage);
+					   rc = SQLITEDB_ERROR;
+				   }
+			   }
+
+			   writArtifactQuery.clear();
+		}
    }
 
 

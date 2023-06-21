@@ -135,6 +135,8 @@ private:
     DimensionList getDimList(Dwarf_Debug dbg, Dwarf_Die die);
 
     std::vector<std::string> dbgSourceFiles{};
+
+    uint32_t generateCRCForFile(std::string filePath);
 };
 
 #endif /* JUICER_H_ */

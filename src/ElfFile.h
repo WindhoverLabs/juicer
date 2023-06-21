@@ -54,11 +54,11 @@ public:
 	void setDate(const std::string& date);
 	bool isLittleEndian() const;
 	void isLittleEndian(bool littleEndian);
-	uint32_t getChecksum() const;
-	void setChecksum(uint32_t checksum);
+	void setCRC(uint32_t newID);
+	uint32_t getCRC() const;
 
 private:
-	uint32_t    checksum;
+	uint32_t crc;
 	/**
 	 *@note I'm not sure about date being a std::string. I wonder if it'll
 	 * become problematic with other formats other than SQLite...dates and

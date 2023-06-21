@@ -51,6 +51,8 @@
 #include "ElfFile.h"
 #include "Artifact.h"
 
+#include "CRC.h"
+
 
 Juicer::Juicer()
 {
@@ -462,6 +464,8 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
 	            	/* This branch represents a "void*" since there is no valid type.
 	            	 * Read section 5.2 of DWARF4 for details on this.*/
 	        		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+	        		uint32_t checkSum = generateCRCForFile(newArtifact.getFilePath());
+	        		newArtifact.setCRC(checkSum);
 	                outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
 	        	}
 	        	else
@@ -469,6 +473,8 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
 	            	/* This branch represents a "void*" since there is no valid type.
 	            	 * Read section 5.2 of DWARF4 for details on this.*/
 	        		Artifact newArtifact{elf, "NOT_FOUND:" + voidType};
+	        		uint32_t checkSum = 0;
+	        		newArtifact.setCRC(checkSum);
 	        		outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
 	        	}
 
@@ -545,11 +551,15 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
         	if(pathIndex != 0)
         	{
         		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+        		uint32_t checkSum = generateCRCForFile(newArtifact.getFilePath());
+        		newArtifact.setCRC(checkSum);
                 outSymbol = elf.addSymbol(name, byteSize, newArtifact);
         	}
         	else
         	{
         		Artifact newArtifact{elf, "NOT_FOUND:" + name};
+        		uint32_t checkSum = 0;
+        		newArtifact.setCRC(checkSum);
         		outSymbol = elf.addSymbol(name, byteSize, newArtifact);
         	}
 
@@ -705,10 +715,6 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
                 if(res == DW_DLV_OK)
                 {
                     std::string cName = dieName;
-					uint32_t pathIndex = 0;
-			//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
-					Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
-//                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
                     res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
 
                     if(DW_DLV_OK == res)
@@ -740,11 +746,15 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
                     	if(pathIndex != 0)
                     	{
                     		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+        	        		uint32_t checkSum = generateCRCForFile(newArtifact.getFilePath());
+        	        		newArtifact.setCRC(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
                     	}
                     	else
                     	{
                     		Artifact newArtifact{elf, "NOT_FOUND:" + cName};
+        	        		uint32_t checkSum = 0;
+        	        		newArtifact.setCRC(checkSum);
                     		outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
                     	}
                     }
@@ -865,22 +875,6 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
                 {
                     std::string cName = dieName;
 
-
-//					uint32_t pathIndex = 0;
-//			//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
-//					Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex)};
-//                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
-
-
-
-
-
-
-
-
-
-
-
                     res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
 
                     if(DW_DLV_OK == res)
@@ -912,11 +906,15 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
                     	if(pathIndex != 0)
                     	{
                     		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+        	        		uint32_t checkSum = generateCRCForFile(newArtifact.getFilePath());
+        	        		newArtifact.setCRC(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
                     	}
                     	else
                     	{
                     		Artifact newArtifact{elf, "NOT_FOUND:" + cName};
+        	        		uint32_t checkSum = 0;
+        	        		newArtifact.setCRC(checkSum);
                     		outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
                     	}
                     }
@@ -2827,14 +2825,6 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
 				if(res == DW_DLV_OK)
 				{
 					std::string sDieName = dieName;
-
-			//				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
-
-//					outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
-
-
-
-
 			        res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
 
 			        if(DW_DLV_OK == res)
@@ -2866,11 +2856,15 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
 			        	if(pathIndex != 0)
 			        	{
 			        		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+			        		uint32_t checkSum = generateCRCForFile(newArtifact.getFilePath());
+			        		newArtifact.setCRC(checkSum);
 			                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
 			        	}
 			        	else
 			        	{
 			        		Artifact newArtifact{elf, "NOT_FOUND:" + sDieName};
+			        		uint32_t checkSum = 0;
+			        		newArtifact.setCRC(checkSum);
 			        		outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
 			        	}
 			        }
@@ -3133,11 +3127,15 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
         	if(pathIndex != 0)
         	{
         		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+        		uint32_t checkSum = generateCRCForFile(newArtifact.getFilePath());
+        		newArtifact.setCRC(checkSum);
                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
         	}
         	else
         	{
         		Artifact newArtifact{elf, "NOT_FOUND:" + sDieName};
+        		uint32_t checkSum = 0;
+        		newArtifact.setCRC(checkSum);
         		outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
         	}
         }
@@ -3507,6 +3505,8 @@ void Juicer::addPaddingToStruct(Symbol& symbol)
 				{
 
 					Artifact newArtifact{symbol.getElf(), symbol.getArtifact().getFilePath()};
+	        		uint32_t checkSum = generateCRCForFile(newArtifact.getFilePath());
+	        		newArtifact.setCRC(checkSum);
 
 					paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize, newArtifact);
 				}
@@ -3572,6 +3572,8 @@ void Juicer::addPaddingEndToStruct(Symbol& symbol)
 			if(paddingSymbol == nullptr)
 			{
 				Artifact newArtifact{symbol.getElf(), symbol.getArtifact().getFilePath()};
+        		uint32_t checkSum = generateCRCForFile(newArtifact.getFilePath());
+        		newArtifact.setCRC(checkSum);
 				paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta, newArtifact);
 			}
 
@@ -3777,11 +3779,15 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                         	if(pathIndex != 0)
                         	{
                         		Artifact newArtifact{elf, dbgSourceFiles.at(pathIndex-1)};
+            	        		uint32_t checkSum = generateCRCForFile(newArtifact.getFilePath());
+            	        		newArtifact.setCRC(checkSum);
                                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
                         	}
                         	else
                         	{
                         		Artifact newArtifact{elf, "NOT_FOUND:" + sDieName};
+            	        		uint32_t checkSum = 0;
+            	        		newArtifact.setCRC(checkSum);
                         		outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
                         	}
 
@@ -4111,10 +4117,10 @@ int Juicer::parse( std::string& elfFilePath)
             /**
              *@note For now, the checksum is always done.
              */
-            int checkSum = 0;
+            uint32_t checkSum = generateCRCForFile(elfFilePath);
             std::string date {""};
 
-            elf->setChecksum(checkSum);
+            elf->setCRC(checkSum);
             elf->setDate(date);
 
             if(JUICER_ENDIAN_BIG == endianness)
@@ -4364,4 +4370,20 @@ std::vector<Dwarf_Die> Juicer::getChildrenVector(Dwarf_Debug dbg, Dwarf_Die pare
 void Juicer::setIDC(IDataContainer *inIdc)
 {
     idc = inIdc;
+}
+
+uint32_t Juicer::generateCRCForFile(std::string filePath)
+{
+	uint32_t crc;
+
+    // read entire file into string
+    if(std::ifstream is{filePath, std::ios::binary | std::ios::ate}) {
+        auto size = is.tellg();
+        std::string str(size, '\0'); // construct string to stream size
+        is.seekg(0);
+        if(is.read(&str[0], size))
+        	crc = CRC::Calculate(str.c_str(), size, CRC::CRC_32());
+    }
+
+	return crc;
 }

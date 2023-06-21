@@ -107,16 +107,16 @@ const std::string& ElfFile::getDate() const
 	return date;
 }
 
-void ElfFile::setChecksum(uint32_t inChecksum)
+void ElfFile::setCRC(uint32_t inChecksum)
 {
-    logger.logDebug("ELF %s checksum changed from 0x%08x to 0x%08x.", name.c_str(), checksum, inChecksum);
+    logger.logDebug("ELF %s checksum changed from 0x%08x to 0x%08x.", name.c_str(), crc, inChecksum);
 
-	this->checksum = inChecksum;
+	this->crc = inChecksum;
 }
 
-uint32_t ElfFile::getChecksum() const
+uint32_t ElfFile::getCRC() const
 {
-	return checksum;
+	return crc;
 }
 
 /**

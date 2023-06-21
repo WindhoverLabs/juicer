@@ -7,7 +7,7 @@ COVERAGE_DIR := $(BUILD_DIR)/coverage
 SRC_DIR    := $(ROOT_DIR)/src
 OBJ_DIR    := $(BUILD_DIR)/obj
 BIN_DIR    := $(BUILD_DIR)
-INCLUDES   := -I$(SRC_DIR) -I/usr/include/libdwarf
+INCLUDES   := -I$(SRC_DIR) -I/usr/include/libdwarf -I$(ROOT_DIR)/CRCpp/inc
 
 # External directories
 CATCH2_DIR := $(ROOT_DIR)/Catch2
@@ -73,6 +73,7 @@ $(UT_OBJ_DIR):
 
 run-tests: | $(UT_EXE)
 	-(cd $(BUILD_DIR); $(UT_EXE))
+
 
 coverage: $(COVERAGE_DIR)/index.html
 

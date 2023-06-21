@@ -18,7 +18,7 @@ class Artifact {
 	std::string filePath{};
 	ElfFile       &elf;
 	uint32_t     id;
-	uint32_t crc; //Add CRC:https://github.com/d-bahr/CRCpp
+	uint32_t crc{0};
 
 public:
 	Artifact(ElfFile &elf, std::string path);
@@ -29,8 +29,11 @@ public:
 	void setId(uint32_t newID);
 	uint32_t getId();
 
+	void setCRC(uint32_t newID);
+	uint32_t getCRC() const;
 
-	std::string const getFilePath();
+
+	std::string  getFilePath() const;
 	ElfFile       &getElf();
 
 	~Artifact();
