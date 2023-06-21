@@ -764,6 +764,16 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
                     	process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
                     }
                 }
+                else
+                {
+                    /**
+                     * This is most likely an intrinsic type such as int
+                     */
+            		Artifact newArtifact{elf, "NOT_FOUND:" + cName};
+	        		uint32_t checkSum = 0;
+	        		newArtifact.setCRC(checkSum);
+            		outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                }
                 break;
             }
 
@@ -2867,6 +2877,17 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
 			        		newArtifact.setCRC(checkSum);
 			        		outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
 			        	}
+			        }
+
+			        else
+			        {
+	                    /**
+	                     * This is most likely an intrinsic type such as int
+	                     */
+	            		Artifact newArtifact{elf, "NOT_FOUND:" + cName};
+		        		uint32_t checkSum = 0;
+		        		newArtifact.setCRC(checkSum);
+	            		outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
 			        }
 
 				}
