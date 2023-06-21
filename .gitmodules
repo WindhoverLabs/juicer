@@ -3,4 +3,4 @@
         url = git@penguin.windhoverlabs.lan:airliner/catch2.git
 [submodule "CRCpp"]
 	path = CRCpp
-	url = git@github.com:d-bahr/CRCpp.git
+	url = git@penguin.windhoverlabs.lan:airliner/crcpp.git
