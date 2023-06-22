@@ -494,7 +494,7 @@ int SQLiteDB::writeArtifactsToDatabase(ElfFile& inElf)
 
 			   uint32_t crc = ar.getCRC();
 			   std::ostringstream crcHex{};
-			   crcHex << std::hex << crc << std::endl;
+			   crcHex << std::hex << crc;
 
 			   writArtifactQuery += "INSERT INTO artifacts(elf, path, crc32) "
 								"VALUES(";
