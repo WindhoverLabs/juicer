@@ -74,6 +74,7 @@ $(UT_OBJ_DIR):
 run-tests: | $(UT_EXE)
 	-(cd $(BUILD_DIR); $(UT_EXE))
 
+build-tests: | $(UT_EXE)
 
 coverage: $(COVERAGE_DIR)/index.html
 
@@ -88,4 +89,8 @@ clean:
 
 -include $(UT_OBJ:.o=.d)
 -include $(OBJ:.o=.d)
+
+
+docker-build:
+	@sudo docker build --no-cache -t juicer:latest -f Dockerfile .
 
