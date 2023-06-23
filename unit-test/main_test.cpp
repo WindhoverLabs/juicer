@@ -161,7 +161,7 @@ static int selectCallbackUsingColNameAsKey(void *veryUsed, int argc, char **argv
 
 
 std::string getCRC32FromSystem(char resolvedPath[PATH_MAX]) {
-//	TODO:Unfortunately the reddirect is adding junk(a "\n" character at the end) at the end of the crc...so will not be using this for now.
+//	TODO:Unfortunately the redirect is adding junk(a "\n" character at the end) at the end of the crc.
 	std::string crc32CommandStr { "crc32 " };
 	crc32CommandStr += resolvedPath;
 	crc32CommandStr += " >crc32.txt";
@@ -170,7 +170,10 @@ std::string getCRC32FromSystem(char resolvedPath[PATH_MAX]) {
 	expectedCRC32 << std::ifstream("crc32.txt").rdbuf();
 	REQUIRE(remove("./crc32.txt") == 0);
 	std::string expectedCRC32Str { expectedCRC32.str() };
-	std::cout << "expectedCRC32Str2:" << expectedCRC32Str.length()<< std::endl;
+
+//	Size should be size of hash(4 bytes) + '\n'(1 byte)
+	REQUIRE(expectedCRC32Str.size() == 9);
+	expectedCRC32Str.erase(expectedCRC32Str.find('\n'));
 	return expectedCRC32Str;
 }
 
@@ -636,14 +639,10 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(circleArtifactRecords.at(0)["path"] == path);
 
 	std::string expectedCRC32Str = getCRC32FromSystem(resolvedPath);
-//    REQUIRE(expectedCRC32Str == circleArtifactRecords.at(0)["crc32"]);
+    REQUIRE(expectedCRC32Str == circleArtifactRecords.at(0)["crc32"]);
 
 
     REQUIRE(!circleArtifactRecords.at(0)["elf"].empty());
-
-
-
-
 
 
     std::string getCircleElf{"SELECT * FROM elfs WHERE id = "};
@@ -668,30 +667,20 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(numberOfColumns == 5);
 
-//    char resolvedPath[PATH_MAX];
 
+    memset(&resolvedPath, '\0', PATH_MAX);
 
-    char resolvedPath2[PATH_MAX];
-//    memset(&resolvedPath2, '\0', PATH_MAX);
-
-    realpath("./ut_obj/test_file1.o", resolvedPath2);
+    realpath("./ut_obj/test_file1.o", resolvedPath);
 
     path.clear();
-    path.insert(0, resolvedPath2);
+    path.insert(0, resolvedPath);
 
     REQUIRE(circleElftRecords.at(0)["name"] == path);
 
-//    expectedCRC32Str.clear();
-//	std::cout << "expectedCRC32Str1:" << expectedCRC32Str.length()<< std::endl;
+    expectedCRC32Str.clear();
 
-//	std::string expectedCRC32Str2 = getCRC32FromSystem(resolvedPath2);
-//
-//	std::cout << "expectedCRC32Str3:" << expectedCRC32Str2.length()<< std::endl;
-//
-//	std::cout << "expectedCRC32Str4:" << expectedCRC32Str2.compare(circleElftRecords.at(0)["crc32"]) << std::endl;
-//	REQUIRE(expectedCRC32Str2 == circleElftRecords.at(0)["crc32"]);
-
-
+	std::string expectedCRC32Str2 = getCRC32FromSystem(resolvedPath);
+	REQUIRE(expectedCRC32Str2 == circleElftRecords.at(0)["crc32"]);
 
     std::string getCircleFields{"SELECT * FROM fields WHERE symbol = "};
 
@@ -882,7 +871,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     REQUIRE(squareArtifactRecords.at(0)["path"] == path);
 
 	std::string expectedCRC32Str = getCRC32FromSystem(resolvedPath);
-//    REQUIRE(expectedCRC32Str == squareArtifactRecords.at(0)["crc32"]);
+    REQUIRE(expectedCRC32Str == squareArtifactRecords.at(0)["crc32"]);
 
     std::string getSquareFields{"SELECT * FROM fields WHERE symbol = "};
 
