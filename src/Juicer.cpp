@@ -4387,7 +4387,7 @@ int Juicer::getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die)
     int siblingCount = 0;
 
     /*
-     * Always use a local variable for error.
+     * Always use a local variable for error AND set it to zero.
      * The dwarf library is always doing C-Style
      * crazy allocations. And it is also maintaining state.
      * It's best to keep the scope of these kinds of variables as small as possible.
