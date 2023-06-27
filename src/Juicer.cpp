@@ -54,7 +54,6 @@
 #include "ElfFile.h"
 #include "Artifact.h"
 
-#include "CRC.h"
 #include <openssl/md5.h>
 
 
