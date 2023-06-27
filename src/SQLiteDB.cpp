@@ -375,11 +375,8 @@ int SQLiteDB::writeElfToDatabase(ElfFile& inElf)
 	*/
    std::string writeElfQuery{};
 
-   std::ostringstream out{};
-   out << std::hex << inElf.getCRC();
-
-   std::string checksum =  out.str();
-   writeElfQuery += "INSERT INTO elfs(name, crc32, little_endian) "
+   std::string checksum =  inElf.getMD5();
+   writeElfQuery += "INSERT INTO elfs(name, md5, little_endian) "
 					"VALUES(\"";
    writeElfQuery += inElf.getName();
    writeElfQuery += "\",";
@@ -481,10 +478,8 @@ int SQLiteDB::writeArtifactsToDatabase(ElfFile& inElf)
 					ar.setId(std::stoul(pair.first));
 				}
 
-				 std::istringstream crcHex{artifactMap.at(std::to_string(ar.getId())).at(2)};
-				 uint32_t crc;
-				 crcHex >> std::dec >> crc;
-				 ar.setCRC(crc);
+				 std::istringstream md5Hex{artifactMap.at(std::to_string(ar.getId())).at(2)};
+				 ar.setMD5(md5Hex.str());
 			}
 		}
 
@@ -492,11 +487,9 @@ int SQLiteDB::writeArtifactsToDatabase(ElfFile& inElf)
 		{
 			   std::string writArtifactQuery{};
 
-			   uint32_t crc = ar.getCRC();
-			   std::ostringstream crcHex{};
-			   crcHex << std::hex << crc;
+			   std::string md5 = ar.getMD5();
 
-			   writArtifactQuery += "INSERT INTO artifacts(elf, path, crc32) "
+			   writArtifactQuery += "INSERT INTO artifacts(elf, path, md5) "
 								"VALUES(";
 			   writArtifactQuery += std::to_string(inElf.getId());
 			   writArtifactQuery += ",";
@@ -504,7 +497,7 @@ int SQLiteDB::writeArtifactsToDatabase(ElfFile& inElf)
 			   writArtifactQuery += ar.getFilePath();
 			   writArtifactQuery +=	 "\"";
 			   writArtifactQuery += ",\"";
-			   writArtifactQuery += crcHex.str();
+			   writArtifactQuery += md5;
 			   writArtifactQuery += "\"";
 			   writArtifactQuery += ");";
 

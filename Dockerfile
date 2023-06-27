@@ -11,7 +11,7 @@ RUN apt-get install -y libdwarf-dev
 RUN apt-get install -y make
 RUN apt-get install -y libelf-dev
 RUN apt-get install -y libsqlite3-dev
-RUN apt-get install -y libarchive-zip-perl
+RUN apt-get install -y libssl-dev
 
 RUN mkdir /home/docker
 COPY . /home/docker/juicer

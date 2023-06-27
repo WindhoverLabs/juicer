@@ -18,7 +18,7 @@ class Artifact {
 	std::string filePath{};
 	ElfFile       &elf;
 	uint32_t     id;
-	uint32_t crc{0};
+	std::string md5{"0"};
 
 public:
 	Artifact(ElfFile &elf, std::string path);
@@ -29,8 +29,8 @@ public:
 	void setId(uint32_t newID);
 	uint32_t getId();
 
-	void setCRC(uint32_t newID);
-	uint32_t getCRC() const;
+	void setMD5(std::string newID);
+	std::string getMD5() const;
 
 
 	std::string  getFilePath() const;

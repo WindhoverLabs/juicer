@@ -22,7 +22,7 @@ Artifact::Artifact(ElfFile& elf):
 }
 
 Artifact::Artifact(const Artifact &artifact):
-		 elf{artifact.elf}, filePath{artifact.filePath}, crc{artifact.getCRC()}
+		 elf{artifact.elf}, filePath{artifact.filePath}, md5{artifact.getMD5()}
 {
 
 }
@@ -50,12 +50,12 @@ ElfFile& Artifact::getElf()
 	return elf;
 }
 
-void Artifact::setCRC(uint32_t newCRC)
+void Artifact::setMD5(std::string newCRC)
 {
-	crc = newCRC;
+	md5 = newCRC;
 }
-uint32_t Artifact::getCRC() const
+std::string Artifact::getMD5() const
 {
-	return crc;
+	return md5;
 }
 

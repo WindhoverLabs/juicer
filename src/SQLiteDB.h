@@ -27,7 +27,7 @@
 #define CREATE_ELF_TABLE         "CREATE TABLE IF NOT EXISTS elfs (\
                                   id INTEGER PRIMARY KEY,\
                                   name TEXT UNIQUE NOT NULL,\
-                                  crc32 TEXT NOT NULL,\
+                                  md5 TEXT NOT NULL,\
                                   date DATETIME NOT NULL DEFAULT(CURRENT_TIMESTAMP),\
                                   little_endian BOOLEAN NOT NULL);"
 
@@ -74,9 +74,9 @@
                                   id INTEGER PRIMARY KEY,\
                                   elf INTEGER NOT NULL,\
                                   path TEXT NOT NULL,\
-								  crc32 TEXT NOT NULL, \
+								  md5 TEXT NOT NULL, \
                                   FOREIGN KEY (elf) REFERENCES elfs(id),\
-                                  UNIQUE (path, crc32));"
+                                  UNIQUE (path, md5));"
 
 #define SQLiteDB_TRUE 1
 #define SQLiteDB_FALSE 0

@@ -135,7 +135,7 @@ private:
 
     std::vector<std::string> dbgSourceFiles{};
 
-    uint32_t generateCRCForFile(std::string filePath);
+    std::string generateMD5SumForFile(std::string filePath);
 };
 
 #endif /* JUICER_H_ */

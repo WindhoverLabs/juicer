@@ -54,11 +54,11 @@ public:
 	void setDate(const std::string& date);
 	bool isLittleEndian() const;
 	void isLittleEndian(bool littleEndian);
-	void setCRC(uint32_t newID);
-	uint32_t getCRC() const;
+	void setMD5(std::string newID);
+	std::string getMD5() const;
 
 private:
-	uint32_t crc;
+	std::string md5;
 	/**
 	 *@note I'm not sure about date being a std::string. I wonder if it'll
 	 * become problematic with other formats other than SQLite...dates and

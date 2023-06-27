@@ -34,7 +34,7 @@ UT_OBJ     := $(UT_OBJ:$(SRC_DIR)/%.cpp=$(UT_OBJ_DIR)/%.o)
 CPPFLAGS    := -MMD -MP -std=c++14 -fmessage-length=0 $(INCLUDES)
 CFLAGS      := -Wall -g
 LDFLAGS     := -Llib
-LDLIBS      := -lm -ldwarf -lsqlite3 -lelf
+LDLIBS      := -lm -ldwarf -lsqlite3 -lelf -lcrypto
 
 # Set unit test flags
 UT_CPPFLAGS := $(CPPFLAGS) $(UT_INCLUDES)

@@ -160,21 +160,21 @@ static int selectCallbackUsingColNameAsKey(void *veryUsed, int argc, char **argv
 }
 
 
-std::string getCRC32FromSystem(char resolvedPath[PATH_MAX]) {
+std::string getmd5sumFromSystem(char resolvedPath[PATH_MAX]) {
 //	TODO:Unfortunately the redirect is adding junk(a "\n" character at the end) at the end of the crc.
-	std::string crc32CommandStr { "crc32 " };
-	crc32CommandStr += resolvedPath;
-	crc32CommandStr += " >crc32.txt";
-	std::system(crc32CommandStr.c_str()); // executes the UNIX command "ls -l >test.txt"
-	std::strstream expectedCRC32 { };
-	expectedCRC32 << std::ifstream("crc32.txt").rdbuf();
-	REQUIRE(remove("./crc32.txt") == 0);
-	std::string expectedCRC32Str { expectedCRC32.str() };
+	std::string MD5CommandStr { "md5sum " };
+	MD5CommandStr += resolvedPath;
+	MD5CommandStr += " >MD5.txt";
+	std::system(MD5CommandStr.c_str()); // executes the UNIX command "ls -l >test.txt"
+	std::strstream expectedMD5 { };
+	expectedMD5 << std::ifstream("MD5.txt").rdbuf();
+	REQUIRE(remove("./MD5.txt") == 0);
+	std::string expectedMD5Str { expectedMD5.str() };
 
-//	Size should be size of hash(4 bytes) + '\n'(1 byte)
-	REQUIRE(expectedCRC32Str.size() == 9);
-	expectedCRC32Str.erase(expectedCRC32Str.find('\n'));
-	return expectedCRC32Str;
+    //	Size should be size of hash(16 bytes)
+	expectedMD5Str = expectedMD5Str.substr(0, 32);
+	REQUIRE(expectedMD5Str.size() == 32);
+	return expectedMD5Str;
 }
 
 
@@ -544,6 +544,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     delete idc;
 }
 
+
 TEST_CASE("Test the correctness of the Circle struct after Juicer has processed it on two"
 		  " different elf files." ,"[main_test#3]")
 {
@@ -638,8 +639,8 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(circleArtifactRecords.at(0)["path"] == path);
 
-	std::string expectedCRC32Str = getCRC32FromSystem(resolvedPath);
-    REQUIRE(expectedCRC32Str == circleArtifactRecords.at(0)["crc32"]);
+	std::string expectedMD5Str = getmd5sumFromSystem(resolvedPath);
+    REQUIRE(expectedMD5Str == circleArtifactRecords.at(0)["md5"]);
 
 
     REQUIRE(!circleArtifactRecords.at(0)["elf"].empty());
@@ -677,10 +678,10 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(circleElftRecords.at(0)["name"] == path);
 
-    expectedCRC32Str.clear();
+    expectedMD5Str.clear();
 
-	std::string expectedCRC32Str2 = getCRC32FromSystem(resolvedPath);
-	REQUIRE(expectedCRC32Str2 == circleElftRecords.at(0)["crc32"]);
+	std::string expectedMD5Str2 = getmd5sumFromSystem(resolvedPath);
+	REQUIRE(expectedMD5Str2 == circleElftRecords.at(0)["md5"]);
 
     std::string getCircleFields{"SELECT * FROM fields WHERE symbol = "};
 
@@ -870,8 +871,8 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     REQUIRE(squareArtifactRecords.at(0)["path"] == path);
 
-	std::string expectedCRC32Str = getCRC32FromSystem(resolvedPath);
-    REQUIRE(expectedCRC32Str == squareArtifactRecords.at(0)["crc32"]);
+	std::string expectedMD5Str = getmd5sumFromSystem(resolvedPath);
+    REQUIRE(expectedMD5Str == squareArtifactRecords.at(0)["md5"]);
 
     std::string getSquareFields{"SELECT * FROM fields WHERE symbol = "};
 
