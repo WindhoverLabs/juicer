@@ -27,7 +27,7 @@
 #define CREATE_ELF_TABLE         "CREATE TABLE IF NOT EXISTS elfs (\
                                   id INTEGER PRIMARY KEY,\
                                   name TEXT UNIQUE NOT NULL,\
-                                  checksum TEXT NOT NULL,\
+                                  md5 TEXT NOT NULL,\
                                   date DATETIME NOT NULL DEFAULT(CURRENT_TIMESTAMP),\
                                   little_endian BOOLEAN NOT NULL);"
 
@@ -36,7 +36,9 @@
                                   elf INTEGER NOT NULL,\
                                   name TEXT UNIQUE NOT NULL,\
                                   byte_size INTEGER NOT NULL,\
-                                  FOREIGN KEY(elf) REFERENCES elfs(id)\
+								  artifact INTEGER,\
+                                  FOREIGN KEY(elf) REFERENCES elfs(id),\
+								  FOREIGN KEY(artifact) REFERENCES artifacts(id)\
                                   UNIQUE(name));"
 
 #define CREATE_DIMENSION_TABLE   "CREATE TABLE IF NOT EXISTS dimension_lists (\
@@ -68,6 +70,14 @@
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"
 
+#define CREATE_ARTIFACTS_TABLE   "CREATE TABLE IF NOT EXISTS artifacts(\
+                                  id INTEGER PRIMARY KEY,\
+                                  elf INTEGER NOT NULL,\
+                                  path TEXT NOT NULL,\
+								  md5 TEXT NOT NULL, \
+                                  FOREIGN KEY (elf) REFERENCES elfs(id),\
+                                  UNIQUE (path, md5));"
+
 #define SQLiteDB_TRUE 1
 #define SQLiteDB_FALSE 0
 
@@ -90,13 +100,16 @@ private:
     int createFieldsSchema(void);
     int createDimensionsSchema(void);
     int createEnumerationSchema(void);
+    int createArtifactsSchema(void);
     int writeElfToDatabase(ElfFile& inModule);
+    int writeArtifactsToDatabase(ElfFile& inModule);
     int writeSymbolsToDatabase(ElfFile& inModule);
     int writeFieldsToDatabase(ElfFile& inModule);
     int writeEnumerationsToDatabase(ElfFile& inModule);
     int writeDimensionsListToDatabase(ElfFile& inElf);
     static int doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
     bool doesSymbolExist(std::string name);
+    bool doesArtifactExist(std::string name);
 
 public:
     SQLiteDB();

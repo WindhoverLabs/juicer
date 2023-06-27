@@ -8,7 +8,7 @@ EXE := $(BIN_DIR)/test_juicer
 SRC := $(wildcard $(SRC_DIR)/*.cpp)
 JUICER_SRC := $(wildcard $(JUICER_DIR)/*.cpp)
 JUICER_SRC :=  $(filter-out $(JUICER_DIR)/main.cpp, $(JUICER_SRC))
-INCLUDES   := -I$(SRC_DIR) -I/usr/include/libdwarf
+INCLUDES   := -I$(SRC_DIR) -I/usr/include/libdwarf -I../CRCpp/inc
 
 
 CATCH_DIR := ../Catch2/single_include/catch2

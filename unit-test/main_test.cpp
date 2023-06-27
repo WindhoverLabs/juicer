@@ -13,6 +13,10 @@
 #include <stddef.h>
 #include <string.h>
 #include "test_file1.h"
+#include <limits.h>
+#include <cstdlib>
+#include <strstream>
+
 
 /**
  *These test file locations assumes that the tests are run
@@ -153,6 +157,24 @@ static int selectCallbackUsingColNameAsKey(void *veryUsed, int argc, char **argv
 	allRecords->push_back(newRecord);
 
 	return 0;
+}
+
+
+std::string getmd5sumFromSystem(char resolvedPath[PATH_MAX]) {
+//	TODO:Unfortunately the redirect is adding junk(a "\n" character at the end) at the end of the crc.
+	std::string MD5CommandStr { "md5sum " };
+	MD5CommandStr += resolvedPath;
+	MD5CommandStr += " >MD5.txt";
+	std::system(MD5CommandStr.c_str()); // executes the UNIX command "ls -l >test.txt"
+	std::strstream expectedMD5 { };
+	expectedMD5 << std::ifstream("MD5.txt").rdbuf();
+	REQUIRE(remove("./MD5.txt") == 0);
+	std::string expectedMD5Str { expectedMD5.str() };
+
+    //	Size should be size of hash(16 bytes)
+	expectedMD5Str = expectedMD5Str.substr(0, 32);
+	REQUIRE(expectedMD5Str.size() == 32);
+	return expectedMD5Str;
 }
 
 
@@ -522,6 +544,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     delete idc;
 }
 
+
 TEST_CASE("Test the correctness of the Circle struct after Juicer has processed it on two"
 		  " different elf files." ,"[main_test#3]")
 {
@@ -588,6 +611,77 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     */
 
     std::string circle_id = circleRecords.at(0)["id"];
+
+    std::string ciircle_artifact_id = circleRecords.at(0)["artifact"];
+
+    REQUIRE(!ciircle_artifact_id.empty());
+
+    std::string getCircleArtifact{"SELECT * FROM artifacts WHERE id = "};
+
+    getCircleArtifact += ciircle_artifact_id;
+    getCircleArtifact += ";";
+
+
+    std::vector<std::map<std::string, std::string>> circleArtifactRecords{};
+
+    rc = sqlite3_exec(database, getCircleArtifact.c_str(), selectCallbackUsingColNameAsKey, &circleArtifactRecords,
+                             &errorMessage);
+
+    REQUIRE(circleArtifactRecords.size() == 1);
+
+    std::string path{};
+    char resolvedPath[PATH_MAX];
+
+    realpath("../unit-test/test_file1.h", resolvedPath);
+
+    path.clear();
+    path.insert(0, resolvedPath);
+
+    REQUIRE(circleArtifactRecords.at(0)["path"] == path);
+
+	std::string expectedMD5Str = getmd5sumFromSystem(resolvedPath);
+    REQUIRE(expectedMD5Str == circleArtifactRecords.at(0)["md5"]);
+
+
+    REQUIRE(!circleArtifactRecords.at(0)["elf"].empty());
+
+
+    std::string getCircleElf{"SELECT * FROM elfs WHERE id = "};
+
+    getCircleElf += circleArtifactRecords.at(0)["elf"];
+    getCircleElf += ";";
+
+
+    std::vector<std::map<std::string, std::string>> circleElftRecords{};
+
+    rc = sqlite3_exec(database, getCircleElf.c_str(), selectCallbackUsingColNameAsKey, &circleElftRecords,
+                             &errorMessage);
+
+    REQUIRE(circleElftRecords.size() == 1);
+
+    uint32_t numberOfColumns = 0;
+
+    for(auto pair: circleElftRecords.at(0))
+    {
+    	numberOfColumns++;
+    }
+
+    REQUIRE(numberOfColumns == 5);
+
+
+    memset(&resolvedPath, '\0', PATH_MAX);
+
+    realpath("./ut_obj/test_file1.o", resolvedPath);
+
+    path.clear();
+    path.insert(0, resolvedPath);
+
+    REQUIRE(circleElftRecords.at(0)["name"] == path);
+
+    expectedMD5Str.clear();
+
+	std::string expectedMD5Str2 = getmd5sumFromSystem(resolvedPath);
+	REQUIRE(expectedMD5Str2 == circleElftRecords.at(0)["md5"]);
 
     std::string getCircleFields{"SELECT * FROM fields WHERE symbol = "};
 
@@ -689,7 +783,6 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 	 * This assumes that the test_file was compiled on
 	 * gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
 	 *  little-endian machine.
-	 * @todo Implement
 	 */
 
     Juicer          juicer;
@@ -732,6 +825,16 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     REQUIRE(rc == SQLITE_OK);
     REQUIRE(squareRecords.size() ==  1);
+
+    uint32_t numberOfColumns = 0;
+
+    for(auto pair: squareRecords.at(0))
+    {
+    	numberOfColumns++;
+    }
+
+    REQUIRE(numberOfColumns == 5);
+
     /**
      * Check the correctness of Square struct.
      */
@@ -741,6 +844,35 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
 
     std::string square_id = squareRecords.at(0)["id"];
+
+    std::string square_artifact_id = squareRecords.at(0)["artifact"];
+
+    REQUIRE(!square_artifact_id.empty());
+
+    std::string getSquareArtifact{"SELECT * FROM artifacts WHERE id = "};
+
+    getSquareArtifact += square_artifact_id;
+    getSquareArtifact += ";";
+
+    std::vector<std::map<std::string, std::string>> squareArtifactRecords{};
+
+    rc = sqlite3_exec(database, getSquareArtifact.c_str(), selectCallbackUsingColNameAsKey, &squareArtifactRecords,
+                             &errorMessage);
+
+    REQUIRE(squareArtifactRecords.size() == 1);
+
+    std::string path{};
+    char resolvedPath[PATH_MAX];
+
+    realpath("../unit-test/test_file1.h", resolvedPath);
+
+    path.clear();
+    path.insert(0, resolvedPath);
+
+    REQUIRE(squareArtifactRecords.at(0)["path"] == path);
+
+	std::string expectedMD5Str = getmd5sumFromSystem(resolvedPath);
+    REQUIRE(expectedMD5Str == squareArtifactRecords.at(0)["md5"]);
 
     std::string getSquareFields{"SELECT * FROM fields WHERE symbol = "};
 

@@ -107,16 +107,16 @@ const std::string& ElfFile::getDate() const
 	return date;
 }
 
-void ElfFile::setChecksum(uint32_t inChecksum)
+void ElfFile::setMD5(std::string inChecksum)
 {
-    logger.logDebug("ELF %s checksum changed from 0x%08x to 0x%08x.", name.c_str(), checksum, inChecksum);
+    logger.logDebug("ELF %s checksum changed from 0x%08x to 0x%08x.", name.c_str(), md5, inChecksum);
 
-	this->checksum = inChecksum;
+	this->md5 = inChecksum;
 }
 
-uint32_t ElfFile::getChecksum() const
+std::string ElfFile::getMD5() const
 {
-	return checksum;
+	return md5;
 }
 
 /**
@@ -173,13 +173,14 @@ Symbol * ElfFile::addSymbol(std::unique_ptr<Symbol> inSymbol)
 }
 
 Symbol * ElfFile::addSymbol(std::string& inName,
-		                uint32_t inByteSize)
+		                uint32_t inByteSize,
+						Artifact newArtifact)
 {
     Symbol *symbol = getSymbol(inName);
 
     if(symbol == nullptr)
     {
-        std::unique_ptr<Symbol> newSymbol = std::make_unique<Symbol>(*this, inName, inByteSize);
+        std::unique_ptr<Symbol> newSymbol = std::make_unique<Symbol>(*this, inName, inByteSize, newArtifact);
 
 	    symbols.push_back(std::move(newSymbol));
 

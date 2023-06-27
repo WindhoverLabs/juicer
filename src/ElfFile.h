@@ -45,7 +45,7 @@ public:
 	uint32_t                               getId(void) const;
 	void                                   setId(uint32_t newId);
 	Symbol *                               addSymbol(std::unique_ptr<Symbol> symbol);
-	Symbol *                               addSymbol(std::string& name, uint32_t byte_size);
+	Symbol *                               addSymbol(std::string& name, uint32_t byte_size, Artifact newArtifact);
 	std::vector<Field*>                    getFields();
 	std::vector<Enumeration*>              getEnumerations();
     bool                                   isSymbolUnique(std::string &name);
@@ -54,11 +54,11 @@ public:
 	void setDate(const std::string& date);
 	bool isLittleEndian() const;
 	void isLittleEndian(bool littleEndian);
-	uint32_t getChecksum() const;
-	void setChecksum(uint32_t checksum);
+	void setMD5(std::string newID);
+	std::string getMD5() const;
 
 private:
-	uint32_t    checksum;
+	std::string md5;
 	/**
 	 *@note I'm not sure about date being a std::string. I wonder if it'll
 	 * become problematic with other formats other than SQLite...dates and

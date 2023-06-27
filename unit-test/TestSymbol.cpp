@@ -219,7 +219,7 @@ TEST_CASE( "Test the correctness of constructor Symbol(elf &elf,"
     uint32_t    byteSize{8};
     char        resolvedPath[PATH_MAX];
 
-    Symbol newSymbol{myelf, symbolName, byteSize};
+    Symbol newSymbol{myelf, symbolName, byteSize, myelf};
 
     realpath(newElfName.c_str(), resolvedPath);
     newElfName.clear();
@@ -238,7 +238,7 @@ TEST_CASE( "Test the correctness of constructor Symbol(const Symbol &symbol)", "
     uint32_t    byteSize{8};
     char        resolvedPath[PATH_MAX];
 
-    Symbol copySymbol{myelf, symbolName, byteSize};
+    Symbol copySymbol{myelf, symbolName, byteSize, Artifact{myelf}};
 
     Symbol constSymbol{copySymbol}; // @suppress("Invalid arguments")
 

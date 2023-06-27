@@ -12,6 +12,7 @@
 #include <vector>
 #include <memory>
 
+#include "Artifact.h"
 #include "DimensionList.h"
 #include "ElfFile.h"
 #include "Logger.h"
@@ -26,7 +27,7 @@ class Symbol
 {
 public:
 	Symbol(ElfFile &elf);
-	Symbol(ElfFile &elf, std::string &name, uint32_t byte_size);
+	Symbol(ElfFile &elf, std::string &name, uint32_t byte_size, Artifact);
 	virtual ~Symbol();
 	const std::string& getName(void) const;
 	void setName(std::string &name);
@@ -59,8 +60,7 @@ public:
     Field* getField(std::string &name) const;
     bool hasFields(void);
     bool isEnumerated(void);
-
-protected:
+    Artifact& getArtifact();
 
 private:
 	ElfFile       &elf;
@@ -70,6 +70,7 @@ private:
     uint32_t     id;
     std::vector<std::unique_ptr<Field>> fields;
     std::vector<std::unique_ptr<Enumeration>> enumerations;
+    Artifact artifact;
 
 };
 
