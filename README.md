@@ -312,4 +312,12 @@ juicer behaves accordingly. If a pointer does not have a type(meaning it does no
 At the moment vxWorks support is a work in progress. Support is currently *not* tested, so at the moment it is on its own [branch]
 (https://github.com/WindhoverLabs/juicer/tree/vxWorks).
 
+
+# Print Backtrace even after a segfault
+
+```
+catchsegv ./juicer-ut "[main_test#3]"
+addr2line -e ./juicer-ut 0x19646c
+```
+
 Documentation updated on September 29, 2021
