@@ -100,7 +100,6 @@ public:
 private:
 	Dwarf_Debug dbg = 0;
 	int res = DW_DLV_ERROR;
-	Dwarf_Error error = 0;
 	Dwarf_Handler errhand;
 	Dwarf_Ptr errarg = 0;
 	int readCUList(ElfFile& elf, Dwarf_Debug dbg);

@@ -52,6 +52,7 @@
 #include "Artifact.h"
 
 #include "CRC.h"
+#include <openssl/md5.h>
 
 
 Juicer::Juicer()
@@ -72,11 +73,13 @@ int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg)
     int cu_number = 0;
     int return_value = JUICER_OK;
 
+
     while(1)
     {
         Dwarf_Die no_die = 0;
         Dwarf_Die cu_die = 0;
         int res = DW_DLV_ERROR;
+
 
         ++cu_number;
 
@@ -84,6 +87,7 @@ int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg)
 
         res = dwarf_next_cu_header(dbg, &cu_header_length, &version_stamp,
                 &abbrev_offset, &address_size, &next_cu_header, &error);
+
         if(res == DW_DLV_ERROR)
         {
             logger.logError("Error in dwarf_next_cu_header. errno=%u %s", dwarf_errno(error),
@@ -97,10 +101,14 @@ int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg)
             break;
         }
 
+
+
         if(JUICER_OK == return_value)
         {
+
             /* The CU will have a single sibling, a cu_die. */
             res = dwarf_siblingof(dbg, no_die, &cu_die, &error);
+
             if(res == DW_DLV_ERROR)
             {
                 logger.logError("Error in dwarf_siblingof on CU die. errno=%u %s", dwarf_errno(error),
@@ -123,6 +131,7 @@ int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg)
 
 			char** filePaths = nullptr;
 			Dwarf_Signed fileCount = 0;
+
 
 			/**
 			 * According to 6.2 Line Number Information in DWARF 4:
@@ -162,6 +171,8 @@ int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg)
 
 				dbgSourceFiles.insert(dbgSourceFiles.begin(), filePaths, &filePaths[fileCount]);
 			}
+
+
 
 
             return_value = getDieAndSiblings(elf, dbg, cu_die, 0);
@@ -307,6 +318,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug 
 
 			Symbol* 	arraySymbol =  getBaseTypeSymbol(elf, inDie, dimList);
 
+
 			if(nullptr == arraySymbol)
 			{
 				res = DW_DLV_ERROR;
@@ -332,6 +344,7 @@ char * Juicer::getFirstAncestorName(Dwarf_Die inDie)
     Dwarf_Die       typeDie;
     char            *outName = nullptr;
     Dwarf_Bool      hasName = false;
+    Dwarf_Error error = 0;
 
     /* Get the type attribute. */
     res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
@@ -408,6 +421,7 @@ Symbol * Juicer::process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwar
     Dwarf_Attribute attr_struct = nullptr;
     Dwarf_Off       typeOffset = 0;
     Dwarf_Die       typeDie = nullptr;
+    Dwarf_Error     error = 0;
     char            *typeDieName;
 
     /* Get the type attribute. */
@@ -581,6 +595,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
     char            *dieName = 0;
     Dwarf_Half      tag;
     std::string     cName;
+    Dwarf_Error     error = 0;
 
     /* Get the type attribute. */
     res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
@@ -785,7 +800,9 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
 
             case DW_TAG_typedef:
             {
+
                 outSymbol = process_DW_TAG_typedef(elf, dbg, typeDie);
+
                 break;
             }
 
@@ -937,13 +954,18 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
             case DW_TAG_array_type:
             {
                 /* First get the base type itself. */
+
                 outSymbol = getBaseTypeSymbol(elf, typeDie, dimList);
+
 
 				/* Set the multiplicity argument. */
 				if(res == DW_DLV_OK)
 				{
+
 					dimList = getDimList(dbg, typeDie);
+
 				}
+
 
                 break;
             }
@@ -956,11 +978,13 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
 
             case DW_TAG_const_type:
             {
+
                 /* TODO */
                 /* Get the type attribute. */
                 res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
 
                 getBaseTypeSymbol(elf, typeDie, dimList);
+
 
                 break;
             }
@@ -1001,6 +1025,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
     if(nullptr == outSymbol)
     {
     	logger.logDebug("outSymbol is null!");
+
     }
 
     return outSymbol;
@@ -1021,6 +1046,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
     char            tagName[255];
     char            output[2000];
     char            line[255];
+    Dwarf_Error     error = 0;
 
     if(inDie != 0)
     {
@@ -2773,6 +2799,7 @@ Symbol * Juicer::process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_D
     Dwarf_Attribute attr_struct;
     Symbol          *outSymbol = nullptr;
     std::string     cName;
+    Dwarf_Error error = 0;
 
     /* Get the name attribute of this Die. */
     res = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
@@ -2905,6 +2932,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf
     Dwarf_Attribute attr_struct = 0;
     Dwarf_Die       enumeratorDie = 0;
     Dwarf_Signed encodingValue;
+    Dwarf_Error error = 0;
 
     /* Get the fields by getting the first child. */
     if(res == DW_DLV_OK)
@@ -3073,9 +3101,12 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
     char            *dieName = 0;
     Dwarf_Attribute attr_struct;
     Symbol          *outSymbol = nullptr;
+    Dwarf_Error error = 0;
+
 
     /* Get the name attribute of this Die. */
     res = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
+
     if(res != DW_DLV_OK)
     {
         logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error),
@@ -3083,6 +3114,7 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
     }
 
     /* Get the actual name of this Die. */
+
     if(res == DW_DLV_OK)
     {
         res = dwarf_formstring(attr_struct, &dieName, &error);
@@ -3093,18 +3125,22 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
         }
     }
 
+
+
     /* Get the base type die. */
     if(res == DW_DLV_OK)
     {
         DimensionList dimensionList{};
 
         baseTypeSymbol = getBaseTypeSymbol(elf ,inDie, dimensionList);
+
         if(baseTypeSymbol == 0)
         {
             /* Set the error code so we don't do anymore processing. */
             res = DW_DLV_ERROR;
         }
     }
+
 
     /* Get the size of this datatype. */
     if(res == DW_DLV_OK)
@@ -3118,6 +3154,8 @@ Symbol * Juicer::process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die
         std::string sDieName = dieName;
 
         res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
+
+
 
         if(DW_DLV_OK == res)
         {
@@ -3181,6 +3219,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
     Dwarf_Die       memberDie = 0;
 
     Dwarf_Unsigned udata = 0;
+    Dwarf_Error error = 0;
 
     /* Get the fields by getting the first child. */
     if(res == DW_DLV_OK)
@@ -3412,7 +3451,9 @@ void Juicer::process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_D
                         /* Get the base type die. */
                         if(res == DW_DLV_OK)
                         {
+
                             memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList);
+
                             if(memberBaseTypeSymbol == 0)
                             {
                                 logger.logWarning("Couldn't find base type for %s:%s.", symbol.getName().c_str(), memberName);
@@ -3615,6 +3656,7 @@ void Juicer::addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField)
 	int32_t res = 0;
 	Dwarf_Unsigned bit_offset = 0;
 	Dwarf_Unsigned bit_size = 0;
+    Dwarf_Error error = 0;
 
 	res = dwarf_attr(dataMemberDie, DW_AT_data_bit_offset, &attr_struct, &error);
 
@@ -3700,13 +3742,16 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
     Symbol* outSymbol = nullptr;
 
+
     for(;;)
     {
         Dwarf_Die sib_die = 0;
         Dwarf_Half tag = 0;
         Dwarf_Off  offset = 0;
 
+
         res = dwarf_dieoffset(cur_die, &offset, &error);
+
         if(res != DW_DLV_OK)
         {
             logger.logError("Error in dwarf_dieoffset , level %d.  errno=%u %s", in_level, dwarf_errno(error),
@@ -3714,15 +3759,18 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
             return_value = JUICER_ERROR;
         }
 
+
     	DisplayDie(cur_die, in_level);
 
         res = dwarf_tag(cur_die, &tag, &error);
+
         if(res != DW_DLV_OK)
         {
             logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error),
                     dwarf_errmsg(error));
             return_value = JUICER_ERROR;
         }
+
 
         if(DW_DLV_OK == res)
         {
@@ -3736,6 +3784,7 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
         switch(tag)
         {
+
             case DW_TAG_base_type:
             {
                 process_DW_TAG_base_type(elf, dbg, cur_die);
@@ -3745,24 +3794,30 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
             case DW_TAG_typedef:
             {
+
                 process_DW_TAG_typedef(elf, dbg, cur_die);
+
 
                 break;
             }
 
             case DW_TAG_structure_type:
             {
+
                 res = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
                 if(res == DW_DLV_OK)
                 {
+
                     res = dwarf_formstring(attr_struct, &dieName, &error);
                     if(res != DW_DLV_OK)
                     {
+
                         logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
                                 dwarf_errmsg(error));
                     }
                     else
                     {
+
                     	Dwarf_Unsigned byteSize;
                     	unsigned long long file_path_numbr = 0;
                     	res = dwarf_bytesize(cur_die, &byteSize, &error);
@@ -3825,6 +3880,7 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
             case DW_TAG_array_type:
             {
 				Symbol s{elf};
+
             	res = process_DW_TAG_array_type(elf,s, dbg ,cur_die);
 
                 break;
@@ -3838,6 +3894,8 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
             }
         }
 
+
+
         res = dwarf_child(cur_die, &child, &error);
         if(res == DW_DLV_ERROR)
         {
@@ -3849,6 +3907,7 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
         {
         	getDieAndSiblings(elf, dbg, child, in_level + 1);
         }
+
 
         /* res == DW_DLV_NO_ENTRY */
         res = dwarf_siblingof(dbg, cur_die, &sib_die, &error);
@@ -3870,8 +3929,10 @@ int Juicer::getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
         {
             dwarf_dealloc(dbg, cur_die, DW_DLA_DIE);
         }
+
         cur_die = sib_die;
     }
+
     return return_value;
 }
 
@@ -4097,14 +4158,18 @@ bool Juicer::isIDCSet(void)
 int Juicer::parse( std::string& elfFilePath)
 {
     int return_value = JUICER_OK;
+    Dwarf_Error error = 0;
+
 
     /* Don't even continue if the IDC is not set. */
     if(isIDCSet())
     {
+
         JuicerEndianness_t      endianness;
         int                     dwarf_value = DW_DLV_OK;
         /**@note elf's lifetime is tied to parser's scope. */
         std::unique_ptr<ElfFile> elf = std::make_unique<ElfFile>(elfFilePath);
+
 
         elfFile = open(elfFilePath.c_str(), O_RDONLY);
         if(elfFile < 0)
@@ -4118,8 +4183,11 @@ int Juicer::parse( std::string& elfFilePath)
             logger.logDebug("Opened file '%s'.  fd=%u", elfFilePath.c_str(), elfFile);
         }
 
+
+
         if(JUICER_OK == return_value)
         {
+
             /* Initialize the Dwarf library.  This will open the file. */
             dwarf_value = dwarf_init(elfFile, DW_DLC_READ, errhand, errarg, &dbg,
                     &error);
@@ -4128,12 +4196,15 @@ int Juicer::parse( std::string& elfFilePath)
                 logger.logError("Failed to read the dwarf");
                 return_value = JUICER_ERROR;
             }
+
         }
 
         if(JUICER_OK == return_value)
         {
+
             /* Get the endianness. */
             endianness = getEndianness();
+
 
             /**
              *@note For now, the checksum is always done.
@@ -4141,8 +4212,10 @@ int Juicer::parse( std::string& elfFilePath)
             uint32_t checkSum = generateCRCForFile(elfFilePath);
             std::string date {""};
 
+
             elf->setCRC(checkSum);
             elf->setDate(date);
+
 
             if(JUICER_ENDIAN_BIG == endianness)
             {
@@ -4160,22 +4233,30 @@ int Juicer::parse( std::string& elfFilePath)
                 return_value = JUICER_ERROR;
             }
 
+
+
             elf->isLittleEndian(JUICER_ENDIAN_BIG == endianness?
                                 false: true);
         }
 
+
         if(JUICER_OK == return_value)
         {
+
             return_value = readCUList(*elf.get(), dbg);
 
             dwarf_value = dwarf_finish(dbg, &error);
+
             if(dwarf_value != DW_DLV_OK)
             {
                 logger.logWarning("dwarf_finish failed.  errno=%u  %s", errno, strerror(errno));
             }
 
             close(elfFile);
+
         }
+
+
 
         if(JUICER_OK == return_value)
         {
@@ -4183,6 +4264,8 @@ int Juicer::parse( std::string& elfFilePath)
             logger.logInfo("Parsing of elf file '%s' is complete.  Writing to data container.", elfFilePath.c_str());
             return_value  = idc->write(*elf.get());
         }
+
+
     }
 
     return return_value;
@@ -4193,6 +4276,7 @@ uint32_t Juicer::calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die dieSubrang
 
     Dwarf_Unsigned  dwfUpperBound = 0;
     Dwarf_Attribute attr_struct;
+    Dwarf_Error error = 0;
 
     int res = DW_DLV_OK;
     uint32_t dimSize = 0;
@@ -4280,10 +4364,14 @@ int Juicer::calcArraySizeForAllDims(Dwarf_Debug dbg, Dwarf_Die die)
 DimensionList Juicer::getDimList(Dwarf_Debug dbg, Dwarf_Die die)
 {
 	DimensionList dimList{};
+
     std::vector<Dwarf_Die>  children = getChildrenVector(dbg, die);
+
     for(auto child: children)
     {
+
     	dimList.addDimension(calcArraySizeForDimension(dbg, child) - 1);
+
     }
 
     return dimList;
@@ -4298,20 +4386,73 @@ int Juicer::getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die)
     int res = DW_DLV_OK;
     int siblingCount = 0;
 
+    /*
+     * Always use a local variable for error.
+     * The dwarf library is always doing C-Style
+     * crazy allocations. And it is also maintaining state.
+     * It's best to keep the scope of these kinds of variables as small as possible.
+     * In the past there's been some strange
+     * undefined behavior in unit tests where error
+     * causes a segfault.
+     *
+     * What's even stranger is that if I execute the code
+     * in gdb to step through code, the segfault never occurs.
+     * It came down to, sometimes, dwarf_errmsg would segfault
+     * because the error variable went out of wack.
+     * Specifically, dwarf_errmsg indexes into a char** and it looks like it goes out
+     * of bounds. The most tragic part if that we(as a client of libdwarf) can't really
+     * do much about it other than limit the scope of the error variable as much as possible
+     * to avoid passing error to different functions and increase the probability of
+     * undefined behavior.
+     *
+     * I think it has something to do with what libdwarf says about Dwarf_Error_s:
+     *
+     *
+     * If non-zero the Dwarf_Error_s struct is not malloc'd.
+        To aid when malloc returns NULL.
+        If zero a normal dwarf_dealloc will work.
+        er_static_alloc only accessed by dwarf_alloc.c.
+
+        If er_static_alloc is 1 in a Dwarf_Error_s
+        struct (set by libdwarf) and client code accidentally
+        turns that 0 to zero through a wild
+        pointer reference (the field is hidden
+        from clients...) then chaos will
+        eventually follow.
+
+
+       In short; having the error variable be part of the class can cause UNDEFINED BEHAVIOR.
+
+       Like most things in C, these dwarf allocations have no concept of "ownership".
+       The only "ownership" is taking by the dwarf library which in many cases such as this one,
+       it is fragile.
+
+       Another thing to note is that  this only seemed to
+       happen when the return code from the dwarf function was DW_DLV_NO_ENTRY(-1).
+       It is not 100% clear to me if the DW_DLV_NO_ENTRY is mean to not return errors or not from docs.
+    */
+
+	Dwarf_Error error = 0;
+
     Dwarf_Die   sibling_die;
 
     res = dwarf_siblingof(dbg, die, &sibling_die, &error);
+
 
     if(res != DW_DLV_OK)
     {
         logger.logWarning("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error),
                 dwarf_errmsg(error));
+
     }
     else
     {
+
     	siblingCount = 1;
+
     	return siblingCount += getNumberOfSiblingsForDie(dbg, sibling_die);
     }
+
 
     return siblingCount;
 }
@@ -4322,6 +4463,9 @@ std::vector<Dwarf_Die> Juicer::getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die)
     std::vector<Dwarf_Die> siblingList{};
 
     Dwarf_Die   sibling_die;
+
+    Dwarf_Error error = 0;
+
 
     int siblingCount =  getNumberOfSiblingsForDie(dbg, die);
 
@@ -4352,8 +4496,10 @@ std::vector<Dwarf_Die> Juicer::getChildrenVector(Dwarf_Debug dbg, Dwarf_Die pare
     std::vector<Dwarf_Die> childList{};
 
     Dwarf_Die   childDie;
+    Dwarf_Error error = 0;
 
     int childCount = 0;
+
 
     //Get the first sibling
     res = dwarf_child(parentDie, &childDie, &error);
@@ -4363,27 +4509,36 @@ std::vector<Dwarf_Die> Juicer::getChildrenVector(Dwarf_Debug dbg, Dwarf_Die pare
                 dwarf_errmsg(error));
     }
 
+
     if(res == DW_DLV_OK)
     {
 		childList.push_back(childDie);
+
         childCount = getNumberOfSiblingsForDie(dbg, childDie) + 1;
+
     	//Get all of the siblings, including the very first one.
         Dwarf_Die siblingDie;
 		for(int child =0; child<childCount; child++)
 		{
+
 			res = dwarf_siblingof(dbg, childDie, &siblingDie, &error);
+
 			if(res != DW_DLV_OK)
 			{
 				logger.logWarning("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error),
 						dwarf_errmsg(error));
 			}
+
 			else
 			{
+
 				childList.push_back(siblingDie);
 				childDie = siblingDie;
+
 			}
 		}
     }
+
 
     return childList;
 }
