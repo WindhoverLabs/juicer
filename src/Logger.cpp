@@ -60,6 +60,7 @@ Logger::Logger()
 Logger::Logger(LoggerVerbosity_t verbosity) :
         Logger()
 {
+    Logger::instance->setVerbosity(verbosity);
 }
 
 
