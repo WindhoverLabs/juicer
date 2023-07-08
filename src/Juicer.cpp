@@ -4567,10 +4567,16 @@ std::string Juicer::generateMD5SumForFile(std::string filePath)
     }
 
     std::ostringstream hex{};
-    for(int i = 0; i< MD5_DIGEST_LENGTH; i++)
+
+
+    if(tempHash.size() > 0)
     {
-    	// Ensure that we fill with zeroes. Otherwise our hash string will be missing zeroes.
-    	hex  << std::setfill('0') << std::setw(2) << std::right << std::hex  << std::atoi(std::to_string(tempHash.at(i)).c_str());
+        for(int i = 0; i< MD5_DIGEST_LENGTH; i++)
+        {
+        	// Ensure that we fill with zeroes. Otherwise our hash string will be missing zeroes.
+        	hex  << std::setfill('0') << std::setw(2) << std::right << std::hex  << std::atoi(std::to_string(tempHash.at(i)).c_str());
+        }
+
     }
 
     auto md5 = hex.str();
