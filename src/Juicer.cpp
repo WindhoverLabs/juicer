@@ -881,7 +881,7 @@ Symbol * Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList 
                     {
                         /* In arm-xilinx-eabi-gcc.real (GCC) 11.2.0 compiler, the dwarf_bytesize method does not work.
                          * The known working solution is to use dwarf_attr and look at DW_AT_byte_size, as we are doing
-                         * in the code below. This became a particular issue with enums such as PX4_SwitchPos_t.
+                         * in the code below. This became a particular issue with enums such as AIRLINER_SwitchPos_t.
                          * The compiler was used on the following host system:   
                          *  Ubuntu 20.04.5 LTS Kernel
                          *  Linux 5.15.0-58-generic
