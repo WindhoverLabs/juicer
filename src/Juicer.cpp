@@ -56,6 +56,177 @@
 
 #include <openssl/md5.h>
 
+struct macro_counts_s {
+    long mc_start_file;
+    long mc_end_file;
+    long mc_define;
+    long mc_undef;
+    long mc_extension;
+    long mc_code_zero;
+    long mc_unknown;
+};
+
+static void
+print_one_macro_entry_detail(long i,
+    char *type,
+    struct Dwarf_Macro_Details_s *mdp)
+{
+    /* "DW_MACINFO_*: section-offset file-index [line] string\n" */
+    if (mdp->dmd_macro) {
+        printf("%3ld %s: %6" DW_PR_DUu " %2" DW_PR_DSd " [%4"
+            DW_PR_DSd "] \"%s\" \n",
+            i,
+            type,
+            (Dwarf_Unsigned)mdp->dmd_offset,
+            mdp->dmd_fileindex, mdp->dmd_lineno, mdp->dmd_macro);
+    } else {
+        printf("%3ld %s: %6" DW_PR_DUu " %2" DW_PR_DSd " [%4"
+            DW_PR_DSd "] 0\n",
+            i,
+            type,
+            (Dwarf_Unsigned)mdp->dmd_offset,
+            mdp->dmd_fileindex, mdp->dmd_lineno);
+    }
+
+}
+
+
+static void print_one_macro_entry(long i,
+    struct Dwarf_Macro_Details_s *mdp,
+    struct macro_counts_s *counts)
+{
+
+    switch (mdp->dmd_type) {
+    case 0:
+        counts->mc_code_zero++;
+        print_one_macro_entry_detail(i, "DW_MACINFO_type-code-0", mdp);
+        break;
+
+    case DW_MACINFO_start_file:
+        counts->mc_start_file++;
+        print_one_macro_entry_detail(i, "DW_MACINFO_start_file", mdp);
+        break;
+
+    case DW_MACINFO_end_file:
+        counts->mc_end_file++;
+        print_one_macro_entry_detail(i, "DW_MACINFO_end_file  ", mdp);
+        break;
+
+    case DW_MACINFO_vendor_ext:
+        counts->mc_extension++;
+        print_one_macro_entry_detail(i, "DW_MACINFO_vendor_ext", mdp);
+        break;
+
+    case DW_MACINFO_define:
+        counts->mc_define++;
+        print_one_macro_entry_detail(i, "DW_MACINFO_define    ", mdp);
+        break;
+
+    case DW_MACINFO_undef:
+        counts->mc_undef++;
+        print_one_macro_entry_detail(i, "DW_MACINFO_undef     ", mdp);
+        break;
+
+    default:
+        {
+            char create_type[50];       /* More than large enough. */
+
+            counts->mc_unknown++;
+            snprintf(create_type, sizeof(create_type),
+                "DW_MACINFO_0x%x", mdp->dmd_type);
+            print_one_macro_entry_detail(i, create_type, mdp);
+        }
+        break;
+    }
+}
+
+/*  print data in .debug_macinfo */
+/*  FIXME: should print name of file whose index is in macro data
+    here  --  somewhere.  */
+/*ARGSUSED*/ extern void
+print_macinfo(Dwarf_Debug dbg, Dwarf_Error err)
+{
+    Dwarf_Off offset = 0;
+    Dwarf_Unsigned max = 10;
+    Dwarf_Signed count = 0;
+    long group = 0;
+    Dwarf_Macro_Details *maclist = NULL;
+    int lres = 0;
+
+    bool do_print_dwarf = true;
+    if (!do_print_dwarf) {
+        return;
+    }
+
+    printf("\n.debug_macinfo\n");
+
+    while ((lres = dwarf_get_macro_details(dbg, offset,
+        max, &count, &maclist,
+        &err)) == DW_DLV_OK) {
+        printf("\n.debug_macinfo2\n");
+        long i = 0;
+        struct macro_counts_s counts;
+
+
+        memset(&counts, 0, sizeof(counts));
+
+        printf("\n");
+        printf("compilation-unit .debug_macinfo # %ld\n", group);
+        printf
+            ("num name section-offset file-index [line] \"string\"\n");
+        for (i = 0; i < count; i++) {
+            struct Dwarf_Macro_Details_s *mdp = &maclist[i];
+
+            print_one_macro_entry(i, mdp, &counts);
+        }
+
+        if (counts.mc_start_file == 0) {
+            printf
+                ("DW_MACINFO file count of zero is invalid DWARF2/3\n");
+        }
+        if (counts.mc_start_file != counts.mc_end_file) {
+            printf("Counts of DW_MACINFO file (%ld) end_file (%ld) "
+                "do not match!.\n",
+                counts.mc_start_file, counts.mc_end_file);
+        }
+        if (counts.mc_code_zero < 1) {
+            printf("Count of zeros in macro group should be non-zero "
+                "(1 preferred), count is %ld\n",
+                counts.mc_code_zero);
+        }
+        printf("Macro counts: start file %ld, "
+            "end file %ld, "
+            "define %ld, "
+            "undef %ld, "
+            "ext %ld, "
+            "code-zero %ld, "
+            "unknown %ld\n",
+            counts.mc_start_file,
+            counts.mc_end_file,
+            counts.mc_define,
+            counts.mc_undef,
+            counts.mc_extension,
+            counts.mc_code_zero, counts.mc_unknown);
+
+
+        /* int type= maclist[count - 1].dmd_type; */
+        /* ASSERT: type is zero */
+
+        offset = maclist[count - 1].dmd_offset + 1;
+        dwarf_dealloc(dbg, maclist, DW_DLA_STRING);
+        ++group;
+    }
+    if (lres == DW_DLV_ERROR) {
+    	std::cout  << "dwarf_get_macro_details error" << std::endl;
+//        print_error(dbg, "dwarf_get_macro_details", lres, err);
+    }
+
+    printf("\n.debug_macinfo3:%d\n", lres);
+
+}
+
+
+
 
 Juicer::Juicer()
 {
@@ -64,14 +235,14 @@ Juicer::Juicer()
 /**
  * Iterates through the CU lists of the dbg.
  */
-int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg)
+int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Error& error)
 {
     Dwarf_Unsigned cu_header_length = 0;
     Dwarf_Half version_stamp = 0;
     Dwarf_Unsigned abbrev_offset = 0;
     Dwarf_Half address_size = 0;
     Dwarf_Unsigned next_cu_header = 0;
-    Dwarf_Error error = 0;
+//    Dwarf_Error error = 0;
     int cu_number = 0;
     int return_value = JUICER_OK;
 
@@ -87,8 +258,32 @@ int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg)
 
         logger.logDebug("Reading CU %u.", cu_number);
 
+    	print_macinfo(dbg, error);
+
+
+    	DisplayDie(cu_die, 0);
+
+    	Dwarf_Unsigned mac_version;
+    	Dwarf_Macro_Context mac_context;
+    	Dwarf_Unsigned mac_unit_offset;
+    	Dwarf_Unsigned mac_ops_count;
+    	Dwarf_Unsigned mac_ops_data_length;
+//    	Dwarf_Unsigned mac_version;
+
+
+//    	res = dwarf_get_macro_context(cu_die,
+//    							&mac_version,
+//								&mac_context ,
+//								&mac_unit_offset,
+//								&mac_ops_count,
+//								&mac_ops_data_length,
+//								&error);
+
+//    	printf("dwarf_get_macro_context:%s\n", dwarf_errmsg(error));
+
         res = dwarf_next_cu_header(dbg, &cu_header_length, &version_stamp,
                 &abbrev_offset, &address_size, &next_cu_header, &error);
+
 
         if(res == DW_DLV_ERROR)
         {
@@ -110,6 +305,470 @@ int Juicer::readCUList(ElfFile& elf, Dwarf_Debug dbg)
 
             /* The CU will have a single sibling, a cu_die. */
             res = dwarf_siblingof(dbg, no_die, &cu_die, &error);
+
+            int mac_res = dwarf_get_macro_context(cu_die,
+        							&mac_version,
+    								&mac_context ,
+    								&mac_unit_offset,
+    								&mac_ops_count,
+    								&mac_ops_data_length,
+    								&error);
+
+
+
+            Dwarf_Unsigned  section_offset = 0;
+            Dwarf_Half      macro_operator = 0;
+            Dwarf_Half      forms_count = 0;
+            const Dwarf_Small *formcode_array = 0;
+
+            if(mac_res == 0)
+            {
+            	printf("dwarf_get_macro_context code:%d\n", mac_res);
+
+            	printf("mac_version:%d\n", mac_version);
+
+            	printf("mac_ops_count:%d\n", mac_ops_count);
+            	for(int i = 0;i<mac_ops_count;i++)
+            	{
+    		        Dwarf_Unsigned  section_offset = 0;
+    		        Dwarf_Half      macro_operator = 0;
+    		        Dwarf_Half      forms_count = 0;
+    		        const Dwarf_Small *formcode_array = 0;
+    		        Dwarf_Unsigned  line_number = 0;
+    		        Dwarf_Unsigned  index = 0;
+    		        Dwarf_Unsigned  offset =0;
+    		        const char    * macro_string =0;
+
+    				int res = dwarf_get_macro_op(mac_context,
+            		        	    i,
+    								&section_offset ,
+    								&macro_operator ,
+    								&forms_count    ,
+    								&formcode_array  /*formcode_array*/,
+    								&error     /*error*/);
+
+    				printf("res:%d\n", res);
+
+
+    		        std::cout << "macro_operator***:" << macro_operator << std::endl;
+
+
+
+    				switch(macro_operator)
+    				{
+
+//    			        case 0: {
+//    			            /*  End of these DWARF_MACRO ops */
+//    			            Dwarf_Unsigned macro_unit_len = section_offset +1 -
+//    			                macro_unit_offset;
+//    			            esb_append_printf_u(&mtext,
+//    			                " op offset 0x%" DW_PR_XZEROS DW_PR_DUx,
+//    			                section_offset);
+//    			            esb_append_printf_u(&mtext,
+//    			                " macro unit length %" DW_PR_DUu,
+//    			                macro_unit_len);
+//    			            esb_append_printf_u(&mtext,
+//    			                " next byte offset 0x%" DW_PR_XZEROS DW_PR_DUx,
+//    			                section_offset+1);
+//    			            *macro_unit_length = macro_unit_len;
+//    			            esb_append(&mtext,"\n");
+//    			            if (do_print_dwarf) {
+//    			                printf("%s",sanitized(esb_get_string(&mtext)));
+//    			            }
+//    			            }
+//    			            break;
+//    			        case DW_MACRO_end_file:
+//    			            if (do_print_dwarf) {
+//    			                esb_append(&mtext,"\n");
+//    			            }
+//    			            if (do_print_dwarf) {
+//    			                printf("%s",sanitized(esb_get_string(&mtext)));
+//    			            }
+//    			            add_to_file_stack(k,offset,macro_operator,
+//    			                line_number,offset,
+//    			                macro_unit_offset,"",
+//    			                &mtext,do_print_dwarf);
+//    			            break;
+    			        case DW_MACRO_define:
+    			        case DW_MACRO_undef: {
+    			        	res = dwarf_get_macro_defundef(mac_context,
+    			                i,
+    			                &line_number,
+    			                &index,
+    			                &offset,
+    			                &forms_count,
+    			                &macro_string,
+								&error);
+    			            if (res != DW_DLV_OK) {
+//    			                derive_error_message(k,macro_operator,
+//    			                    number_of_ops,
+//    			                    lres,err,"dwarf_get_macro_defundef");
+//    			                esb_destructor(&mtext);
+    			                printf("ERROR:\n");
+    			                return res;
+    			            }
+
+    			            std::cout << "macro_string:" << macro_string << std::endl;
+//    			            esb_append_printf_u(&mtext,"  line %u",line_number);
+//    			            esb_append_printf_s(&mtext," %s\n",
+//    			                macro_string?
+//    			                sanitized(macro_string):nonameavail);
+//    			            if (do_print_dwarf) {
+//    			                printf("%s",sanitized(esb_get_string(&mtext)));
+//    			                if (macro_string) {
+//    			                    print_split_macro_value(macro_string);
+//    			                }
+//    			            }
+//    			            add_def_undef(k,offset,macro_operator,
+//    			                line_number,macro_string,
+//    			                macro_unit_offset,
+//    			                &mtext,do_print_dwarf);
+    			            break;
+    			            }
+
+
+    			        case DW_MACRO_define_strp:
+    			        case DW_MACRO_undef_strp: {
+//    			            lres = dwarf_get_macro_defundef(mcontext,
+//    			                k,
+//    			                &line_number,
+//    			                &index,
+//    			                &offset,
+//    			                &forms_count,
+//    			                &macro_string,
+//    			                err);
+//    			            if (lres != DW_DLV_OK) {
+//    			                derive_error_message(k,macro_operator,
+//    			                    number_of_ops,
+//    			                    lres,err,"dwarf_get_macro_defundef");
+//    			                esb_destructor(&mtext);
+//    			                return lres;
+//    			            }
+//
+
+    			        	res = dwarf_get_macro_defundef(mac_context,
+    			                i,
+    			                &line_number,
+    			                &index,
+    			                &offset,
+    			                &forms_count,
+    			                &macro_string,
+								&error);
+    			            if (res != DW_DLV_OK) {
+//    			                derive_error_message(k,macro_operator,
+//    			                    number_of_ops,
+//    			                    lres,err,"dwarf_get_macro_defundef");
+//    			                esb_destructor(&mtext);
+    			                printf("ERROR:\n");
+    			                return res;
+    			            }
+
+    			            std::cout << "macro_string2:" << macro_string << std::endl;
+
+
+//    			            esb_append_printf_u(&mtext,
+//    			                "  line %" DW_PR_DUu,line_number);
+//    			            esb_append_printf_u(&mtext,
+//    			                " str offset 0x%" DW_PR_XZEROS DW_PR_DUx,
+//    			                offset);
+//    			            esb_append_printf_s(&mtext,
+//    			                " %s\n",macro_string?
+//    			                sanitized(macro_string):nonameavail);
+//    			            if (do_print_dwarf) {
+//    			                printf("%s",esb_get_string(&mtext));
+//    			                if (macro_string) {
+//    			                    print_split_macro_value(macro_string);
+//    			                }
+//    			            }
+//    			            add_def_undef(k,offset,macro_operator,
+//    			                line_number,macro_string,
+//    			                macro_unit_offset,
+//    			                &mtext,do_print_dwarf);
+    			            }
+    			            break;
+//    			        case DW_MACRO_define_strx:
+//    			        case DW_MACRO_undef_strx: {
+//    			            lres = dwarf_get_macro_defundef(mcontext,
+//    			                k,
+//    			                &line_number,
+//    			                &index,
+//    			                &offset,
+//    			                &forms_count,
+//    			                &macro_string,
+//    			                err);
+//    			            if (lres != DW_DLV_OK) {
+//    			                derive_error_message(k,macro_operator,
+//    			                    number_of_ops,
+//    			                    lres,err,"dwarf_get_macro_defundef");
+//    			                esb_destructor(&mtext);
+//    			                return lres;
+//    			            }
+//    			            esb_append_printf_u(&mtext,
+//    			                "  line %" DW_PR_DUu,line_number);
+//    			            esb_append_printf_u(&mtext,
+//    			                " str offset 0x%" DW_PR_XZEROS DW_PR_DUx,
+//    			                offset);
+//    			            esb_append_printf_s(&mtext,
+//    			                " %s\n",macro_string?
+//    			                sanitized(macro_string):nonameavail);
+//    			            if (do_print_dwarf) {
+//    			                printf("%s",sanitized(esb_get_string(&mtext)));
+//    			                if (macro_string) {
+//    			                    print_split_macro_value(macro_string);
+//    			                }
+//    			            }
+//    			            add_def_undef(k,offset,macro_operator,
+//    			                line_number,macro_string,
+//    			                macro_unit_offset,
+//    			                &mtext,do_print_dwarf);
+//    			            break;
+//    			            }
+//    			        case DW_MACRO_define_sup:
+//    			        case DW_MACRO_undef_sup: {
+//    			            /*  The strings here are from a supplementary
+//    			                object file, not this object file.
+//    			                Until we have a way to find
+//    			                the supplementary object file
+//    			                those will show name
+//    			                "<no-name-available>"
+//    			                */
+//    			            /*  We do not add these to the MacroCheck
+//    			                treer */
+//    			            lres = dwarf_get_macro_defundef(mcontext,
+//    			                k,
+//    			                &line_number,
+//    			                &index,
+//    			                &offset,
+//    			                &forms_count,
+//    			                &macro_string,
+//    			                err);
+//    			            if (lres != DW_DLV_OK) {
+//    			                derive_error_message(k,macro_operator,
+//    			                    number_of_ops,
+//    			                    lres,err,"dwarf_get_macro_defundef");
+//    			                esb_destructor(&mtext);
+//    			                return lres;
+//    			            }
+//    			            esb_append_printf_u(&mtext,
+//    			                "  line %" DW_PR_DUu,line_number);
+//    			            esb_append_printf_u(&mtext,
+//    			                " str offset 0x%" DW_PR_XZEROS DW_PR_DUx,
+//    			                offset);
+//    			            esb_append_printf_s(&mtext,
+//    			                " %s\n",macro_string?
+//    			                sanitized(macro_string):nonameavail);
+//    			            if (do_print_dwarf) {
+//    			                printf("%s",sanitized(esb_get_string(&mtext)));
+//    			                if (macro_string) {
+//    			                    print_split_macro_value(macro_string);
+//    			                }
+//    			            }
+//    			            break;
+//    			            }
+//    			        case DW_MACRO_start_file: {
+//    			            lres = dwarf_get_macro_startend_file(mcontext,
+//    			                k,&line_number,
+//    			                &index,
+//    			                &macro_string,err);
+//    			            /*  The above call knows how to reference
+//    			                its one srcfiles data and has the
+//    			                .debug_macro version. So we do not
+//    			                need to worry about getting the file name
+//    			                here. */
+//    			            if (lres != DW_DLV_OK) {
+//    			                derive_error_message(k,macro_operator,
+//    			                    number_of_ops,
+//    			                    lres,err,"dwarf_get_macro_startend_file");
+//    			                esb_destructor(&mtext);
+//    			                return lres;
+//    			            }
+//    			            esb_append_printf_u(&mtext,"  line %" DW_PR_DUu,
+//    			                line_number);
+//    			            esb_append_printf_u(&mtext," file number %"
+//    			                DW_PR_DUu " ",
+//    			                index);
+//    			            esb_append(&mtext,macro_string?
+//    			                macro_string: "<no-name-available>");
+//    			            esb_append(&mtext,"\n");
+//    			            if (do_print_dwarf) {
+//    			                printf("%s",sanitized(esb_get_string(&mtext)));
+//    			            }
+//    			            add_to_file_stack(k,offset,macro_operator,
+//    			                line_number,index,
+//    			                macro_unit_offset,macro_string,
+//    			                &mtext,do_print_dwarf);
+//    			            break;
+//    			            }
+//    			        case DW_MACRO_import: {
+//    			            int mres = 0;
+//    			            lres = dwarf_get_macro_import(mcontext,
+//    			                k,&offset,err);
+//    			            if (lres != DW_DLV_OK) {
+//    			                derive_error_message(k,macro_operator,
+//    			                    number_of_ops,
+//    			                    lres,err,"dwarf_get_macro_import");
+//    			                esb_destructor(&mtext);
+//    			                return lres;
+//    			            }
+//    			            if (do_print_dwarf) {
+//    			                esb_append_printf(&mtext,
+//    			                    "  offset 0x%" DW_PR_XZEROS DW_PR_DUx ,
+//    			                    offset);
+//    			            }
+//    			            esb_append(&mtext,"\n");
+//    			            if (do_print_dwarf) {
+//    			                printf("%s",sanitized(esb_get_string(&mtext)));
+//    			            }
+//    			            if (descend_into_import) {
+//    			                /*  not do_print_dwarf */
+//    			                macfile_entry *mac_e = 0;
+//    			                mac_e = macfile_from_array_index(
+//    			                    macfile_array_next_to_use-1);
+//    			                mres = macro_import_stack_present(offset);
+//    			                if (mres == DW_DLV_OK) {
+//    			                    printf("ERROR: While Printing DWARF5 macros "
+//    			                        "we find a recursive nest of imports "
+//    			                        " noted with offset 0x%"
+//    			                        DW_PR_XZEROS DW_PR_DUx " so we stop now. \n",
+//    			                        offset);
+//    			                    print_macro_import_stack();
+//    			                    glflags.gf_count_major_errors++;
+//    			                    return DW_DLV_NO_ENTRY;
+//    			                }
+//    			                mres = print_macros_5style_this_cu_inner(dbg,
+//    			                    cu_die,
+//    			                    dwarf_srcfiles,srcfiles_count,
+//    			                    FALSE /* turns off do_print_dwarf */,
+//    			                    descend_into_import,
+//    			                    TRUE /* by offset */,
+//    			                    offset,
+//    			                    mac_e->ms_line,
+//    			                    macfile_array_next_to_use-1,
+//    			                    level+1,
+//    			                    err);
+//    			                if (mres == DW_DLV_ERROR) {
+//    			                    struct esb_s m;
+//
+//    			                    esb_constructor(&m);
+//    			                    esb_append_printf_u(&m,
+//    			                        "ERROR: Printing DWARF5 macros "
+//    			                        " at offset 0x%x "
+//    			                        "for the import CU failed. ",
+//    			                        offset);
+//    			                    print_error_and_continue(esb_get_string(&m),
+//    			                        mres,*err);
+//    			                    DROP_ERROR_INSTANCE(dbg,mres,*err);
+//    			                    esb_destructor(&m);
+//    			                }
+//    			            }
+//    			            break;
+//    			            }
+//    			        case DW_MACRO_import_sup: {
+//    			            lres = dwarf_get_macro_import(mcontext,
+//    			                k,&offset,err);
+//    			            if (lres != DW_DLV_OK) {
+//    			                derive_error_message(k,macro_operator,
+//    			                    number_of_ops,
+//    			                    lres,err,"dwarf_get_macro_import");
+//    			                esb_destructor(&mtext);
+//    			                return lres;
+//    			            }
+//    			#if 0
+//    			            add_macro_import_sup();
+//    			                /* The supplementary object file is not available,
+//    			                So we cannot check the import references
+//    			                or know the size. As of December 2020 */
+//    			#endif
+//    			            if (do_print_dwarf) {
+//    			                printf("  sup_offset 0x%" DW_PR_XZEROS DW_PR_DUx "\n"
+//    			                    ,offset);
+//    			            }
+//    			            break;
+//    			            }
+
+    				} /*  End switch(macro_operator) */
+//    			        esb_destructor(&mtext);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    				printf("macro_operator:%d\n", macro_operator);
+            	}
+            }
+            else
+            {
+                printf("dwarf_get_macro_context:%s\n", dwarf_errmsg(error));
+
+            }
+
+        	/*  Access to the macro operations, 0 to macro_ops_count_out-1
+        	    Where the last of these will have macro_operator 0 (which appears
+        	    in the ops data and means end-of-ops).
+        	    op_start_section_offset is the section offset of
+        	    the macro operator (which is a single unsigned byte,
+        	    and is followed by the macro operand data). */
+//        	int dwarf_get_macro_op(Dwarf_Macro_Context /*macro_context*/,
+//        	    Dwarf_Unsigned   /*op_number*/,
+//        	    Dwarf_Unsigned * /*op_start_section_offset*/,
+//        	    Dwarf_Half     * /*macro_operator*/,
+//        	    Dwarf_Half     * /*forms_count*/,
+//        	    const Dwarf_Small **  /*formcode_array*/,
+//        	    Dwarf_Error    * /*error*/);
+//
+//        	int dwarf_get_macro_defundef(Dwarf_Macro_Context /*macro_context*/,
+//        	    Dwarf_Unsigned   /*op_number*/,
+//        	    Dwarf_Unsigned * /*line_number*/,
+//        	    Dwarf_Unsigned * /*index*/,
+//        	    Dwarf_Unsigned * /*offset*/,
+//        	    Dwarf_Half     * /*forms_count*/,
+//        	    const char    ** /*macro_string*/,
+//        	    Dwarf_Error    * /*error*/);
+
 
             if(res == DW_DLV_ERROR)
             {
@@ -1623,6 +2282,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
 
                             case DW_AT_macro_info:
                             	strcpy(attribName, "DW_AT_macro_info");
+                            	printf("DW_AT_macro_info************************\n");
                                 break;
 
                             case DW_AT_namelist_item:
@@ -1839,6 +2499,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
 
                             case DW_AT_macros:
                             	strcpy(attribName, "DW_AT_macros");
+                            	printf("DW_AT_macros\n");
                                 break;
 
                             case DW_AT_call_all_calls:
@@ -4245,7 +4906,8 @@ int Juicer::parse( std::string& elfFilePath)
         if(JUICER_OK == return_value)
         {
 
-            return_value = readCUList(*elf.get(), dbg);
+
+            return_value = readCUList(*elf.get(), dbg, error);
 
             dwarf_value = dwarf_finish(dbg, &error);
 
