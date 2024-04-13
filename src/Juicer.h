@@ -136,6 +136,11 @@ private:
     std::vector<std::string> dbgSourceFiles{};
 
     std::string generateMD5SumForFile(std::string filePath);
+	int getDefineMacro(Dwarf_Half macro_operator, int res,
+			Dwarf_Macro_Context mac_context, int i, Dwarf_Unsigned line_number,
+			Dwarf_Unsigned index, Dwarf_Unsigned offset,
+			const char *macro_string, Dwarf_Half &forms_count,
+			Dwarf_Error &error);
 };
 
 #endif /* JUICER_H_ */
