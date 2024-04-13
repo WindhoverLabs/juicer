@@ -6,29 +6,20 @@
  */
 
 #include "IDataContainer.h"
-#include "SQLiteDB.h"
 
+#include "SQLiteDB.h"
 
 Logger IDataContainer::logger;
 
+IDataContainer::~IDataContainer() {}
 
-IDataContainer::~IDataContainer ()
-{
-}
+IDataContainer::IDataContainer() {}
 
-
-
-IDataContainer::IDataContainer ()
-{
-}
-
-
-
-IDataContainer* IDataContainer::Create(IDataContainer_Type_t containerType, const char *initSpec, ...)
+IDataContainer *IDataContainer::Create(IDataContainer_Type_t containerType, const char *initSpec, ...)
 {
     IDataContainer *container = nullptr;
-    std::string initString;
-    va_list args, args_copy;
+    std::string     initString;
+    va_list         args, args_copy;
 
     va_start(args, initSpec);
     va_copy(args_copy, args);
@@ -43,67 +34,64 @@ IDataContainer* IDataContainer::Create(IDataContainer_Type_t containerType, cons
 
     if (len > 0)
     {
-    	initString.resize(len);
+        initString.resize(len);
         // note: &result[0] is *guaranteed* only in C++11 and later
         // to point to a buffer of contiguous memory with room for a
         // null-terminator, but this "works" in earlier versions
         // in *most* common implementations as well...
-        vsnprintf(&initString[0], len+1, initSpec, args_copy); // or result.data() in C++17 and later...
+        vsnprintf(&initString[0], len + 1, initSpec, args_copy);  // or result.data() in C++17 and later...
     }
 
     va_end(args_copy);
     va_end(args);
 
+    logger.logDebug("IDC initialization string = '%s'", initString.c_str());
 
-	logger.logDebug("IDC initialization string = '%s'", initString.c_str());
+    switch (containerType)
+    {
+        case IDC_TYPE_SQLITE:
+        {
+            int rc;
 
-	switch(containerType)
-	{
-		case IDC_TYPE_SQLITE:
-		{
-			int rc;
+            logger.logDebug("Creating SQLiteDB IDC.");
 
-			logger.logDebug("Creating SQLiteDB IDC.");
+            container = new SQLiteDB();
 
-			container = new SQLiteDB();
+            rc        = container->initialize(initString);
+            if (rc < 0)
+            {
+                logger.logError("Failed to create SQLiteDB data container. '%i'", rc);
+                delete container;
+                container = nullptr;
+            }
 
-			rc = container->initialize(initString);
-			if(rc < 0)
-			{
-				logger.logError("Failed to create SQLiteDB data container. '%i'", rc);
-				delete container;
-				container = nullptr;
-			}
+            logger.logDebug("Created SQLiteDB IDC.");
 
-			logger.logDebug("Created SQLiteDB IDC.");
+            break;
+        }
 
-			break;
-		}
+        case IDC_TYPE_CCDD:
+        {
+            logger.logError("CCDD data container not yet supported.");
 
-		case IDC_TYPE_CCDD:
-		{
-			logger.logError("CCDD data container not yet supported.");
+            break;
+        }
 
-			break;
-		}
+        default:
+        {
+            logger.logError("Invalid IDataContainer type '%u'", (unsigned int)containerType);
 
-		default:
-		{
-			logger.logError("Invalid IDataContainer type '%u'", (unsigned int)containerType);
+            break;
+        }
+    }
 
-			break;
-		}
-	}
-
-	return container;
+    return container;
 }
-
-
 
 std::string IDataContainer::vstring(const char *format, ...)
 {
     std::string result;
-    va_list args, args_copy;
+    va_list     args, args_copy;
 
     va_start(args, format);
     va_copy(args_copy, args);
@@ -123,7 +111,7 @@ std::string IDataContainer::vstring(const char *format, ...)
         // to point to a buffer of contiguous memory with room for a
         // null-terminator, but this "works" in earlier versions
         // in *most* common implementations as well...
-        vsnprintf(&result[0], len+1, format, args_copy); // or result.data() in C++17 and later...
+        vsnprintf(&result[0], len + 1, format, args_copy);  // or result.data() in C++17 and later...
     }
 
     va_end(args_copy);

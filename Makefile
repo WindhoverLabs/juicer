@@ -94,3 +94,9 @@ clean:
 docker-build:
 	@sudo docker build --no-cache -t juicer:latest -f Dockerfile .
 
+
+check-format:
+	@python3 clang_format_all.py --config clang_format_all_config.yaml
+
+format:
+	@python3 clang_format_all.py --config clang_format_all_config_format.yaml
