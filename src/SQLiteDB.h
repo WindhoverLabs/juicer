@@ -36,18 +36,20 @@
                                   elf INTEGER NOT NULL,\
                                   name TEXT UNIQUE NOT NULL,\
                                   byte_size INTEGER NOT NULL,\
-								  artifact INTEGER,\
+                                  artifact INTEGER,\
+                                  short_description TEXT DEFAULT \"\",\
+                                  long_description TEXT DEFAULT \"\",\
                                   FOREIGN KEY(elf) REFERENCES elfs(id),\
 								  FOREIGN KEY(artifact) REFERENCES artifacts(id)\
                                   UNIQUE(name));"
 
 #define CREATE_DIMENSION_TABLE   "CREATE TABLE IF NOT EXISTS dimension_lists (\
                                   id INTEGER PRIMARY KEY,\
-								  field_id INTEGER NOT NULL,\
+                                  field_id INTEGER NOT NULL,\
                                   dim_order INTEGER NOT NULL,\
                                   upper_bound INTEGER NOT NULL,\
-								  FOREIGN KEY (field_id) REFERENCES fields(id),\
-								  UNIQUE(field_id, dim_order, upper_bound));"
+                                  FOREIGN KEY (field_id) REFERENCES fields(id),\
+                                  UNIQUE(field_id, dim_order, upper_bound));"
 
 #define CREATE_FIELD_TABLE       "CREATE TABLE IF NOT EXISTS fields(\
                                   id INTEGER PRIMARY KEY,\
@@ -56,8 +58,10 @@
                                   byte_offset INTEGER NOT NULL,\
                                   type INTEGER NOT NULL,\
                                   little_endian BOOLEAN,\
-								  bit_size INTEGER NOT NULL,\
-								  bit_offset INTEGER NOT NULL,\
+                                  bit_size INTEGER NOT NULL,\
+                                  bit_offset INTEGER NOT NULL,\
+                                  short_description TEXT DEFAULT \"\",\
+                                  long_description TEXT DEFAULT \"\",\
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   FOREIGN KEY (type) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"
@@ -67,6 +71,8 @@
                                   symbol INTEGER NOT NULL,\
                                   value INTEGER NOT NULL,\
                                   name TEXT NOT NULL,\
+                                  short_description TEXT DEFAULT \"\",\
+                                  long_description TEXT DEFAULT \"\",\
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"
 
