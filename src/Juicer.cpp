@@ -290,7 +290,7 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
             //    			                macro_unit_offset,
             //    			                &mtext,do_print_dwarf);
             auto macro = getDefineMacroFromString(macro_string);
-            outMacro = macro;
+            outMacro   = macro;
             break;
         }
         case DW_MACRO_define_strp:
@@ -323,7 +323,7 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
                 //    			                return res;
             }
             auto macro = getDefineMacroFromString(macro_string);
-            outMacro = macro;
+            outMacro   = macro;
             //    			            esb_append_printf_u(&mtext,
             //    			                "  line %" DW_PR_DUu,line_number);
             //    			            esb_append_printf_u(&mtext,
@@ -629,11 +629,10 @@ int Juicer::readCUList(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Error &error)
                     }
                     auto newMacro = getDefineMacro(macro_operator, mac_context, i, line_number, index, offset, macro_string, forms_count, error);
 
-                    if(!newMacro.getName().empty())
+                    if (!newMacro.getName().empty())
                     {
                         elf.addDefineMacro(newMacro);
                     }
-
                 }
             }
             else

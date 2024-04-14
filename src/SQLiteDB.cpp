@@ -465,13 +465,8 @@ int SQLiteDB::writeMacrosToDatabase(ElfFile& inElf)
         if (SQLITE_OK == rc)
         {
             logger.logDebug(
-                "Elf values were written to the elfs schema with "
+                "Elf values were written to the macros schema with "
                 "SQLITE_OK status.");
-            /*Write the id to this elf so that other tables can use it as
-             *a foreign key */
-
-            sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
-            inElf.setId(lastRowId);
         }
         else
         {
