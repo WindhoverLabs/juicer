@@ -202,7 +202,7 @@ static void print_one_macro_entry(long i, struct Dwarf_Macro_Details_s *mdp, str
     }
     if (lres == DW_DLV_ERROR)
     {
-        std::cout << "dwarf_get_macro_details error" << std::endl;
+        //        std::cout << "dwarf_get_macro_details error" << std::endl;
         //        print_error(dbg, "dwarf_get_macro_details", lres, err);
     }
 
@@ -274,7 +274,7 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
                 printf("ERROR:\n");
                 //    			                return res;
             }
-            std::cout << "macro_string:" << macro_string << std::endl;
+            //            std::cout << "macro_string:" << macro_string << std::endl;
             //    			            esb_append_printf_u(&mtext,"  line %u",line_number);
             //    			            esb_append_printf_s(&mtext," %s\n",
             //    			                macro_string?
@@ -469,7 +469,7 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
                 //                derive_error_message(k, macro_operator, number_of_ops, lres, err, "dwarf_get_macro_import");
                 //                esb_destructor(&mtext);
                 //                return res;
-                std::cout << "dwarf_get_macro_import***** error" << std::endl;
+                //                std::cout << "dwarf_get_macro_import***** error" << std::endl;
             }
             else
             {

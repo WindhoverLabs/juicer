@@ -35,14 +35,9 @@ int SQLiteDB::selectCallback(void* veryUsed, int argc, char** argv, char** azCol
     auto*                    row = (std::map<std::string, std::vector<std::string>>*)veryUsed;
 
     std::vector<std::string> tableData{};
-    std::cout << "********" << std::endl;
     for (i = 1; i < argc; i++)
     {
-        std::cout << "i-->" << i << std::endl;
         std::string tempData{argv[i]};
-
-        std::cout << "tempData:" << tempData << std::endl;
-
         tableData.push_back(tempData);
     }
 
@@ -689,9 +684,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 
             writeSymbolQuery += ")";
 
-            std::cout << "writeSymbolQuery:" << writeSymbolQuery << std::endl;
-
-            rc = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL, &errorMessage);
+            rc                = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL, &errorMessage);
 
             if (SQLITE_OK == rc)
             {
