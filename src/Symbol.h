@@ -53,6 +53,10 @@ class Symbol
     bool                                       isEnumerated(void);
     Artifact                                  &getArtifact();
 
+    const std::string                         &getShortDescription() const { return short_description; }
+
+    const std::string                         &getLongDescription() const { return long_description; }
+
    private:
     ElfFile                                  &elf;
     std::string                               name;
@@ -62,6 +66,9 @@ class Symbol
     std::vector<std::unique_ptr<Field>>       fields;
     std::vector<std::unique_ptr<Enumeration>> enumerations;
     Artifact                                  artifact;
+
+    std::string                               short_description;
+    std::string                               long_description;
 };
 
 #endif /* SYMBOL_H_ */

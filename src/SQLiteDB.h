@@ -40,6 +40,8 @@
                                   name TEXT UNIQUE NOT NULL,\
                                   byte_size INTEGER NOT NULL,\
 								  artifact INTEGER,\
+								  long_description TEXT ,\
+								  short_description TEXT ,\
                                   FOREIGN KEY(elf) REFERENCES elfs(id),\
 								  FOREIGN KEY(artifact) REFERENCES artifacts(id)\
                                   UNIQUE(name));"
@@ -63,6 +65,8 @@
                                   little_endian BOOLEAN,\
 								  bit_size INTEGER NOT NULL,\
 								  bit_offset INTEGER NOT NULL,\
+								  long_description TEXT ,\
+								  short_description TEXT ,\
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   FOREIGN KEY (type) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"
@@ -73,6 +77,8 @@
                                   symbol INTEGER NOT NULL,\
                                   value INTEGER NOT NULL,\
                                   name TEXT NOT NULL,\
+								  long_description TEXT ,\
+								  short_description TEXT ,\
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"
 

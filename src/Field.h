@@ -52,10 +52,14 @@ class Field
     uint32_t     getBitSize() const;
     void         setBitSize(uint32_t bitSize);
     Field(Field &field);
-    bool           isBitField(void);
-    DimensionList &getDimensionList();
-    bool           isArray(void) const;
-    std::string    getDimensionListStr();
+    bool               isBitField(void);
+    DimensionList     &getDimensionList();
+    bool               isArray(void) const;
+    std::string        getDimensionListStr();
+
+    const std::string &getShortDescription() const { return short_description; }
+
+    const std::string &getLongDescription() const { return long_description; }
 
    private:
     Symbol       &symbol;
@@ -70,6 +74,9 @@ class Field
     uint32_t      bit_size;
     Logger        logger;
     uint32_t      id;
+
+    std::string   short_description;
+    std::string   long_description;
 };
 
 #endif /* FIELD_H_ */

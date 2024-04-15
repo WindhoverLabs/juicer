@@ -14,7 +14,9 @@ Field::Field(Symbol& inSymbol, Symbol& inType)
       type{inType},  // @suppress("Symbol is not resolved")
       dimensionList{},
       little_endian{false},
-      id{0}
+      id{0},
+      short_description{""},
+      long_description{""}
 {
     logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset,
                     type.getName().c_str(), dimensionList.toString(), little_endian ? "LE" : "BE");
@@ -30,7 +32,9 @@ Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbo
       little_endian{inLittleEndian},
       bit_offset{inBitSize},
       bit_size{inBitSize},
-      id{0}
+      id{0},
+      short_description{""},
+      long_description{""}
 
 {
     logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset,
@@ -46,7 +50,9 @@ Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbo
       little_endian{inLittleEndian},
       bit_offset{inBitSize},
       bit_size{inBitSize},
-      id{0}
+      id{0},
+      short_description{""},
+      long_description{""}
 
 {
     logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset,
@@ -59,7 +65,9 @@ Field::Field(Field& field)
       byte_offset{field.getByteOffset()},
       type{field.getType()},  // @suppress("Symbol is not resolved")
       dimensionList(field.getDimensionList()),
-      little_endian{field.isLittleEndian()}
+      little_endian{field.isLittleEndian()},
+      short_description{""},
+      long_description{""}
 {
 }
 

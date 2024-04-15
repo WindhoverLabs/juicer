@@ -22,11 +22,15 @@ class Enumeration
     Enumeration(Symbol& symbol, std::string& name, int64_t value);
     virtual ~Enumeration();
     Enumeration(Enumeration& enumeration);
-    std::string& getName();
-    void         setName(std::string& name);
-    Symbol&      getSymbol();
-    int64_t      getValue();
-    void         setValue(int64_t value);
+    std::string&       getName();
+    void               setName(std::string& name);
+    Symbol&            getSymbol();
+    int64_t            getValue();
+    void               setValue(int64_t value);
+
+    const std::string& getShortDescription() const { return short_description; }
+
+    const std::string& getLongDescription() const { return long_description; }
 
    private:
     Symbol&     symbol;
@@ -38,6 +42,9 @@ class Enumeration
      */
     int64_t     value;
     Logger      logger;
+
+    std::string short_description;
+    std::string long_description;
 };
 
 #endif /* ENUMERATION_H_ */

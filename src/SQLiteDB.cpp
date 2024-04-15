@@ -35,10 +35,13 @@ int SQLiteDB::selectCallback(void* veryUsed, int argc, char** argv, char** azCol
     auto*                    row = (std::map<std::string, std::vector<std::string>>*)veryUsed;
 
     std::vector<std::string> tableData{};
-
+    std::cout << "********" << std::endl;
     for (i = 1; i < argc; i++)
     {
+        std::cout << "i-->" << i << std::endl;
         std::string tempData{argv[i]};
+
+        std::cout << "tempData:" << tempData << std::endl;
 
         tableData.push_back(tempData);
     }
@@ -663,7 +666,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
             std::string writeSymbolQuery{};
 
             writeSymbolQuery +=
-                "INSERT INTO symbols(elf, name, byte_size, artifact) "
+                "INSERT INTO symbols(elf, name, byte_size, artifact, long_description, short_description) "
                 "VALUES(";
             writeSymbolQuery += std::to_string(symbol->getElf().getId());
             writeSymbolQuery += ",\"";
@@ -673,9 +676,22 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
             writeSymbolQuery += std::to_string(symbol->getByteSize());
             writeSymbolQuery += ",";
             writeSymbolQuery += std::to_string(symbol->getArtifact().getId());
+
+            writeSymbolQuery += ",\"";
+            writeSymbolQuery += symbol->getLongDescription();
+
+            writeSymbolQuery += "\",";
+
+            writeSymbolQuery += "\"";
+            writeSymbolQuery += symbol->getShortDescription();
+
+            writeSymbolQuery += "\"";
+
             writeSymbolQuery += ")";
 
-            rc                = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL, &errorMessage);
+            std::cout << "writeSymbolQuery:" << writeSymbolQuery << std::endl;
+
+            rc = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL, &errorMessage);
 
             if (SQLITE_OK == rc)
             {
@@ -731,7 +747,7 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
 
         writeFieldQuery +=
             "INSERT INTO fields(symbol, name, byte_offset, type, "
-            "little_endian, bit_size, bit_offset) VALUES(";
+            "little_endian, bit_size, bit_offset, long_description, short_description) VALUES(";
         writeFieldQuery += std::to_string(field->getSymbol().getId());
         writeFieldQuery += ",";
         writeFieldQuery += "\"";
@@ -748,6 +764,16 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
         writeFieldQuery += std::to_string(field->getBitSize());
         writeFieldQuery += ",";
         writeFieldQuery += std::to_string(field->getBitOffset());
+
+        writeFieldQuery += ",";
+        writeFieldQuery += "\"";
+        writeFieldQuery += field->getLongDescription();
+        writeFieldQuery += "\"";
+
+        writeFieldQuery += ",";
+        writeFieldQuery += "\"";
+        writeFieldQuery += field->getShortDescription();
+        writeFieldQuery += "\"";
 
         writeFieldQuery += ");";
 
@@ -902,6 +928,17 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
         writeEnumerationQuery += std::to_string(enumeration->getValue());
         writeEnumerationQuery += ",\"";
         writeEnumerationQuery += enumeration->getName();
+
+        writeEnumerationQuery += ",";
+        writeEnumerationQuery += "\"";
+        writeEnumerationQuery += enumeration->getLongDescription();
+        writeEnumerationQuery += "\"";
+
+        writeEnumerationQuery += ",";
+        writeEnumerationQuery += "\"";
+        writeEnumerationQuery += enumeration->getShortDescription();
+        writeEnumerationQuery += "\"";
+
         writeEnumerationQuery += "\");";
 
         rc                     = sqlite3_exec(database, writeEnumerationQuery.c_str(), NULL, NULL, &errorMessage);

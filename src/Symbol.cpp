@@ -14,7 +14,9 @@ Symbol::Symbol(ElfFile& inElf)
     : elf{inElf},  // @suppress("Symbol is not resolved")
       name{""},
       byte_size{0},
-      artifact{elf}
+      artifact{elf},
+      short_description{""},
+      long_description{""}
 {
     logger.logDebug("Symbol %s::%s (%u bytes) created.", elf.getName().c_str(), name.c_str(), byte_size);
 }
@@ -23,7 +25,9 @@ Symbol::Symbol(ElfFile& inElf, std::string& inName, uint32_t inByteSize, Artifac
     : elf{inElf},    // @suppress("Symbol is not resolved")
       name{inName},  // @suppress("Symbol is not resolved")
       byte_size{inByteSize},
-      artifact{inArtifact}
+      artifact{inArtifact},
+      short_description{""},
+      long_description{""}
 {
     logger.logDebug("Symbol %s::%s (%u bytes) created.", elf.getName().c_str(), name.c_str(), byte_size);
 }
