@@ -223,7 +223,7 @@ DefineMacro Juicer::getDefineMacroFromString(std::string macro_string)
 }
 
 DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Context mac_context, int i, Dwarf_Unsigned line_number, Dwarf_Unsigned index,
-                                   Dwarf_Unsigned offset, const char *macro_string, Dwarf_Half &forms_count, Dwarf_Error &error)
+                                   Dwarf_Unsigned offset, const char *macro_string, Dwarf_Half &forms_count, Dwarf_Error &error, Dwarf_Die cu_die, ElfFile &elf)
 {
     DefineMacro outMacro{"", ""};
     int         res = 0;
@@ -291,6 +291,7 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
             //    			                &mtext,do_print_dwarf);
             auto macro = getDefineMacroFromString(macro_string);
             outMacro   = macro;
+            elf.addDefineMacro(macro);
             break;
         }
         case DW_MACRO_define_strp:
@@ -342,8 +343,10 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
             //    			                line_number,macro_string,
             //    			                macro_unit_offset,
             //    			                &mtext,do_print_dwarf);
+            elf.addDefineMacro(macro);
+            break;
         }
-        break;
+
             //    			        case DW_MACRO_define_strx:
             //    			        case DW_MACRO_undef_strx: {
             //    			            lres = dwarf_get_macro_defundef(mcontext,
@@ -457,70 +460,100 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
             //    			                &mtext,do_print_dwarf);
             //    			            break;
             //    			            }
-            //    			        case DW_MACRO_import: {
-            //    			            int mres = 0;
-            //    			            lres = dwarf_get_macro_import(mcontext,
-            //    			                k,&offset,err);
-            //    			            if (lres != DW_DLV_OK) {
-            //    			                derive_error_message(k,macro_operator,
-            //    			                    number_of_ops,
-            //    			                    lres,err,"dwarf_get_macro_import");
-            //    			                esb_destructor(&mtext);
-            //    			                return lres;
-            //    			            }
-            //    			            if (do_print_dwarf) {
-            //    			                esb_append_printf(&mtext,
-            //    			                    "  offset 0x%" DW_PR_XZEROS DW_PR_DUx ,
-            //    			                    offset);
-            //    			            }
-            //    			            esb_append(&mtext,"\n");
-            //    			            if (do_print_dwarf) {
-            //    			                printf("%s",sanitized(esb_get_string(&mtext)));
-            //    			            }
-            //    			            if (descend_into_import) {
-            //    			                /*  not do_print_dwarf */
-            //    			                macfile_entry *mac_e = 0;
-            //    			                mac_e = macfile_from_array_index(
-            //    			                    macfile_array_next_to_use-1);
-            //    			                mres = macro_import_stack_present(offset);
-            //    			                if (mres == DW_DLV_OK) {
-            //    			                    printf("ERROR: While Printing DWARF5 macros "
-            //    			                        "we find a recursive nest of imports "
-            //    			                        " noted with offset 0x%"
-            //    			                        DW_PR_XZEROS DW_PR_DUx " so we stop now. \n",
-            //    			                        offset);
-            //    			                    print_macro_import_stack();
-            //    			                    glflags.gf_count_major_errors++;
-            //    			                    return DW_DLV_NO_ENTRY;
-            //    			                }
-            //    			                mres = print_macros_5style_this_cu_inner(dbg,
-            //    			                    cu_die,
-            //    			                    dwarf_srcfiles,srcfiles_count,
-            //    			                    FALSE /* turns off do_print_dwarf */,
-            //    			                    descend_into_import,
-            //    			                    TRUE /* by offset */,
-            //    			                    offset,
-            //    			                    mac_e->ms_line,
-            //    			                    macfile_array_next_to_use-1,
-            //    			                    level+1,
-            //    			                    err);
-            //    			                if (mres == DW_DLV_ERROR) {
-            //    			                    struct esb_s m;
+        case DW_MACRO_import:
+        {
+            int mres = 0;
+            res      = dwarf_get_macro_import(mac_context, i, &offset, &error);
+            if (res != DW_DLV_OK)
+            {
+                //                derive_error_message(k, macro_operator, number_of_ops, lres, err, "dwarf_get_macro_import");
+                //                esb_destructor(&mtext);
+                //                return res;
+                std::cout << "dwarf_get_macro_import***** error" << std::endl;
+            }
+            else
+            {
+                Dwarf_Unsigned      mac_import_version;
+                Dwarf_Macro_Context mac_import_context;
+                Dwarf_Unsigned      mac_import_unit_offset;
+                Dwarf_Unsigned      mac_import_ops_count;
+                Dwarf_Unsigned      mac_import_ops_data_length;
+                dwarf_get_macro_context_by_offset(cu_die, offset, &mac_import_version, &mac_import_context, &mac_import_ops_count, &mac_import_ops_data_length,
+                                                  &error);
+
+                for (int i = 0; i < mac_import_ops_count; i++)
+                {
+                    Dwarf_Unsigned     section_offset = 0;
+                    Dwarf_Half         macro_operator = 0;
+                    Dwarf_Half         forms_count    = 0;
+                    const Dwarf_Small *formcode_array = 0;
+                    Dwarf_Unsigned     line_number    = 0;
+                    Dwarf_Unsigned     index          = 0;
+                    Dwarf_Unsigned     offset         = 0;
+                    const char        *macro_string   = 0;
+
+                    res = dwarf_get_macro_op(mac_import_context, i, &section_offset, &macro_operator, &forms_count, &formcode_array, &error);
+                    if (res == DW_DLV_ERROR)
+                    {
+                        //                    	TODO:Report error/warning
+                    }
+                    auto newMacro =
+                        getDefineMacro(macro_operator, mac_import_context, i, line_number, index, offset, macro_string, forms_count, error, cu_die, elf);
+
+                    if (!newMacro.getName().empty())
+                    {
+                        //                        elf.addDefineMacro(newMacro);
+                        //                    	std::cout << "imported macro***:" << newMacro.getName()  << std::endl;
+                    }
+                }
+            }
+            //            if (do_print_dwarf)
+            //            {
+            //                esb_append_printf(&mtext, "  offset 0x%" DW_PR_XZEROS DW_PR_DUx, offset);
+            //            }
+            //            esb_append(&mtext, "\n");
+            //            if (do_print_dwarf)
+            //            {
+            //                printf("%s", sanitized(esb_get_string(&mtext)));
+            //            }
+            //            if (descend_into_import)
+            //            {
+            //                /*  not do_print_dwarf */
+            //                macfile_entry *mac_e = 0;
+            //                mac_e                = macfile_from_array_index(macfile_array_next_to_use - 1);
+            //                mres                 = macro_import_stack_present(offset);
+            //                if (mres == DW_DLV_OK)
+            //                {
+            //                    printf(
+            //                        "ERROR: While Printing DWARF5 macros "
+            //                        "we find a recursive nest of imports "
+            //                        " noted with offset 0x%" DW_PR_XZEROS DW_PR_DUx " so we stop now. \n",
+            //                        offset);
+            //                    print_macro_import_stack();
+            //                    glflags.gf_count_major_errors++;
+            //                    return DW_DLV_NO_ENTRY;
+            //                }
+            //                mres = print_macros_5style_this_cu_inner(dbg, cu_die, dwarf_srcfiles, srcfiles_count, FALSE /* turns off do_print_dwarf */,
+            //                descend_into_import,
+            //                                                         TRUE /* by offset */, offset, mac_e->ms_line, macfile_array_next_to_use - 1, level + 1,
+            //                                                         err);
+            //                if (mres == DW_DLV_ERROR)
+            //                {
+            //                    struct esb_s m;
             //
-            //    			                    esb_constructor(&m);
-            //    			                    esb_append_printf_u(&m,
-            //    			                        "ERROR: Printing DWARF5 macros "
-            //    			                        " at offset 0x%x "
-            //    			                        "for the import CU failed. ",
-            //    			                        offset);
-            //    			                    print_error_and_continue(esb_get_string(&m),
-            //    			                        mres,*err);
-            //    			                    DROP_ERROR_INSTANCE(dbg,mres,*err);
-            //    			                    esb_destructor(&m);
-            //    			                }
-            //    			            }
-            //    			            break;
-            //    			            }
+            //                    esb_constructor(&m);
+            //                    esb_append_printf_u(&m,
+            //                                        "ERROR: Printing DWARF5 macros "
+            //                                        " at offset 0x%x "
+            //                                        "for the import CU failed. ",
+            //                                        offset);
+            //                    print_error_and_continue(esb_get_string(&m), mres, *err);
+            //                    DROP_ERROR_INSTANCE(dbg, mres, *err);
+            //                    esb_destructor(&m);
+            //                }
+            //            }
+            break;
+        }
             //    			        case DW_MACRO_import_sup: {
             //    			            lres = dwarf_get_macro_import(mcontext,
             //    			                k,&offset,err);
@@ -627,7 +660,7 @@ int Juicer::readCUList(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Error &error)
                     {
                         //                    	TODO:Report error/warning
                     }
-                    auto newMacro = getDefineMacro(macro_operator, mac_context, i, line_number, index, offset, macro_string, forms_count, error);
+                    auto newMacro = getDefineMacro(macro_operator, mac_context, i, line_number, index, offset, macro_string, forms_count, error, cu_die, elf);
 
                     if (!newMacro.getName().empty())
                     {

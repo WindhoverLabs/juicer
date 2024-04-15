@@ -136,7 +136,7 @@ class Juicer
 
     std::string              generateMD5SumForFile(std::string filePath);
     DefineMacro              getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Context mac_context, int i, Dwarf_Unsigned line_number, Dwarf_Unsigned index,
-                                            Dwarf_Unsigned offset, const char* macro_string, Dwarf_Half& forms_count, Dwarf_Error& error);
+                                            Dwarf_Unsigned offset, const char* macro_string, Dwarf_Half& forms_count, Dwarf_Error& error, Dwarf_Die cu_die, ElfFile& elf);
     DefineMacro              getDefineMacroFromString(std::string macro_string);
 };
 

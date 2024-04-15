@@ -64,7 +64,7 @@ class LoggerInstance
     void LogEvent(LoggerCriticality_t criticality, const std::string &message);
 
    private:
-    LoggerInstance(LoggerInstance const &) {};                                   // copy constructor is private
+    LoggerInstance(LoggerInstance const &){};                                    // copy constructor is private
     LoggerInstance        &operator=(LoggerInstance const &) { return *this; };  // assignment operator is private
     static LoggerInstance *m_pInstance;
     std::ofstream          logFile;
