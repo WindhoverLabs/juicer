@@ -928,9 +928,9 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
         writeEnumerationQuery += std::to_string(enumeration->getValue());
         writeEnumerationQuery += ",\"";
         writeEnumerationQuery += enumeration->getName();
-
-        writeEnumerationQuery += ",";
         writeEnumerationQuery += "\"";
+
+        writeEnumerationQuery += ",\"";
         writeEnumerationQuery += enumeration->getLongDescription();
         writeEnumerationQuery += "\"";
 
@@ -939,7 +939,7 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
         writeEnumerationQuery += enumeration->getShortDescription();
         writeEnumerationQuery += "\"";
 
-        writeEnumerationQuery += "\");";
+        writeEnumerationQuery += ");";
 
         rc                     = sqlite3_exec(database, writeEnumerationQuery.c_str(), NULL, NULL, &errorMessage);
 
