@@ -96,6 +96,10 @@
                                   id INTEGER PRIMARY KEY,\
                                   name TEXT NOT NULL,\
                                   value TEXT NOT NULL,\
+								  module_id INTEGER,\
+								  configuration INTEGER,\
+								  short_description TEXT,\
+								  long_description TEXT,\
                                   UNIQUE (name, value));"
 
 #define SQLiteDB_TRUE  1
