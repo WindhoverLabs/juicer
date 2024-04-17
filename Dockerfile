@@ -12,6 +12,7 @@ RUN apt-get install -y make
 RUN apt-get install -y libelf-dev
 RUN apt-get install -y libsqlite3-dev
 RUN apt-get install -y libssl-dev
+RUN apt-get install -y doxygen
 
 RUN mkdir /home/docker
 COPY . /home/docker/juicer
@@ -30,6 +31,9 @@ RUN ./juicer-ut "[main_test#7]"
 RUN ./juicer-ut "[main_test#8]"
 RUN ./juicer-ut "[Module]"
 RUN ./juicer-ut "[Symbol]"
+
+RUN cd /home/docker/juicer && make clean
+RUN make docs
 
 
 
