@@ -33,7 +33,7 @@ RUN ./juicer-ut "[Module]"
 RUN ./juicer-ut "[Symbol]"
 
 RUN cd /home/docker/juicer && make clean
-RUN make docs
+RUN cd /home/docker/juicer && make docs
 
 
 
