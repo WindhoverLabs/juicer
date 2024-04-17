@@ -914,7 +914,7 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
         std::string writeEnumerationQuery{};
 
         writeEnumerationQuery +=
-            "INSERT INTO enumerations(symbol, value, name)"
+            "INSERT INTO enumerations(symbol, value, name, long_description, short_description)"
             "VALUES(";
         writeEnumerationQuery += std::to_string(enumeration->getSymbol().getId());
         writeEnumerationQuery += ",";

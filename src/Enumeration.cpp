@@ -10,7 +10,9 @@
 Enumeration::Enumeration(Symbol& inSymbol)
     : symbol{inSymbol},  // @suppress("Symbol is not resolved")
       name{""},
-      value{0}
+      value{0},
+      short_description{""},
+      long_description{""}
 {
     logger.logDebug("ENUM %s:%s  value:%u  created.", symbol.getName().c_str(), name.c_str(), value);
 }
@@ -18,7 +20,9 @@ Enumeration::Enumeration(Symbol& inSymbol)
 Enumeration::Enumeration(Symbol& inSymbol, std::string& inName, int64_t inValue)
     : symbol{inSymbol},  // @suppress("Symbol is not resolved")
       name{inName},      // @suppress("Symbol is not resolved")
-      value{inValue}
+      value{inValue},
+      short_description{""},
+      long_description{""}
 {
     logger.logDebug("ENUM %s:%s  value:%u  created.", symbol.getName().c_str(), name.c_str(), value);
 }
