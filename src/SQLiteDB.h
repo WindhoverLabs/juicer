@@ -97,7 +97,7 @@
                                   name TEXT NOT NULL,\
                                   value TEXT NOT NULL,\
 								  module_id INTEGER,\
-								  configuration INTEGER,\
+								  source INTEGER,\
 								  short_description TEXT,\
 								  long_description TEXT,\
                                   UNIQUE (name, value));"
