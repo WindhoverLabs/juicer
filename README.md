@@ -211,6 +211,19 @@ By default this version of Eclipse uses `gdb 7.11.1`, but this version does not 
   "eclipse-debug")
   
   And you are all set!
+
+## Debugging libdwarf
+ Sometimes it is often useful to be able to step through code inside of libdwarf, which juicer heavily depends on.
+ This can be done by installing `libdwarf1-dbgsym` with the following commands:
+  ```
+  sudo apt install ubuntu-dbgsym-keyring
+  echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
+  deb http://ddebs.ubuntu.com $(lsb_release -cs)-updates main restricted universe multiverse
+  deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse" | \
+  sudo tee -a /etc/apt/sources.list.d/ddebs.list
+  sudo apt-get install libdwarf1-dbgsym
+  ```
+
   
 ## Testing <a name="testing"></a>
 We currently use the [Catch2](https://github.com/catchorg/Catch2) framework for our Unit testing. It is integrated into the repo as a submodule. You can find
