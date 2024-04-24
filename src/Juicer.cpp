@@ -44,6 +44,7 @@
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <numeric>
 #include <sstream>
 #include <string>
@@ -226,41 +227,44 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
                                    Dwarf_Unsigned offset, const char *macro_string, Dwarf_Half &forms_count, Dwarf_Error &error, Dwarf_Die cu_die, ElfFile &elf)
 {
     DefineMacro outMacro{"", ""};
-    int         res = 0;
+    int         res   = 0;
+    static int  count = 0;
+    count++;
+    printf("macro_operator:%d\n", macro_operator);
+    printf("count:%d\n", count);
+
     switch (macro_operator)
     {
-        //    			        case 0: {
-        //    			            /*  End of these DWARF_MACRO ops */
-        //    			            Dwarf_Unsigned macro_unit_len = section_offset +1 -
-        //    			                macro_unit_offset;
-        //    			            esb_append_printf_u(&mtext,
-        //    			                " op offset 0x%" DW_PR_XZEROS DW_PR_DUx,
-        //    			                section_offset);
-        //    			            esb_append_printf_u(&mtext,
-        //    			                " macro unit length %" DW_PR_DUu,
-        //    			                macro_unit_len);
-        //    			            esb_append_printf_u(&mtext,
-        //    			                " next byte offset 0x%" DW_PR_XZEROS DW_PR_DUx,
-        //    			                section_offset+1);
-        //    			            *macro_unit_length = macro_unit_len;
-        //    			            esb_append(&mtext,"\n");
-        //    			            if (do_print_dwarf) {
-        //    			                printf("%s",sanitized(esb_get_string(&mtext)));
-        //    			            }
-        //    			            }
-        //    			            break;
-        //    			        case DW_MACRO_end_file:
-        //    			            if (do_print_dwarf) {
-        //    			                esb_append(&mtext,"\n");
-        //    			            }
-        //    			            if (do_print_dwarf) {
-        //    			                printf("%s",sanitized(esb_get_string(&mtext)));
-        //    			            }
-        //    			            add_to_file_stack(k,offset,macro_operator,
-        //    			                line_number,offset,
-        //    			                macro_unit_offset,"",
-        //    			                &mtext,do_print_dwarf);
-        //    			            break;
+        case 0:
+        {
+            /*  End of these DWARF_MACRO ops */
+            printf("End of these DWARF_MACRO ops\n");
+            //            Dwarf_Unsigned macro_unit_len = section_offset + 1 - macro_unit_offset;
+            //            esb_append_printf_u(&mtext, " op offset 0x%" DW_PR_XZEROS DW_PR_DUx, section_offset);
+            //            esb_append_printf_u(&mtext, " macro unit length %" DW_PR_DUu, macro_unit_len);
+            //            esb_append_printf_u(&mtext, " next byte offset 0x%" DW_PR_XZEROS DW_PR_DUx, section_offset + 1);
+            //            *macro_unit_length = macro_unit_len;
+            //            esb_append(&mtext, "\n");
+            //            if (do_print_dwarf)
+            //            {
+            //                printf("%s", sanitized(esb_get_string(&mtext)));
+            //            }
+        }
+        break;
+        case DW_MACRO_end_file:
+        {
+            printf("DW_MACRO_end_file\n");
+            //            if (do_print_dwarf)
+            //            {
+            //                esb_append(&mtext, "\n");
+            //            }
+            //            if (do_print_dwarf)
+            //            {
+            //                printf("%s", sanitized(esb_get_string(&mtext)));
+            //            }
+            //            add_to_file_stack(k, offset, macro_operator, line_number, offset, macro_unit_offset, "", &mtext, do_print_dwarf);
+        }
+        break;
         case DW_MACRO_define:
         case DW_MACRO_undef:
         {
@@ -464,23 +468,42 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
         {
             int mres = 0;
             res      = dwarf_get_macro_import(mac_context, i, &offset, &error);
+            printf("dwarf_get_macro_import res:%d\n", res);
+            printf("dwarf_get_macro_import offset:%d\n", offset);
+
+            if (offset == 0)
+            {
+                /**
+                 * @todo This should be re-visited.
+                 * We're making an assumption that an offset of zero means that there is nothing there...
+                 *
+                 */
+                return outMacro;
+            }
             if (res != DW_DLV_OK)
             {
-                //                derive_error_message(k, macro_operator, number_of_ops, lres, err, "dwarf_get_macro_import");
-                //                esb_destructor(&mtext);
-                //                return res;
-                //                std::cout << "dwarf_get_macro_import***** error" << std::endl;
+                /**
+                 * @todo Should be returning the actual return code rather than using a string this outMacro...
+                 */
+                return outMacro;
             }
             else
             {
+                //            	printf("res=%d\n",res);
+                //            	printf("offset:%d\n", offset);
+                //            	printf("dwarf_errno:%s\n", dwarf_errmsg(error));
                 Dwarf_Unsigned      mac_import_version;
                 Dwarf_Macro_Context mac_import_context;
                 Dwarf_Unsigned      mac_import_unit_offset;
                 Dwarf_Unsigned      mac_import_ops_count;
                 Dwarf_Unsigned      mac_import_ops_data_length;
-                dwarf_get_macro_context_by_offset(cu_die, offset, &mac_import_version, &mac_import_context, &mac_import_ops_count, &mac_import_ops_data_length,
-                                                  &error);
+                int                 res = dwarf_get_macro_context_by_offset(cu_die, offset, &mac_import_version, &mac_import_context, &mac_import_ops_count,
+                                                                            &mac_import_ops_data_length, &error);
 
+                printf("mac_import_ops_count:%d\n", mac_import_ops_count);
+                printf("res1:%d\n", res);
+
+                printf("mac_import_ops_data_length:%d\n", mac_import_ops_data_length);
                 for (int i = 0; i < mac_import_ops_count; i++)
                 {
                     Dwarf_Unsigned     section_offset = 0;
@@ -493,10 +516,16 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
                     const char        *macro_string   = 0;
 
                     res = dwarf_get_macro_op(mac_import_context, i, &section_offset, &macro_operator, &forms_count, &formcode_array, &error);
+                    printf("res3:%d\n", res);
                     if (res == DW_DLV_ERROR)
                     {
-                        //                    	TODO:Report error/warning
+                        /**
+                         * @todo Should be returning the actual return code rather than using a string this outMacro...
+                         */
+                        return outMacro;
                     }
+
+                    printf("macro_string:%s\n", macro_string);
                     auto newMacro =
                         getDefineMacro(macro_operator, mac_import_context, i, line_number, index, offset, macro_string, forms_count, error, cu_die, elf);
 
@@ -656,15 +685,15 @@ int Juicer::readCUList(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Error &error)
                     const char        *macro_string   = 0;
 
                     res = dwarf_get_macro_op(mac_context, i, &section_offset, &macro_operator, &forms_count, &formcode_array, &error);
+
                     if (res == DW_DLV_ERROR)
                     {
                         //                    	TODO:Report error/warning
-                    }
-                    auto newMacro = getDefineMacro(macro_operator, mac_context, i, line_number, index, offset, macro_string, forms_count, error, cu_die, elf);
 
-                    if (!newMacro.getName().empty())
+                        printf("dwarf_get_macro_op DW_DLV_ERROR*************************\n");
+                    }
+                    else
                     {
-                        elf.addDefineMacro(newMacro);
                     }
                 }
             }
@@ -3881,6 +3910,10 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
                                             last emitted byte. The high bit of zero on the last byte indicates to the decoder that it has
                                             encountered the last byte.
                                             The integer zero is a special case, consisting of a single zero byte.
+
+                                            For more details on the algorithm implementation see
+                                            "Appendix C1 Variable Length Data:2 Encoding/Decoding (Informative)"
+                                            section in DWARF5.
                                             */
 
                                             uint8_t *data = (uint8_t *)bdata->bl_data;
@@ -4472,6 +4505,374 @@ int Juicer::printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level)
 }
 
 /**
+ * @brief get Object data from a variable that is initialized at runtime.
+ */
+std::vector<uint8_t> Juicer::gObjDataFromElf(std::string variableName)
+{
+    std::vector<uint8_t> objData      = std::vector<uint8_t>();
+
+    Elf                 *elf          = NULL;
+    unsigned char       *ident_buffer = NULL;
+    char                *buffer       = NULL;
+    size_t               size         = 0;
+    JuicerEndianness_t   rc;
+
+    Elf64_Ehdr          *elf_hdr_64 = 0;
+    Elf32_Ehdr          *elf_hdr_32 = 0;
+
+    elf_version(EV_CURRENT);
+
+    elf    = elf_begin(elfFile, ELF_C_READ, NULL);
+
+    buffer = elf_getident(elf, &size);
+
+    if (buffer[EI_CLASS] == ELFCLASS64)
+    {
+        //    extern Elf_Data *elf_getdata (Elf_Scn *__scn, Elf_Data *__data);
+        size_t elfSectionCount = -1;
+        int    res             = elf_getshdrnum(elf, &elfSectionCount);
+
+        std::cout << "elfSectionCount:" << elfSectionCount << std::endl;
+        //        this-
+
+        for (size_t i = 0; i < elfSectionCount; i++)
+        {
+            Elf_Scn *section = elf_getscn(elf, i);
+            std::cout << "section" << section << std::endl;
+        }
+        std::cout << "res:" << res << std::endl;
+
+        if (elf != NULL)
+        {
+            elf_hdr_64   = elf64_getehdr(elf);
+
+            ident_buffer = elf_hdr_64->e_ident;
+            if (ident_buffer[EI_DATA] == ELFDATA2LSB)
+            {
+                rc = JUICER_ENDIAN_LITTLE;
+            }
+            else if (ident_buffer[EI_DATA] == ELFDATA2MSB)
+            {
+                rc = JUICER_ENDIAN_BIG;
+            }
+            else
+            {
+                rc = JUICER_ENDIAN_UNKNOWN;
+            }
+            elf_end(elf);
+        }
+        else
+        {
+            logger.logError("elf_begin failed.  errno=%d  %s", errno, strerror(errno));
+        }
+    }
+    else if (buffer[EI_CLASS] == ELFCLASS32)
+    {
+        if (elf != NULL)
+        {
+            elf_hdr_32             = elf32_getehdr(elf);
+            size_t elfSectionCount = 0;
+            int    res             = elf_getshdrnum(elf, &elfSectionCount);
+
+            std::cout << "elfSectionCount:" << elfSectionCount << std::endl;
+
+            logger.logInfo("Found %d elf sections", elfSectionCount);
+
+            std::map<std::string, int> symbolToSize = std::map<std::string, int>();
+
+            for (size_t i = 0; i < elfSectionCount; i++)
+            {
+                Elf_Scn    *section               = elf_getscn(elf, i);
+
+                Elf32_Shdr *sectionHeader         = elf32_getshdr(section);
+
+                Elf32_Word  sectionSize           = sectionHeader->sh_size;
+                Elf32_Word  sectionTableEntrySize = sectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB*/
+
+                switch (sectionHeader->sh_type)
+                {
+                    case SHT_NULL:
+                    {
+                        logger.logWarning("Section  SHT_NULL(%d) not supported.", SHT_NULL);
+                        break;
+                    }
+                    case SHT_PROGBITS:
+                    {
+                        logger.logWarning("Section  SHT_PROGBITS(%d) not supported.", SHT_PROGBITS);
+                        break;
+                    }
+                    case SHT_SYMTAB:
+                    {
+                        logger.logInfo("Extracting  SHT_SYMTAB(%d).", SHT_SYMTAB);
+                        logger.logInfo("Section Size:%d", sectionSize);
+                        logger.logInfo("Section Table Entry Size:%d", sectionTableEntrySize);
+
+                        Elf32_Word sectionSize           = sectionHeader->sh_size;
+                        Elf32_Word sectionTableEntrySize = sectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB*/
+                        //                        elf_getdata();
+
+                        int        numberOfSymbols       = sectionSize / sectionTableEntrySize;
+
+                        logger.logInfo("Found %d symbols in Elf", numberOfSymbols);
+
+                        Elf_Data *elfData = nullptr;
+                        elfData           = elf_getdata(section, elfData);
+                        if (elfData != nullptr)
+                        {
+                            logger.logInfo("elfData Size:%d", elfData->d_size);
+
+                            Elf32_Sym *sectionTableData = (Elf32_Sym *)elfData->d_buf;
+
+                            size_t     strTableIndex    = sectionHeader->sh_link;
+
+                            //                            strTableIndex = 275;
+                            for (int i = 0; i < numberOfSymbols; i++)
+                            {
+                                Elf32_Sym *symbol = sectionTableData;
+
+                                if (symbol->st_size > 0)
+                                {
+                                    logger.logInfo("symbol size: %d\n", symbol->st_size);
+
+                                    std::cout << "strTableIndex1:" << strTableIndex << std::endl;
+
+                                    Elf_Scn    *stringTableSection                  = elf_getscn(elf, strTableIndex);
+                                    Elf32_Shdr *stringTableSectionHeader            = elf32_getshdr(stringTableSection);
+
+                                    Elf32_Word  stringTableSectionHeaderSectionSize = stringTableSectionHeader->sh_size;
+                                    Elf32_Word  stringTableSectionHeaderSectionTableEntrySize =
+                                        stringTableSectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB. Not relevant for string table.*/
+
+                                    if (symbol->st_name > 0)
+                                    {
+                                        std::cout << "symbol->st_name:" << symbol->st_name << std::endl;
+
+                                        std::cout << "strTableIndex2:" << strTableIndex << std::endl;
+
+                                        std::cout << "sectionHeader->sh_link:" << sectionHeader->sh_link << std::endl;
+                                        char *currentStrTblPtr = elf_strptr(elf, strTableIndex, symbol->st_name);
+
+                                        if (currentStrTblPtr != nullptr)
+                                        {
+                                            std::cout << "currentStrTblPtr********DONE" << std::endl;
+
+                                            int         stringTableCursor = 0;
+                                            std::string name{};
+                                            while (currentStrTblPtr[stringTableCursor] != '\0')
+                                            {
+                                                name.push_back(currentStrTblPtr[stringTableCursor]);
+                                                stringTableCursor++;
+                                            }
+
+                                            //
+                                            std::cout << "symbolName:" << name << std::endl;
+                                        }
+                                    }
+                                }
+                                sectionTableData++;
+                            }
+
+                            //                            TODO:Map it to DWARF here.
+                            //                            std::cout << "sectionTableData Done*******:" << std::endl;
+                            //
+                            //                            Elf_Scn    *symbolSectionData         = elf_getscn(elf, symbol->st_shndx);
+                            //
+                            //                            Elf32_Shdr *symbolSectionDataContents = elf32_getshdr(symbolSectionData);
+                            //
+                            //                            std::cout << "symbolSectionDataContents" << symbolSectionDataContents->sh_size << std::endl;
+                        }
+
+                        break;
+                    }
+                    case SHT_STRTAB:
+                    {
+                        logger.logWarning("Extracting SHT_STRTAB(%d) from section #%d.", SHT_STRTAB, i);
+                        break;
+                    }
+                    case SHT_RELA:
+                    {
+                        logger.logWarning("Section  SHT_RELA(%d) not supported.", SHT_RELA);
+                        break;
+                    }
+                    case SHT_HASH:
+                    {
+                        logger.logWarning("Section  SHT_HASH(%d) not supported.", SHT_HASH);
+                        break;
+                    }
+                    case SHT_DYNAMIC:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_DYNAMIC);
+                        break;
+                    }
+                    case SHT_NOTE:
+                    {
+                        logger.logWarning("Section  SHT_NOTE(%d) not supported.", SHT_NOTE);
+                        break;
+                    }
+                    case SHT_NOBITS:
+                    {
+                        logger.logWarning("Section  SHT_NOBITS(%d) not supported.", SHT_NOBITS);
+                        break;
+                    }
+                    case SHT_REL:
+                    {
+                        logger.logWarning("Section  SHT_REL(%d) not supported.", SHT_REL);
+                        break;
+                    }
+                    case SHT_SHLIB:
+                    {
+                        logger.logWarning("Section  SHT_SHLIB(%d) not supported.", SHT_SHLIB);
+                        break;
+                    }
+                    case SHT_DYNSYM:
+                    {
+                        logger.logWarning("Section  SHT_DYNSYM(%d) not supported.", SHT_DYNSYM);
+                        break;
+                    }
+                    case SHT_INIT_ARRAY:
+                    {
+                        logger.logWarning("Section  SHT_INIT_ARRAY(%d) not supported.", SHT_INIT_ARRAY);
+                        break;
+                    }
+                    case SHT_FINI_ARRAY:
+                    {
+                        logger.logWarning("Section  SHT_FINI_ARRAY(%d) not supported.", SHT_FINI_ARRAY);
+                        break;
+                    }
+                    case SHT_PREINIT_ARRAY:
+                    {
+                        logger.logWarning("Section  SHT_PREINIT_ARRAY(%d) not supported.", SHT_PREINIT_ARRAY);
+                        break;
+                    }
+                    case SHT_GROUP:
+                    {
+                        logger.logWarning("Section  SHT_GROUP(%d) not supported.", SHT_GROUP);
+                        break;
+                    }
+                    case SHT_SYMTAB_SHNDX:
+                    {
+                        logger.logWarning("Section  SHT_SYMTAB_SHNDX(%d) not supported.", SHT_SYMTAB_SHNDX);
+                        break;
+                    }
+                    case SHT_NUM:
+                    {
+                        logger.logWarning("Section  SHT_NUM(%d) not supported.", SHT_NUM);
+                        break;
+                    }
+                    case SHT_LOOS:
+                    {
+                        logger.logWarning("Section  SHT_LOOS(%d) not supported.", SHT_LOOS);
+                        break;
+                    }
+                    case SHT_GNU_ATTRIBUTES:
+                    {
+                        logger.logWarning("Section  SHT_GNU_ATTRIBUTES(%d) not supported.", SHT_GNU_ATTRIBUTES);
+                        break;
+                    }
+                    case SHT_GNU_HASH:
+                    {
+                        logger.logWarning("Section  SHT_GNU_HASH(%d) not supported.", SHT_GNU_HASH);
+                        break;
+                    }
+                    case SHT_GNU_LIBLIST:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_GNU_LIBLIST);
+                        break;
+                    }
+                    case SHT_CHECKSUM:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_CHECKSUM);
+                        break;
+                    }
+                        //                case  SHT_LOSUNW: SHT_LOSUNW and SHT_SUNW_move are the same value, for some reason.
+                    case SHT_SUNW_move:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_SUNW_move);
+                        break;
+                    }
+                    case SHT_SUNW_COMDAT:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_SUNW_COMDAT);
+                        break;
+                    }
+                    case SHT_SUNW_syminfo:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_SUNW_syminfo);
+                        break;
+                    }
+                    case SHT_GNU_verdef:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_GNU_verdef);
+                        break;
+                    }
+                    case SHT_GNU_verneed:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_GNU_verneed);
+                        break;
+                    }
+
+                    //                case  SHT_HISUNW: SHT_GNU_versym and SHT_HISUNW are the same value, for some reason.
+                    case SHT_HIOS:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_HIOS);
+                        break;
+                    }
+                    case SHT_LOPROC:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_LOPROC);
+                        break;
+                    }
+                    case SHT_HIPROC:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_HIPROC);
+                        break;
+                    }
+                    case SHT_LOUSER:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_LOUSER);
+                        break;
+                    }
+                    case SHT_HIUSER:
+                    {
+                        logger.logWarning("Section  %d not supported.", SHT_HIUSER);
+                        break;
+                    }
+                }
+
+                //                std::cout << "sh_type" << sectionHeader->sh_type << std::endl;
+            }
+            std::cout << "res:" << res << std::endl;
+
+            ident_buffer = elf_hdr_32->e_ident;
+
+            if (ident_buffer[EI_DATA] == ELFDATA2LSB)
+            {
+                rc = JUICER_ENDIAN_LITTLE;
+            }
+            else if (ident_buffer[EI_DATA] == ELFDATA2MSB)
+            {
+                rc = JUICER_ENDIAN_BIG;
+            }
+            else
+            {
+                rc = JUICER_ENDIAN_UNKNOWN;
+            }
+            elf_end(elf);
+        }
+        else
+        {
+            logger.logError("elf_begin failed.  errno=%d  %s", errno, strerror(errno));
+        }
+    }
+    else
+    {
+        // empty
+    }
+
+    return objData;
+}
+
+/**
  *@brief Gets the endianness from the elfFile.
  */
 JuicerEndianness_t Juicer::getEndianness()
@@ -4615,7 +5016,9 @@ int Juicer::parse(std::string &elfFilePath)
         if (JUICER_OK == return_value)
         {
             /* Get the endianness. */
-            endianness           = getEndianness();
+            endianness = getEndianness();
+
+            gObjDataFromElf("FFB_ConfigTbl");
 
             /**
              *@note For now, the checksum is always done.
