@@ -325,6 +325,21 @@ int SQLiteDB::write(ElfFile& inElf)
                             "Enumeration entries were written to the fields schema "
                             "with SQLITE_OK status.");
                         rc = SQLITE_OK;
+
+                        rc = writeVariablesToDatabase(inElf);
+                        if (SQLITEDB_ERROR != rc)
+                        {
+                            logger.logDebug(
+                                "Variable entries were written to the variables schema "
+                                "with SQLITE_OK status.");
+                        }
+                        else
+                        {
+                            logger.logDebug(
+                                "There was an error while writing variable entries to the"
+                                " database.");
+                            rc = SQLITEDB_ERROR;
+                        }
                     }
                     else
                     {
@@ -476,6 +491,90 @@ int SQLiteDB::writeMacrosToDatabase(ElfFile& inElf)
             else
             {
                 logger.logDebug("There was an error while writing data to the elfs table.");
+                logger.logDebug("%s.", errorMessage);
+                rc = SQLITEDB_ERROR;
+            }
+        }
+    }
+
+    return rc;
+}
+
+/**
+ *@brief Iterates through all of the ELF entries in
+ *inElf and writes each one to the "elfs" table.
+ *
+ *@param inElf The elf that has the Elf data.
+ *
+ *@return Returns SQLITEDB_OK if all of the elf entries are written to the
+ *database successfully. If the method fails to write at least one of the
+ *elf entries to the database, then SQLITEDB_ERROR is returned.
+ */
+int SQLiteDB::writeVariablesToDatabase(ElfFile& inElf)
+{
+    int   rc           = SQLITEDB_OK;
+    char* errorMessage = NULL;
+
+    for (auto variable : inElf.getVariables())
+    {
+        //        std::string          symbolInitializedDataName = symbolDataPair.first;
+        //        std::vector<uint8_t> symbolInitializedData     = symbolDataPair.second;
+
+        inElf.getInitializedSymbolData();
+        uint32_t    typeID;
+
+        /*
+         * @todo I want to store these SQLite magical values into MACROS,
+         * but I'm not sure what is the best way to do that without it being
+         * messy.
+         */
+        std::string writeVariableQuery{};
+
+        writeVariableQuery +=
+            "INSERT INTO variables(name, elf, type, short_description, long_description) "
+            "VALUES(";
+        writeVariableQuery += "\"";
+        writeVariableQuery += variable.getName();
+        writeVariableQuery += "\"";
+        writeVariableQuery += ",";
+        writeVariableQuery += std::to_string(inElf.getId());
+
+        writeVariableQuery += ",";
+        writeVariableQuery += std::to_string(variable.getType().getId());
+
+        writeVariableQuery += ",";
+
+        writeVariableQuery += "\"";
+        writeVariableQuery += variable.getShortDescription();
+        writeVariableQuery += "\"";
+
+        writeVariableQuery += ",";
+        writeVariableQuery += "\"";
+        writeVariableQuery += variable.getShortDescription();
+        writeVariableQuery += "\"";
+
+        writeVariableQuery += ");";
+
+        logger.logDebug("Sending \"%s\" query to database.", writeVariableQuery.c_str());
+
+        rc = sqlite3_exec(database, writeVariableQuery.c_str(), NULL, NULL, &errorMessage);
+
+        if (SQLITE_OK == rc)
+        {
+            logger.logDebug(
+                "Variable values were written to the macros schema with "
+                "SQLITE_OK status.");
+        }
+        else
+        {
+            if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+            {
+                logger.logDebug("%s.", errorMessage);
+                rc = SQLITE_OK;
+            }
+            else
+            {
+                logger.logDebug("There was an error while writing data to the variables table.");
                 logger.logDebug("%s.", errorMessage);
                 rc = SQLITEDB_ERROR;
             }
@@ -1021,6 +1120,19 @@ int SQLiteDB::createSchemas(void)
                                 logger.logDebug(
                                     "createMacrosSchema() created the macros schema "
                                     "successfully.");
+
+                                rc = createVariablesSchema();
+                                if (SQLITE_OK == rc)
+                                {
+                                    logger.logDebug(
+                                        "createVariablesSchema() created the variables schema "
+                                        "successfully.");
+                                }
+                                else
+                                {
+                                    logger.logDebug("createVariablesSchema() failed.");
+                                    rc = SQLITEDB_ERROR;
+                                }
                             }
                             else
                             {
@@ -1281,6 +1393,39 @@ int SQLiteDB::createMacrosSchema(void)
      * necessary to pass in, but I really think we should for better error
      * logging.*/
     rc             = sqlite3_exec(database, createMacrosTableQuery.c_str(), NULL, NULL, NULL);
+
+    if (SQLITE_OK == rc)
+    {
+        logger.logDebug("Created table \"artifacts\" with OK status");
+    }
+    else
+    {
+        logger.logError("Failed to create the artifacts table. '%s'", sqlite3_errmsg(database));
+        rc = SQLITEDB_ERROR;
+    }
+
+    return rc;
+}
+
+/**
+ *@brief Creates the enumerations schema.
+ *If the schema already exists, then this method does nothing.
+ *This method assumes the sqlite handle database has been initialized
+ *previously with a call to initialize().
+ *
+ *@return Returns SQLITE_OK created the elfs schema successfully.
+ *If an error occurs, SQLITEDB_ERROR returns.
+ */
+int SQLiteDB::createVariablesSchema(void)
+{
+    std::string createVariablesTableQuery{CREATE_VARIIABLES_TABLE};
+
+    int         rc = SQLITE_OK;
+
+    /*@todo The last argument for sqlite3_exec is an error handler that is not
+     * necessary to pass in, but I really think we should for better error
+     * logging.*/
+    rc             = sqlite3_exec(database, createVariablesTableQuery.c_str(), NULL, NULL, NULL);
 
     if (SQLITE_OK == rc)
     {

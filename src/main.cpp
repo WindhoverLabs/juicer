@@ -56,7 +56,7 @@ static char doc[] =
 /* A description of the arguments we accept. */
 static char args_doc[] =
     "--input <FILE> --mode <MODE> (--output <FILE> | "
-    "(--address <ADDR> --port <PORT> --project <PROJ>))";
+    "(--address <ADDR> --port <PORT> --project <PROJ>)) -x";
 
 /* The options we understand. */
 static struct argp_option options[] = {{"input", 'i', "FILE", 0, "Input ELF file"},
@@ -71,6 +71,9 @@ static struct argp_option options[] = {{"input", 'i', "FILE", 0, "Input ELF file
                                        {"port", 'p', "PORT", 0, "Postgresql server port.  Required for CCDD mode."},
                                        {"user", 'u', "USER", 0, "Postgresql user.  Required for CCDD mode."},
                                        {"project", 'j', "PROJECT", 0, "Postgresql CCDD project.  Required for CCDD mode."},
+                                       {"extras", 'x', NULL, 0,
+                                        "Extra DWARF and ELF data such as variables. Enabling this"
+                                        "will cause juicer to take longer."},
                                        {0}};
 
 /* Used by main to communicate with parse_opt. */
@@ -95,6 +98,7 @@ typedef struct
     bool               user_set;
     char              *project;
     bool               project_set;
+    bool               extras;
 } arguments_t;
 
 /* Parse a single option. */
@@ -167,6 +171,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
             arguments->project     = arg;
             arguments->project_set = true;
 
+            break;
+        }
+
+        case 'x':
+        {
+            arguments->extras = true;
             break;
         }
 
@@ -275,6 +285,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
                 }
             }
 
+            //            /* Verify Extras. */
+            //            if (arguments->extras)
+            //            {
+            //                //                printf("Error:  extras name must be set.\n");
+            //                //                argp_usage(state);
+            //                return ARGP_KEY_ERROR;
+            //            }
+
             break;
         }
 
@@ -301,13 +319,15 @@ int                main(int argc, char **argv)
     /* Set argument default values. */
     memset(&arguments, 0, sizeof(arguments));
     arguments.verbosity = 1;
+    arguments.extras    = false;
 
     /* Parse our arguments; every option seen by parse_opt will
      be reflected in arguments. */
     parse_error         = argp_parse(&argp, argc, argv, 0, 0, &arguments);
     if (parse_error == 0)
     {
-        Juicer          juicer;
+        Juicer juicer;
+        juicer.setExtras(arguments.extras);
         IDataContainer *idc    = 0;
 
         Logger          logger = Logger(arguments.verbosity);

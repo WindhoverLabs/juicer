@@ -56,6 +56,7 @@
 #include "Field.h"
 #include "IDataContainer.h"
 #include "Symbol.h"
+#include "Variable.h"
 
 struct macro_counts_s
 {
@@ -1157,6 +1158,114 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
                 std::string checkSum{};
                 newArtifact.setMD5(checkSum);
                 outSymbol = elf.addSymbol(name, byteSize, newArtifact);
+            }
+        }
+    }
+
+    return outSymbol;
+}
+
+Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
+{
+    Symbol         *outSymbol   = 0;
+    Dwarf_Attribute attr_struct = nullptr;
+    Dwarf_Off       typeOffset  = 0;
+    Dwarf_Die       typeDie     = nullptr;
+    Dwarf_Error     error       = 0;
+    char           *typeDieName;
+
+    /* Get the type attribute. */
+
+    res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
+    if (res != DW_DLV_OK)
+    {
+        logger.logDebug("Ignoring error in dwarf_attr(DW_AT_type). %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+    }
+
+    /* Get the offset to the type Die. */
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_global_formref(attr_struct, &typeOffset, &error);
+        if (res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_formref.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
+    }
+
+    /* Get the type Die. */
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_offdie(dbg, typeOffset, &typeDie, &error);
+        if (res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_offdie.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
+    }
+
+    /* Get the name of the type Die. */
+    typeDieName = getFirstAncestorName(inDie);
+
+    if (res == DW_DLV_OK)
+    {
+        Dwarf_Unsigned byteSize;
+        std::string    name = typeDieName;
+        name                = name + "*";
+
+        char      *outName;
+
+        Dwarf_Bool hasName;
+
+        /* Does this die have a name? */
+        if (res == DW_DLV_OK)
+        {
+            res = dwarf_hasattr(inDie, DW_AT_name, &hasName, &error);
+            if (res != DW_DLV_OK)
+            {
+                logger.logError("Error in dwarf_hasattr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+            }
+        }
+
+        if (res == DW_DLV_OK)
+        {
+            if (hasName == false)
+            {
+                //  TODO:
+                //                outName = getFirstAncestorName(typeDie);
+            }
+            else
+            {
+                /* Get the name of the type Die. */
+                res = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
+                if (res != DW_DLV_OK)
+                {
+                    logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+                }
+
+                if (res == DW_DLV_OK)
+                {
+                    res = dwarf_formstring(attr_struct, &outName, &error);
+                    if (res != DW_DLV_OK)
+                    {
+                        logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                    }
+
+                    if (res == DW_DLV_OK)
+                    {
+                        logger.logInfo("Found variable with name \"%s\"", outName);
+
+                        DimensionList dimList{};
+                        // TODO:Really don't like the pattern of passing an empty object to getBaseTypeSymbol...
+                        Symbol       *s = getBaseTypeSymbol(elf, inDie, dimList);
+
+                        if (s != nullptr)
+                        {
+                            Variable             newVariable{outName, *s, elf};
+                            std::vector<uint8_t> variableData = elf.getInitializedSymbolData().at(outName);
+
+                            elf.addVariable(newVariable);
+                        }
+                    }
+                }
             }
         }
     }
@@ -4356,9 +4465,11 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
             case DW_TAG_variable:
             {
-                /**
-                 * @todo implement.
-                 */
+                if (extras)
+                {
+                    process_DW_TAG_variable_type(elf, dbg, cur_die);
+                }
+                break;
             }
         }
 
@@ -4507,18 +4618,18 @@ int Juicer::printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level)
 /**
  * @brief get Object data from a variable that is initialized at runtime.
  */
-std::vector<uint8_t> Juicer::gObjDataFromElf(std::string variableName)
+std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf()
 {
-    std::vector<uint8_t> objData      = std::vector<uint8_t>();
+    Elf                                        *elf          = NULL;
+    unsigned char                              *ident_buffer = NULL;
+    char                                       *buffer       = NULL;
+    size_t                                      size         = 0;
+    JuicerEndianness_t                          rc;
 
-    Elf                 *elf          = NULL;
-    unsigned char       *ident_buffer = NULL;
-    char                *buffer       = NULL;
-    size_t               size         = 0;
-    JuicerEndianness_t   rc;
+    Elf64_Ehdr                                 *elf_hdr_64   = 0;
+    Elf32_Ehdr                                 *elf_hdr_32   = 0;
 
-    Elf64_Ehdr          *elf_hdr_64 = 0;
-    Elf32_Ehdr          *elf_hdr_32 = 0;
+    std::map<std::string, std::vector<uint8_t>> symbolToData = std::map<std::string, std::vector<uint8_t>>();
 
     elf_version(EV_CURRENT);
 
@@ -4528,12 +4639,8 @@ std::vector<uint8_t> Juicer::gObjDataFromElf(std::string variableName)
 
     if (buffer[EI_CLASS] == ELFCLASS64)
     {
-        //    extern Elf_Data *elf_getdata (Elf_Scn *__scn, Elf_Data *__data);
         size_t elfSectionCount = -1;
         int    res             = elf_getshdrnum(elf, &elfSectionCount);
-
-        std::cout << "elfSectionCount:" << elfSectionCount << std::endl;
-        //        this-
 
         for (size_t i = 0; i < elfSectionCount; i++)
         {
@@ -4574,11 +4681,7 @@ std::vector<uint8_t> Juicer::gObjDataFromElf(std::string variableName)
             size_t elfSectionCount = 0;
             int    res             = elf_getshdrnum(elf, &elfSectionCount);
 
-            std::cout << "elfSectionCount:" << elfSectionCount << std::endl;
-
             logger.logInfo("Found %d elf sections", elfSectionCount);
-
-            std::map<std::string, int> symbolToSize = std::map<std::string, int>();
 
             for (size_t i = 0; i < elfSectionCount; i++)
             {
@@ -4603,13 +4706,12 @@ std::vector<uint8_t> Juicer::gObjDataFromElf(std::string variableName)
                     }
                     case SHT_SYMTAB:
                     {
-                        logger.logInfo("Extracting  SHT_SYMTAB(%d).", SHT_SYMTAB);
+                        logger.logInfo("Extracting  SHT_SYMTAB(%d) at index(%d).", SHT_SYMTAB, i);
                         logger.logInfo("Section Size:%d", sectionSize);
                         logger.logInfo("Section Table Entry Size:%d", sectionTableEntrySize);
 
                         Elf32_Word sectionSize           = sectionHeader->sh_size;
                         Elf32_Word sectionTableEntrySize = sectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB*/
-                        //                        elf_getdata();
 
                         int        numberOfSymbols       = sectionSize / sectionTableEntrySize;
 
@@ -4624,62 +4726,73 @@ std::vector<uint8_t> Juicer::gObjDataFromElf(std::string variableName)
                             Elf32_Sym *sectionTableData = (Elf32_Sym *)elfData->d_buf;
 
                             size_t     strTableIndex    = sectionHeader->sh_link;
-
-                            //                            strTableIndex = 275;
+                            logger.logInfo("String table index for symbols:%d", strTableIndex);
                             for (int i = 0; i < numberOfSymbols; i++)
                             {
                                 Elf32_Sym *symbol = sectionTableData;
 
                                 if (symbol->st_size > 0)
                                 {
-                                    logger.logInfo("symbol size: %d\n", symbol->st_size);
-
-                                    std::cout << "strTableIndex1:" << strTableIndex << std::endl;
-
-                                    Elf_Scn    *stringTableSection                  = elf_getscn(elf, strTableIndex);
-                                    Elf32_Shdr *stringTableSectionHeader            = elf32_getshdr(stringTableSection);
-
-                                    Elf32_Word  stringTableSectionHeaderSectionSize = stringTableSectionHeader->sh_size;
-                                    Elf32_Word  stringTableSectionHeaderSectionTableEntrySize =
-                                        stringTableSectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB. Not relevant for string table.*/
-
-                                    if (symbol->st_name > 0)
+                                    if (symbol->st_shndx == SHN_COMMON)
                                     {
-                                        std::cout << "symbol->st_name:" << symbol->st_name << std::endl;
+                                        logger.logWarning("Ignoring symbol since it has SHN_COMMON as its st_shndx");
+                                    }
+                                    else
+                                    {
+                                        Elf_Scn    *stringTableSection                  = elf_getscn(elf, strTableIndex);
+                                        Elf32_Shdr *stringTableSectionHeader            = elf32_getshdr(stringTableSection);
 
-                                        std::cout << "strTableIndex2:" << strTableIndex << std::endl;
+                                        Elf32_Word  stringTableSectionHeaderSectionSize = stringTableSectionHeader->sh_size;
 
-                                        std::cout << "sectionHeader->sh_link:" << sectionHeader->sh_link << std::endl;
-                                        char *currentStrTblPtr = elf_strptr(elf, strTableIndex, symbol->st_name);
-
-                                        if (currentStrTblPtr != nullptr)
+                                        if (symbol->st_name > 0)
                                         {
-                                            std::cout << "currentStrTblPtr********DONE" << std::endl;
+                                            char *currentStrTblPtr = elf_strptr(elf, strTableIndex, symbol->st_name);
 
-                                            int         stringTableCursor = 0;
-                                            std::string name{};
-                                            while (currentStrTblPtr[stringTableCursor] != '\0')
+                                            if (currentStrTblPtr != nullptr)
                                             {
-                                                name.push_back(currentStrTblPtr[stringTableCursor]);
-                                                stringTableCursor++;
-                                            }
+                                                int         stringTableCursor = 0;
+                                                std::string name{};
+                                                while (currentStrTblPtr[stringTableCursor] != '\0')
+                                                {
+                                                    name.push_back(currentStrTblPtr[stringTableCursor]);
+                                                    stringTableCursor++;
+                                                }
 
-                                            //
-                                            std::cout << "symbolName:" << name << std::endl;
+                                                logger.logInfo("Found symbol %s with size: %d, st_value:%u, st_name:%u, st_info:%u, st_other:%u, st_shndx:%u\n",
+                                                               name.c_str(), symbol->st_size, symbol->st_value, symbol->st_name, symbol->st_info,
+                                                               symbol->st_other, symbol->st_shndx);
+
+                                                //                            TODO:Map it to DWARF here.
+                                                Elf_Scn  *symbolSectionData         = elf_getscn(elf, symbol->st_shndx);
+
+                                                Elf_Data *symbolSectionDataContents = nullptr;
+
+                                                symbolSectionDataContents           = elf_getdata(symbolSectionData, symbolSectionDataContents);
+
+                                                if (symbolSectionDataContents->d_type == ELF_T_BYTE)
+                                                {
+                                                    uint8_t             *symbolDataCursor = (uint8_t *)symbolSectionDataContents->d_buf;
+
+                                                    std::vector<uint8_t> symbolData       = std::vector<uint8_t>();
+
+                                                    for (int i = symbol->st_value; i < symbol->st_size; i++)
+                                                    {
+                                                        symbolData.push_back(symbolDataCursor[i]);
+                                                    }
+
+                                                    symbolToData.insert({name, symbolData});
+                                                }
+                                                else
+                                                {
+                                                    logger.logWarning("Symbol %s ignored since ELF_T_BYTE was NOT found. Found %d type instead.", name.c_str(),
+                                                                      symbolSectionDataContents->d_type);
+                                                }
+                                            }
                                         }
                                     }
                                 }
                                 sectionTableData++;
                             }
-
-                            //                            TODO:Map it to DWARF here.
-                            //                            std::cout << "sectionTableData Done*******:" << std::endl;
-                            //
-                            //                            Elf_Scn    *symbolSectionData         = elf_getscn(elf, symbol->st_shndx);
-                            //
-                            //                            Elf32_Shdr *symbolSectionDataContents = elf32_getshdr(symbolSectionData);
-                            //
-                            //                            std::cout << "symbolSectionDataContents" << symbolSectionDataContents->sh_size << std::endl;
                         }
 
                         break;
@@ -4869,7 +4982,7 @@ std::vector<uint8_t> Juicer::gObjDataFromElf(std::string variableName)
         // empty
     }
 
-    return objData;
+    return symbolToData;
 }
 
 /**
@@ -5018,7 +5131,11 @@ int Juicer::parse(std::string &elfFilePath)
             /* Get the endianness. */
             endianness = getEndianness();
 
-            gObjDataFromElf("FFB_ConfigTbl");
+            if (extras)
+            {
+                auto objDataMap = getObjDataFromElf();
+                elf->setInitializedSymbolData(objDataMap);
+            }
 
             /**
              *@note For now, the checksum is always done.

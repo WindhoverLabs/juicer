@@ -42,6 +42,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <string>
 
 #include "DimensionList.h"
@@ -96,6 +97,10 @@ class Juicer
     JuicerEndianness_t getEndianness();
     void               setIDC(IDataContainer* idc);
 
+    bool               isExtras() const { return extras; }
+
+    void               setExtras(bool extras) { this->extras = extras; }
+
    private:
     Dwarf_Debug              dbg = 0;
     int                      res = DW_DLV_ERROR;
@@ -107,6 +112,7 @@ class Juicer
     Symbol*                  process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
     void                     process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
     Symbol*                  process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
+    Symbol*                  process_DW_TAG_variable_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
     void                     process_DW_TAG_enumeration_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
     int                      process_DW_TAG_array_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
     char*                    getFirstAncestorName(Dwarf_Die inDie);
@@ -138,7 +144,9 @@ class Juicer
     DefineMacro              getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Context mac_context, int i, Dwarf_Unsigned line_number, Dwarf_Unsigned index,
                                             Dwarf_Unsigned offset, const char* macro_string, Dwarf_Half& forms_count, Dwarf_Error& error, Dwarf_Die cu_die, ElfFile& elf);
     DefineMacro              getDefineMacroFromString(std::string macro_string);
-    std::vector<uint8_t>     gObjDataFromElf(std::string variableName);
+    std::map<std::string, std::vector<uint8_t>> getObjDataFromElf();
+
+    bool                                        extras;
 };
 
 #endif /* JUICER_H_ */

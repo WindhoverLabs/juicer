@@ -102,6 +102,28 @@
 								  long_description TEXT,\
                                   UNIQUE (name, value));"
 
+#define CREATE_VARIIABLES_TABLE \
+    "CREATE TABLE IF NOT EXISTS variables(\
+                                  id INTEGER PRIMARY KEY,\
+                                  name TEXT NOT NULL,\
+                                  elf INETEGER NOT NULL,\
+								  type INTEGER NOT NULL,\
+								  short_description TEXT,\
+								  long_description TEXT,\
+								  FOREIGN KEY (type) REFERENCES symbols(id),\
+                                  UNIQUE (name, type, elf));"
+
+#define CREATE_DATA_OBJECTS_TABLE \
+    "CREATE TABLE IF NOT EXISTS data_objects(\
+                                  id INTEGER PRIMARY KEY,\
+                                  data TEXT NOT NULL,\
+                                  elf TEXT NOT NULL,\
+								  type INTEGER NOT NULL,\
+								  short_description TEXT,\
+								  long_description TEXT,\
+								  FOREIGN KEY (type) REFERENCES symbols(id),\
+                                  UNIQUE (name, type, elf));"
+
 #define SQLiteDB_TRUE  1
 #define SQLiteDB_FALSE 0
 
@@ -125,8 +147,10 @@ class SQLiteDB : public IDataContainer
     int                 createEnumerationSchema(void);
     int                 createArtifactsSchema(void);
     int                 createMacrosSchema(void);
+    int                 createVariablesSchema(void);
     int                 writeElfToDatabase(ElfFile &inModule);
     int                 writeMacrosToDatabase(ElfFile &inModule);
+    int                 writeVariablesToDatabase(ElfFile &inModule);
     int                 writeArtifactsToDatabase(ElfFile &inModule);
     int                 writeSymbolsToDatabase(ElfFile &inModule);
     int                 writeFieldsToDatabase(ElfFile &inModule);
