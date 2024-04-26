@@ -32,8 +32,8 @@ class Variable
     Symbol&     type;
     ElfFile&    elf;
 
-    std::string short_description{"TODO"};
-    std::string long_description{"TODO"};
+    std::string short_description{""};
+    std::string long_description{""};
 };
 
 #endif /* SRC_VARIABLE_H_ */
