@@ -562,7 +562,7 @@ int SQLiteDB::writeVariablesToDatabase(ElfFile& inElf)
         if (SQLITE_OK == rc)
         {
             logger.logDebug(
-                "Variable values were written to the macros schema with "
+                "Variable values were written to the variables schema with "
                 "SQLITE_OK status.");
         }
         else

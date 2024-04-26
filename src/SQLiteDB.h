@@ -114,16 +114,16 @@
 								  FOREIGN KEY (elf) REFERENCES elfs(id),\
                                   UNIQUE (name, type, elf));"
 
-#define CREATE_DATA_OBJECTS_TABLE \
-    "CREATE TABLE IF NOT EXISTS data_objects(\
-                                  id INTEGER PRIMARY KEY,\
-                                  data TEXT NOT NULL,\
-                                  elf TEXT NOT NULL,\
-								  type INTEGER NOT NULL,\
-								  short_description TEXT,\
-								  long_description TEXT,\
-								  FOREIGN KEY (type) REFERENCES symbols(id),\
-                                  UNIQUE (name, type, elf));"
+//#define CREATE_DATA_OBJECTS_TABLE \
+//    "CREATE TABLE IF NOT EXISTS data_objects(\
+//                                  id INTEGER PRIMARY KEY,\
+//                                  data TEXT NOT NULL,\
+//                                  elf TEXT NOT NULL,\
+//								  type INTEGER NOT NULL,\
+//								  short_description TEXT,\
+//								  long_description TEXT,\
+//								  FOREIGN KEY (type) REFERENCES symbols(id),\
+//                                  UNIQUE (name, type, elf));"
 
 #define SQLiteDB_TRUE  1
 #define SQLiteDB_FALSE 0

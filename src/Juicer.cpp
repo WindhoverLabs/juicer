@@ -1259,10 +1259,14 @@ Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwar
 
                         if (s != nullptr)
                         {
-                            Variable             newVariable{outName, *s, elf};
-                            std::vector<uint8_t> variableData = elf.getInitializedSymbolData().at(outName);
+                            Variable newVariable{outName, *s, elf};
 
-                            elf.addVariable(newVariable);
+                            if (elf.getInitializedSymbolData().find(outName) != elf.getInitializedSymbolData().end())
+                            {
+                                std::vector<uint8_t> variableData = elf.getInitializedSymbolData().at(outName);
+
+                                elf.addVariable(newVariable);
+                            }
                         }
                     }
                 }
@@ -4774,10 +4778,19 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf()
                                                     uint8_t             *symbolDataCursor = (uint8_t *)symbolSectionDataContents->d_buf;
 
                                                     std::vector<uint8_t> symbolData       = std::vector<uint8_t>();
+                                                    std::cout << "ELF32_ST_TYPE:" << ELF32_ST_TYPE(symbol->st_info) << std::endl;
+                                                    std::cout << "ELF32_ST_BIND:" << ELF32_ST_BIND(symbol->st_info) << std::endl;
 
-                                                    for (int i = symbol->st_value; i < symbol->st_size; i++)
+                                                    if (symbolDataCursor != nullptr)
                                                     {
-                                                        symbolData.push_back(symbolDataCursor[i]);
+                                                        for (int i = symbol->st_value; i < symbol->st_size; i++)
+                                                        {
+                                                            symbolData.push_back(symbolDataCursor[i]);
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        logger.logWarning("Did not find size for symbol \"%d\"", name);
                                                     }
 
                                                     symbolToData.insert({name, symbolData});
