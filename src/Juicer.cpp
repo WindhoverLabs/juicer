@@ -4622,7 +4622,7 @@ int Juicer::printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level)
 /**
  * @brief get Object data from a variable that is initialized at runtime.
  */
-std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf()
+std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *elfFileObj)
 {
     Elf                                        *elf          = NULL;
     unsigned char                              *ident_buffer = NULL;
@@ -4689,12 +4689,14 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf()
 
             for (size_t i = 0; i < elfSectionCount; i++)
             {
-                Elf_Scn    *section               = elf_getscn(elf, i);
+                Elf_Scn    *section       = elf_getscn(elf, i);
 
-                Elf32_Shdr *sectionHeader         = elf32_getshdr(section);
+                Elf32_Shdr *sectionHeader = elf32_getshdr(section);
 
-                Elf32_Word  sectionSize           = sectionHeader->sh_size;
-                Elf32_Word  sectionTableEntrySize = sectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB*/
+                elfFileObj->addElf32SectionHeader(*sectionHeader);
+
+                Elf32_Word sectionSize           = sectionHeader->sh_size;
+                Elf32_Word sectionTableEntrySize = sectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB*/
 
                 switch (sectionHeader->sh_type)
                 {
@@ -4804,6 +4806,8 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf()
                                         }
                                     }
                                 }
+
+                                elfFileObj->addElf32SymbolTableSymbol(*symbol);
                                 sectionTableData++;
                             }
                         }
@@ -5146,7 +5150,7 @@ int Juicer::parse(std::string &elfFilePath)
 
             if (extras)
             {
-                auto objDataMap = getObjDataFromElf();
+                auto objDataMap = getObjDataFromElf(elf.get());
                 elf->setInitializedSymbolData(objDataMap);
             }
 

@@ -8,6 +8,7 @@
 #ifndef ElfFile_H
 #define ElfFile_H
 
+#include <libelf.h>
 #include <stdint.h>
 
 #include <memory>
@@ -71,6 +72,11 @@ class ElfFile
     void                                               setInitializedSymbolData(const std::map<std::string, std::vector<uint8_t>> &initializedSymbolData);
     void                                               addVariable(Variable newVariable);
     const std::vector<Variable>                       &getVariables() const;
+    void                                               addElf32SectionHeader(Elf32_Shdr newVariable);
+    std::vector<Elf32_Shdr>                            getElf32Headers() const;
+
+    void                                               addElf32SymbolTableSymbol(Elf32_Sym newSymbol);
+    std::vector<Elf32_Sym>                             getElf32SymbolTable() const;
 
    private:
     std::string                                 md5;
@@ -97,6 +103,11 @@ class ElfFile
      *  Data that is already initialized at compile time that is will be loaded by loader/linker into memory.
      */
     std::map<std::string, std::vector<uint8_t>> initializedSymbolData{};
+
+    std::vector<Elf32_Shdr>                     elf32Headers{};
+    std::vector<Elf64_Shdr>                     elf64Headers{};
+
+    std::vector<Elf32_Sym>                      elf32SymbolTable{};
 };
 
 #endif /* ElfFile_H_ */

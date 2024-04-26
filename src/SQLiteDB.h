@@ -102,7 +102,37 @@
 								  long_description TEXT,\
                                   UNIQUE (name, value));"
 
-#define CREATE_VARIIABLES_TABLE \
+#define CREATE_ELF_SECTIONS_TABLE \
+    "CREATE TABLE IF NOT EXISTS elf_sections(\
+                                  id INTEGER PRIMARY KEY,\
+                                  name INETEGER NOT NULL,\
+                                  elf INETEGER NOT NULL,\
+                                  type INTEGER NOT NULL,\
+                                  flags INTEGER NOT NULL,\
+                                  address INTEGER NOT NULL,\
+                                  file_offset INTEGER NOT NULL,\
+                                  size INTEGER NOT NULL,\
+                                  link INTEGER NOT NULL,\
+                                  info INTEGER NOT NULL,\
+                                  address_alignment INTEGER NOT NULL,\
+                                  entry_size INTEGER NOT NULL,\
+                                  FOREIGN KEY (elf) REFERENCES elfs(id)\
+                                  );"
+
+#define CREATE_ELF_SYMBOL_TABLE_TABLE \
+    "CREATE TABLE IF NOT EXISTS elf_symbol_table(\
+                                  id INTEGER PRIMARY KEY,\
+                                  name INETEGER NOT NULL,\
+                                  elf INETEGER NOT NULL,\
+                                  value INTEGER NOT NULL,\
+                                  size INTEGER NOT NULL,\
+                                  info INTEGER NOT NULL,\
+                                  other INTEGER NOT NULL,\
+                                  section_index INTEGER NOT NULL,\
+                                  FOREIGN KEY (elf) REFERENCES elfs(id)\
+                                  );"
+
+#define CREATE_VARIABLES_TABLE \
     "CREATE TABLE IF NOT EXISTS variables(\
                                   id INTEGER PRIMARY KEY,\
                                   name TEXT NOT NULL,\
@@ -149,9 +179,13 @@ class SQLiteDB : public IDataContainer
     int                 createArtifactsSchema(void);
     int                 createMacrosSchema(void);
     int                 createVariablesSchema(void);
+    int                 createElfSectionsSchema(void);
+    int                 createElfSymbolTableSchema(void);
     int                 writeElfToDatabase(ElfFile &inModule);
     int                 writeMacrosToDatabase(ElfFile &inModule);
     int                 writeVariablesToDatabase(ElfFile &inModule);
+    int                 writeElfSectionsToDatabase(ElfFile &inModule);
+    int                 writeElfSymboltableSymbolsToDatabase(ElfFile &inModule);
     int                 writeArtifactsToDatabase(ElfFile &inModule);
     int                 writeSymbolsToDatabase(ElfFile &inModule);
     int                 writeFieldsToDatabase(ElfFile &inModule);
