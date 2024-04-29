@@ -285,6 +285,8 @@ src/DefineMacro.cpp
 src/DefineMacro.h
 src/DimensionList.cpp
 src/DimensionList.h
+src/Elf32Symbol.cpp
+src/Elf32Symbol.h
 src/ElfFile.cpp
 src/ElfFile.h
 src/ElfSection.cpp

@@ -129,6 +129,8 @@
                                   info INTEGER NOT NULL,\
                                   other INTEGER NOT NULL,\
                                   section_index INTEGER NOT NULL,\
+                                  file_offset INTEGER NOT NULL,\
+                                  string_table_file_offset INTEGER NOT NULL,\
                                   FOREIGN KEY (elf) REFERENCES elfs(id)\
                                   );"
 

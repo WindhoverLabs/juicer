@@ -227,5 +227,5 @@ void                         ElfFile::addElf32SectionHeader(Elf32_Shdr newSectio
 
 std::vector<Elf32_Shdr>      ElfFile::getElf32Headers() const { return elf32Headers; }
 
-void                         ElfFile::addElf32SymbolTableSymbol(Elf32_Sym newSymbol) { elf32SymbolTable.push_back(newSymbol); }
-std::vector<Elf32_Sym>       ElfFile::getElf32SymbolTable() const { return elf32SymbolTable; }
+void                         ElfFile::addElf32SymbolTableSymbol(Elf32Symbol newSymbol) { elf32SymbolTable.push_back(newSymbol); }
+std::vector<Elf32Symbol>     ElfFile::getElf32SymbolTable() const { return elf32SymbolTable; }

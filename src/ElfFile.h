@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "DefineMacro.h"
+#include "Elf32Symbol.h"
 #include "Field.h"
 #include "Juicer.h"
 #include "Logger.h"
@@ -75,8 +76,8 @@ class ElfFile
     void                                               addElf32SectionHeader(Elf32_Shdr newVariable);
     std::vector<Elf32_Shdr>                            getElf32Headers() const;
 
-    void                                               addElf32SymbolTableSymbol(Elf32_Sym newSymbol);
-    std::vector<Elf32_Sym>                             getElf32SymbolTable() const;
+    void                                               addElf32SymbolTableSymbol(Elf32Symbol newSymbol);
+    std::vector<Elf32Symbol>                           getElf32SymbolTable() const;
 
    private:
     std::string                                 md5;
@@ -107,7 +108,8 @@ class ElfFile
     std::vector<Elf32_Shdr>                     elf32Headers{};
     std::vector<Elf64_Shdr>                     elf64Headers{};
 
-    std::vector<Elf32_Sym>                      elf32SymbolTable{};
+    std::vector<Elf32Symbol>                    elf32SymbolTable{};
+    std::vector<Elf32_Sym>                      elf32StringsTable{};
 };
 
 #endif /* ElfFile_H_ */

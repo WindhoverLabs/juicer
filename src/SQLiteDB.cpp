@@ -744,25 +744,28 @@ int SQLiteDB::writeElfSymboltableSymbolsToDatabase(ElfFile& inElf)
          */
         writeElfSectionsQuery +=
             "INSERT INTO elf_symbol_table"
-            "(name, elf, value, size, info, other, section_index ) "
+            "(name, elf, value, size, info, other, section_index, file_offset, string_table_file_offset ) "
             "VALUES(";
         //        writeElfSectionsQuery += "\"";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.st_name);
+        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_name);
         //        writeElfSectionsQuery += "\"";
         writeElfSectionsQuery += ",";
         writeElfSectionsQuery += std::to_string(inElf.getId());
 
         writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.st_value);
+        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_value);
         writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.st_size);
+        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_size);
         writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.st_info);
+        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_info);
         writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.st_other);
+        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_other);
         writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.st_shndx);
-        ;
+        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_shndx);
+        writeElfSectionsQuery += ",";
+        writeElfSectionsQuery += std::to_string(elf32Symbol.getFileOffset());
+        writeElfSectionsQuery += ",";
+        writeElfSectionsQuery += std::to_string(elf32Symbol.getStrTableFileOffset());
         writeElfSectionsQuery += ");";
 
         logger.logDebug("Sending \"%s\" query to database.", writeElfSectionsQuery.c_str());

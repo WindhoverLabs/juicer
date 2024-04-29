@@ -4735,7 +4735,10 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                             logger.logInfo("String table index for symbols:%d", strTableIndex);
                             for (int i = 0; i < numberOfSymbols; i++)
                             {
-                                Elf32_Sym *symbol = sectionTableData;
+                                Elf32_Sym *symbol                          = sectionTableData;
+
+                                uint32_t   symbolSectionFileOffset         = 0;
+                                uint32_t   symbolSectionStrTableFileOffset = 0;
 
                                 if (symbol->st_size > 0)
                                 {
@@ -4768,8 +4771,21 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                                                                name.c_str(), symbol->st_size, symbol->st_value, symbol->st_name, symbol->st_info,
                                                                symbol->st_other, symbol->st_shndx);
 
+                                                std::cout << "stringTableSectionHeader file offset:" << stringTableSectionHeader->sh_offset << std::endl;
+
+                                                symbolSectionStrTableFileOffset = stringTableSectionHeader->sh_offset;
+
                                                 //                            TODO:Map it to DWARF here.
-                                                Elf_Scn  *symbolSectionData         = elf_getscn(elf, symbol->st_shndx);
+                                                Elf_Scn    *symbolSectionData   = elf_getscn(elf, symbol->st_shndx);
+
+                                                Elf32_Shdr *symbolSectionHeader = elf32_getshdr(symbolSectionData);
+
+                                                if (symbolSectionHeader != nullptr)
+                                                {
+                                                    //                                                    std::cout << "symbol data section file offset-->" <<
+                                                    //                                                    symbolSectionHeader->sh_offset << std::endl;
+                                                    symbolSectionFileOffset = symbolSectionHeader->sh_offset;
+                                                }
 
                                                 Elf_Data *symbolSectionDataContents = nullptr;
 
@@ -4807,7 +4823,7 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                                     }
                                 }
 
-                                elfFileObj->addElf32SymbolTableSymbol(*symbol);
+                                elfFileObj->addElf32SymbolTableSymbol(Elf32Symbol{*symbol, symbolSectionFileOffset, symbolSectionStrTableFileOffset});
                                 sectionTableData++;
                             }
                         }
