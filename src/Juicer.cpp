@@ -532,7 +532,7 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
 
                     if (!newMacro.getName().empty())
                     {
-                        //                        elf.addDefineMacro(newMacro);
+                        elf.addDefineMacro(newMacro);
                         //                    	std::cout << "imported macro***:" << newMacro.getName()  << std::endl;
                     }
                 }
@@ -695,6 +695,13 @@ int Juicer::readCUList(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Error &error)
                     }
                     else
                     {
+                        auto newMacro =
+                            getDefineMacro(macro_operator, mac_context, i, line_number, index, offset, macro_string, forms_count, error, cu_die, elf);
+
+                        if (!newMacro.getName().empty())
+                        {
+                            elf.addDefineMacro(newMacro);
+                        }
                     }
                 }
             }
