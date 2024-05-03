@@ -41,7 +41,8 @@
                                   byte_size INTEGER NOT NULL,\
 								  artifact INTEGER,\
 								  long_description TEXT ,\
-								  short_description TEXT ,\
+                                  short_description TEXT ,\
+                                  doxy_id TEXT, \
                                   FOREIGN KEY(elf) REFERENCES elfs(id),\
 								  FOREIGN KEY(artifact) REFERENCES artifacts(id)\
                                   UNIQUE(name));"
@@ -67,6 +68,7 @@
 								  bit_offset INTEGER NOT NULL,\
 								  long_description TEXT ,\
 								  short_description TEXT ,\
+                                  doxy_id TEXT, \
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   FOREIGN KEY (type) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"
@@ -79,6 +81,7 @@
                                   name TEXT NOT NULL,\
 								  long_description TEXT ,\
 								  short_description TEXT ,\
+                                  doxy_id TEXT, \
                                   FOREIGN KEY (symbol) REFERENCES symbols(id),\
                                   UNIQUE (symbol, name));"
 
@@ -87,7 +90,8 @@
                                   id INTEGER PRIMARY KEY,\
                                   elf INTEGER NOT NULL,\
                                   path TEXT NOT NULL,\
-								  md5 TEXT NOT NULL, \
+                                  md5 TEXT NOT NULL, \
+                                  doxy_id TEXT, \
                                   FOREIGN KEY (elf) REFERENCES elfs(id),\
                                   UNIQUE (path, md5));"
 
@@ -100,6 +104,7 @@
 								  source INTEGER,\
 								  short_description TEXT,\
 								  long_description TEXT,\
+                                  doxy_id TEXT, \
                                   UNIQUE (name, value));"
 
 #define CREATE_ELF_SECTIONS_TABLE \

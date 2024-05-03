@@ -1,0 +1,27 @@
+diff --git a/src/Juicer.cpp b/src/Juicer.cpp
+index c3cc8f0a..c7023fdb 100644
+--- a/src/Juicer.cpp
++++ b/src/Juicer.cpp
+@@ -531,7 +531,7 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
+ 
+                     if (!newMacro.getName().empty())
+                     {
+-                        //                        elf.addDefineMacro(newMacro);
++                        elf.addDefineMacro(newMacro);
+                         //                    	std::cout << "imported macro***:" << newMacro.getName()  << std::endl;
+                     }
+                 }
+@@ -694,6 +694,13 @@ int Juicer::readCUList(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Error &error)
+                     }
+                     else
+                     {
++                        auto newMacro =
++                            getDefineMacro(macro_operator, mac_context, i, line_number, index, offset, macro_string, forms_count, error, cu_die, elf);
++
++                        if (!newMacro.getName().empty())
++                        {
++                            elf.addDefineMacro(newMacro);
++                        }
+                     }
+                 }
+             }

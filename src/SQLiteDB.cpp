@@ -37,8 +37,11 @@ int SQLiteDB::selectCallback(void* veryUsed, int argc, char** argv, char** azCol
     std::vector<std::string> tableData{};
     for (i = 1; i < argc; i++)
     {
-        std::string tempData{argv[i]};
-        tableData.push_back(tempData);
+        if (argv[i] != nullptr)
+        {
+            std::string tempData{argv[i]};
+            tableData.push_back(tempData);
+        }
     }
 
     std::string id{argv[0]};
