@@ -14,13 +14,11 @@
 #include "Juicer.h"
 #include "Logger.h"
 
-
 typedef enum
 {
     IDC_TYPE_SQLITE = 0,
     IDC_TYPE_CCDD   = 1,
 } IDataContainer_Type_t;
-
 
 /**
  *@brief class IDataContainer represents an interface that allows structures
@@ -30,19 +28,18 @@ typedef enum
  */
 class IDataContainer
 {
-public:
+   public:
     virtual ~IDataContainer();
-    virtual int write(ElfFile& inModule) = 0;
-    static IDataContainer* Create(IDataContainer_Type_t containerType, const char *initSpec, ...);
+    virtual int            write(ElfFile& inModule) = 0;
+    static IDataContainer* Create(IDataContainer_Type_t containerType, const char* initSpec, ...);
 
-protected:
+   protected:
     IDataContainer();
-    virtual int initialize(std::string &initString) = 0;
+    virtual int initialize(std::string& initString) = 0;
 
-private:
-	static Logger logger;
-    static std::string vstring(const char * format, ...);
-
+   private:
+    static Logger      logger;
+    static std::string vstring(const char* format, ...);
 };
 
 #endif /* IDATACONTAINER_H_ */

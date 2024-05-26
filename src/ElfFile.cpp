@@ -7,60 +7,44 @@
 
 #include "ElfFile.h"
 
-#include "Symbol.h"
-#include "Field.h"
-#include "Enumeration.h"
 #include <limits.h>
+
+#include "Enumeration.h"
+#include "Field.h"
+#include "Symbol.h"
 
 /**
  *@brief
  *
  *@param inName This is a path to the Elf File.
  */
-ElfFile::ElfFile(std::string &inName) :
-    name{inName}, // @suppress("Symbol is not resolved")
-    id{0}
+ElfFile::ElfFile(std::string& inName)
+    : name{inName},  // @suppress("Symbol is not resolved")
+      id{0}
 {
     normalizePath(name);
     logger.logDebug("Elf '%s' created.", getName().c_str());
 }
 
-ElfFile::ElfFile():
-    name{""},
-    id{0}
-{
-    logger.logError("Cannot call Module default constructor.");
-}
+ElfFile::ElfFile() : name{""}, id{0} { logger.logError("Cannot call Module default constructor."); }
 
-
-
-ElfFile::ElfFile(const ElfFile& elf) :
-    name{elf.name}, // @suppress("Symbol is not resolved")
-    id{0}
+ElfFile::ElfFile(const ElfFile& elf)
+    : name{elf.name},  // @suppress("Symbol is not resolved")
+      id{0}
 {
     logger.logError("Cannot call Module copy constructor.");
 }
 
+ElfFile::~ElfFile() {}
 
-
-ElfFile::~ElfFile()
-{
-}
-
-
-
-std::string ElfFile::getName() const
-{
-	return name;
-}
-
+std::string ElfFile::getName() const { return name; }
 
 /**
  *@brief
  *
  *@note Absolute paths are enforced.
  */
-void ElfFile::setName(std::string &inName)
+void        ElfFile::setName(std::string& inName)
 {
     logger.logDebug("Module %s renamed to %s.", name.c_str(), inName.c_str());
 
@@ -68,56 +52,36 @@ void ElfFile::setName(std::string &inName)
     normalizePath(name);
 }
 
+uint32_t ElfFile::getId(void) const { return id; }
 
-uint32_t ElfFile::getId(void) const
-{
-    return id;
-}
+void     ElfFile::setId(uint32_t newId) { id = newId; }
 
-
-
-void ElfFile::setId(uint32_t newId)
-{
-    id = newId;
-
-}
-
-
-void ElfFile::isLittleEndian(bool inLittleEndian)
+void     ElfFile::isLittleEndian(bool inLittleEndian)
 {
     logger.logDebug("ELF %s endian changed from %s to %s.", name.c_str(), little_endian ? "LE" : "BE", inLittleEndian ? "LE" : "BE");
 
-	little_endian = inLittleEndian;
+    little_endian = inLittleEndian;
 }
 
-bool ElfFile::isLittleEndian(void) const
-{
-	return little_endian;
-}
+bool ElfFile::isLittleEndian(void) const { return little_endian; }
 
 void ElfFile::setDate(const std::string& inDate)
 {
     logger.logDebug("ELF %s date changed from %s to %s.", name.c_str(), date.c_str(), inDate.c_str());
 
-	this->date = inDate;
+    this->date = inDate;
 }
 
-const std::string& ElfFile::getDate() const
-{
-	return date;
-}
+const std::string& ElfFile::getDate() const { return date; }
 
-void ElfFile::setMD5(std::string inChecksum)
+void               ElfFile::setMD5(std::string inChecksum)
 {
     logger.logDebug("ELF %s checksum changed from 0x%08x to 0x%08x.", name.c_str(), md5, inChecksum);
 
-	this->md5 = inChecksum;
+    this->md5 = inChecksum;
 }
 
-std::string ElfFile::getMD5() const
-{
-	return md5;
-}
+std::string ElfFile::getMD5() const { return md5; }
 
 /**
  *@note IF there is the possibility that this method cannot find the symbol
@@ -128,42 +92,41 @@ std::string ElfFile::getMD5() const
  *nonetheless. Will re-evaluate. Visit https://en.cppreference.com/w/cpp/utility/optional
  *and https://en.cppreference.com/w/cpp/utility/tuple for details.
  */
-Symbol* ElfFile::getSymbol(std::string &name)
+Symbol*     ElfFile::getSymbol(std::string& name)
 {
     Symbol* returnSymbol = nullptr;
 
-	for(auto&& symbol: symbols)
-	{
+    for (auto&& symbol : symbols)
+    {
+        if (symbol->getName() == name)
+        {
+            returnSymbol = symbol.get();
+        }
+    }
 
-		if(symbol->getName() == name)
-		{
-		    returnSymbol = symbol.get();
-		}
-	}
-
-	return returnSymbol;
+    return returnSymbol;
 }
 
-bool ElfFile::isSymbolUnique(std::string &name)
+bool ElfFile::isSymbolUnique(std::string& name)
 {
-	bool    rc = false;
-	Symbol* symbol = getSymbol(name);
+    bool    rc     = false;
+    Symbol* symbol = getSymbol(name);
 
-	if(symbol == nullptr)
-	{
-		rc = true;
-	}
-	else
-	{
-		rc = false;
+    if (symbol == nullptr)
+    {
+        rc = true;
+    }
+    else
+    {
+        rc = false;
 
-		logger.logDebug("isSymbolUnique is false.");
-	}
+        logger.logDebug("isSymbolUnique is false.");
+    }
 
-	return rc;
+    return rc;
 }
 
-Symbol * ElfFile::addSymbol(std::unique_ptr<Symbol> inSymbol)
+Symbol* ElfFile::addSymbol(std::unique_ptr<Symbol> inSymbol)
 {
     logger.logDebug("Adding Symbol %s to Module %s.", inSymbol->getName().c_str(), name.c_str());
 
@@ -172,17 +135,15 @@ Symbol * ElfFile::addSymbol(std::unique_ptr<Symbol> inSymbol)
     return symbols.back().get();
 }
 
-Symbol * ElfFile::addSymbol(std::string& inName,
-		                uint32_t inByteSize,
-						Artifact newArtifact)
+Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact)
 {
-    Symbol *symbol = getSymbol(inName);
+    Symbol* symbol = getSymbol(inName);
 
-    if(symbol == nullptr)
+    if (symbol == nullptr)
     {
         std::unique_ptr<Symbol> newSymbol = std::make_unique<Symbol>(*this, inName, inByteSize, newArtifact);
 
-	    symbols.push_back(std::move(newSymbol));
+        symbols.push_back(std::move(newSymbol));
 
         symbol = symbols.back().get();
     }
@@ -190,48 +151,45 @@ Symbol * ElfFile::addSymbol(std::string& inName,
     return symbol;
 }
 
-std::vector<std::unique_ptr<Symbol>>& ElfFile::getSymbols()
+std::vector<std::unique_ptr<Symbol>>& ElfFile::getSymbols() { return symbols; }
+
+std::vector<Field*>                   ElfFile::getFields()
 {
-	return symbols;
-}
+    std::vector<Field*> outFields      = std::vector<Field*>();
+    /**
+     *@note numberOfFields could be used for pre-allocating space for the vector.
+     */
+    int                 numberOfFields = 0;
 
-std::vector<Field*> ElfFile::getFields()
-{
-	std::vector<Field*> outFields = std::vector<Field*>();
-	/**
-	 *@note numberOfFields could be used for pre-allocating space for the vector.
-	 */
-	int                 numberOfFields = 0;
+    for (auto&& symbol : symbols)
+    {
+        numberOfFields += symbol->getFields().size();
+    }
 
-	for(auto&& symbol: symbols)
-	{
-	    numberOfFields += symbol->getFields().size();
-	}
+    for (auto&& symbol : symbols)
+    {
+        for (auto&& field : symbol->getFields())
+        {
+            outFields.push_back(field.get());
+        }
+    }
 
-	for(auto&& symbol: symbols)
-	{
-		for(auto&& field: symbol->getFields())
-		{
-		    outFields.push_back(field.get());
-		}
-	}
-
-	return outFields;
+    return outFields;
 }
 
 std::vector<Enumeration*> ElfFile::getEnumerations()
 {
-	std::vector<Enumeration*> outEnumerations = std::vector<Enumeration*>();
+    std::vector<Enumeration*> outEnumerations = std::vector<Enumeration*>();
 
-	for(auto&& symbol: symbols)
-	{
-	    for(auto&& enumeration: symbol->getEnumerations())
-	    {
-	        outEnumerations.push_back(enumeration.get());
-	    }
-	}
+    for (auto&& symbol : symbols)
+    {
+        for (auto&& enumeration : symbol->getEnumerations())
+        {
+            outEnumerations.push_back(enumeration.get());
+        }
+    }
 
-	return outEnumerations;
+    return outEnumerations;
 }
 
 /**
@@ -239,14 +197,35 @@ std::vector<Enumeration*> ElfFile::getEnumerations()
  */
 void ElfFile::normalizePath(std::string& path)
 {
-  char resolvedPath[PATH_MAX];
-  realpath(path.c_str(), resolvedPath);
+    char resolvedPath[PATH_MAX];
+    realpath(path.c_str(), resolvedPath);
 
-  /**
-   * Whether std::string::clear deallocates memory or not is, like many things in the standard,
-   * implementation-defined.
-   * One may read more details about this here:https://en.cppreference.com/w/cpp/string/basic_string/clear
-   */
-  path.clear();
-  path.insert(0, resolvedPath);
+    /**
+     * Whether std::string::clear deallocates memory or not is, like many things in the standard,
+     * implementation-defined.
+     * One may read more details about this here:https://en.cppreference.com/w/cpp/string/basic_string/clear
+     */
+    path.clear();
+    path.insert(0, resolvedPath);
 }
+
+void                            ElfFile::addDefineMacro(std::string name, std::string value) { defineMacros.push_back(DefineMacro{name, value}); }
+void                            ElfFile::addDefineMacro(DefineMacro newMacro) { defineMacros.push_back(newMacro); }
+const std::vector<DefineMacro>& ElfFile::getDefineMacros() const { return defineMacros; }
+
+const std::map<std::string, std::vector<uint8_t>>& ElfFile::getInitializedSymbolData() const { return initializedSymbolData; }
+void                                               ElfFile::setInitializedSymbolData(const std::map<std::string, std::vector<uint8_t>>& initializedSymbolData)
+{
+    this->initializedSymbolData = initializedSymbolData;
+}
+
+void                         ElfFile::addVariable(Variable newVariable) { variables.push_back(newVariable); }
+
+const std::vector<Variable>& ElfFile::getVariables() const { return variables; }
+
+void                         ElfFile::addElf32SectionHeader(Elf32_Shdr newSectionHeader) { elf32Headers.push_back(newSectionHeader); }
+
+std::vector<Elf32_Shdr>      ElfFile::getElf32Headers() const { return elf32Headers; }
+
+void                         ElfFile::addElf32SymbolTableSymbol(Elf32Symbol newSymbol) { elf32SymbolTable.push_back(newSymbol); }
+std::vector<Elf32Symbol>     ElfFile::getElf32SymbolTable() const { return elf32SymbolTable; }
