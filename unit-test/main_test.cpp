@@ -833,7 +833,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     	numberOfColumns++;
     }
 
-    REQUIRE(numberOfColumns == 5);
+    REQUIRE(numberOfColumns == 7);
 
     /**
      * Check the correctness of Square struct.

@@ -33,49 +33,48 @@
 
 #ifndef JUICER_H_
 #define JUICER_H_
-#include <string>
-#include "dwarf.h"
-#include "libdwarf.h"
-#include <fstream>
-#include <iostream>
-#include <unistd.h>
-#include <stdio.h>
-#include <sys/types.h> /* For open() */
-#include <sys/stat.h>  /* For open() */
 #include <fcntl.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <sys/stat.h>  /* For open() */
+#include <sys/types.h> /* For open() */
+#include <unistd.h>
+
+#include <fstream>
+#include <iostream>
+#include <string>
 
 #include "DimensionList.h"
-#include "Field.h"
 #include "ElfFile.h"
+#include "Enumeration.h"
+#include "Field.h"
 #include "Logger.h"
 #include "Symbol.h"
-#include "Enumeration.h"
+#include "dwarf.h"
+#include "libdwarf.h"
 
 class Field;
 
 /*
  * Macros for error values of Juicer methods and functions.
  */
-#define JUICER_OK 0
-#define JUICER_ERROR -1
+#define JUICER_OK     0
+#define JUICER_ERROR  -1
 #define DWARF_VERSION 4
-
 
 typedef enum
 {
-	JUICER_OUTPUT_MODE_UNKNOWN = 0,
-	JUICER_OUTPUT_MODE_SQLITE = 1,
-	JUICER_OUTPUT_MODE_CCDD = 2
+    JUICER_OUTPUT_MODE_UNKNOWN = 0,
+    JUICER_OUTPUT_MODE_SQLITE  = 1,
+    JUICER_OUTPUT_MODE_CCDD    = 2
 } JuicerOutputMode_t;
 
 typedef enum
 {
     JUICER_ENDIAN_UNKNOWN = 0,
-    JUICER_ENDIAN_BIG = 1,
-    JUICER_ENDIAN_LITTLE = 2
+    JUICER_ENDIAN_BIG     = 1,
+    JUICER_ENDIAN_LITTLE  = 2
 } JuicerEndianness_t;
-
 
 class IDataContainer;
 class ElfFile;
@@ -90,52 +89,55 @@ class Symbol;
  */
 class Juicer
 {
-public:
+   public:
     Juicer();
     int parse(std::string& elfFilePath);
     virtual ~Juicer();
     JuicerEndianness_t getEndianness();
-    void setIDC(IDataContainer *idc);
+    void               setIDC(IDataContainer* idc);
 
-private:
-	Dwarf_Debug dbg = 0;
-	int res = DW_DLV_ERROR;
-	Dwarf_Handler errhand;
-	Dwarf_Ptr errarg = 0;
-	int readCUList(ElfFile& elf, Dwarf_Debug dbg);
-	int getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level);
-    Symbol * process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
-    Symbol * process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
-    void process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    Symbol * process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
-    void process_DW_TAG_enumeration_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    int process_DW_TAG_array_type(ElfFile& elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    char * getFirstAncestorName(Dwarf_Die inDie);
-	int printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
-	char * dwarfStringToChar(char *dwarfString);
-    void addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField);
-    void addPaddingToStruct(Symbol& symbol);
-    void addPaddingEndToStruct(Symbol& symbol);
-    bool isDWARFVersionSupported(Dwarf_Die);
-	int elfFile = 0;
-	Logger logger;
-	IDataContainer *idc = 0;
-	bool isIDCSet(void);
-	Symbol * getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &multiplicity);
-	void DisplayDie(Dwarf_Die inDie, uint32_t level);
+   private:
+    Dwarf_Debug              dbg = 0;
+    int                      res = DW_DLV_ERROR;
+    Dwarf_Handler            errhand;
+    Dwarf_Ptr                errarg = 0;
+    int                      readCUList(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Error& error);
+    int                      getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level);
+    Symbol*                  process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
+    Symbol*                  process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
+    void                     process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    Symbol*                  process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
+    void                     process_DW_TAG_enumeration_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    int                      process_DW_TAG_array_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    char*                    getFirstAncestorName(Dwarf_Die inDie);
+    int                      printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
+    char*                    dwarfStringToChar(char* dwarfString);
+    void                     addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField);
+    void                     addPaddingToStruct(Symbol& symbol);
+    void                     addPaddingEndToStruct(Symbol& symbol);
+    bool                     isDWARFVersionSupported(Dwarf_Die);
+    int                      elfFile = 0;
+    Logger                   logger;
+    IDataContainer*          idc = 0;
+    bool                     isIDCSet(void);
+    Symbol*                  getBaseTypeSymbol(ElfFile& elf, Dwarf_Die inDie, DimensionList& multiplicity);
+    void                     DisplayDie(Dwarf_Die inDie, uint32_t level);
 
-    std::vector<Dwarf_Die> getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die);
-    std::vector<Dwarf_Die> getChildrenVector(Dwarf_Debug dbg, Dwarf_Die die);
-    int getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die);
+    std::vector<Dwarf_Die>   getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die);
+    std::vector<Dwarf_Die>   getChildrenVector(Dwarf_Debug dbg, Dwarf_Die die);
+    int                      getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die);
 
-    uint32_t calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);
-    int calcArraySizeForAllDims(Dwarf_Debug dbg,Dwarf_Die die);
+    uint32_t                 calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);
+    int                      calcArraySizeForAllDims(Dwarf_Debug dbg, Dwarf_Die die);
 
-    DimensionList getDimList(Dwarf_Debug dbg, Dwarf_Die die);
+    DimensionList            getDimList(Dwarf_Debug dbg, Dwarf_Die die);
 
     std::vector<std::string> dbgSourceFiles{};
 
-    std::string generateMD5SumForFile(std::string filePath);
+    std::string              generateMD5SumForFile(std::string filePath);
+    DefineMacro              getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Context mac_context, int i, Dwarf_Unsigned line_number, Dwarf_Unsigned index,
+                                            Dwarf_Unsigned offset, const char* macro_string, Dwarf_Half& forms_count, Dwarf_Error& error, Dwarf_Die cu_die, ElfFile& elf);
+    DefineMacro              getDefineMacroFromString(std::string macro_string);
 };
 
 #endif /* JUICER_H_ */

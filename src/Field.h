@@ -11,11 +11,12 @@
 #define FIELD_H_
 
 #include <stdint.h>
+
 #include <vector>
 
 #include "DimensionList.h"
-#include "Symbol.h"
 #include "Logger.h"
+#include "Symbol.h"
 
 class Symbol;
 
@@ -27,60 +28,55 @@ class Symbol;
  */
 class Field
 {
-public:
-	Field(Symbol &symbol, Symbol &type);
-	Field(Symbol &symbol,
-		  std::string &name,
-		  uint32_t byte_offset,
-		  Symbol &type,
-		  DimensionList& dimensionList,
-		  bool little_endian,
-		  uint32_t inBitSize = 0,
-		  uint32_t inBitOffset = 0);
-	Field(Symbol &symbol,
-		  std::string &name,
-		  uint32_t byte_offset,
-		  Symbol &type,
-		  bool little_endian,
-		  uint32_t inBitSize = 0,
-		  uint32_t inBitOffset = 0);
-	virtual ~Field();
-	uint32_t getByteOffset() const;
-	void setByteOffset(uint32_t byteOffset);
-	bool isLittleEndian() const;
-	void setLittleEndian(bool littleEndian);
-	uint32_t getMultiplicity() const;
-	uint32_t getArraySize() const;
-	void setMultiplicity(uint32_t multiplicity);
-	std::string& getName();
-	void setName(const std::string& name);
-	Symbol& getSymbol() const;
-	Symbol& getType();
-	uint32_t getId(void) const;
-	void setId(uint32_t newId);
-	uint32_t getBitOffset() const;
-	void setBitOffset(uint32_t bitOffset);
-	uint32_t getBitSize() const;
-	void setBitSize(uint32_t bitSize);
-	Field(Field& field);
-	bool isBitField(void);
-	DimensionList& getDimensionList();
-	bool		isArray(void) const;
-	std::string getDimensionListStr();
+   public:
+    Field(Symbol &symbol, Symbol &type);
+    Field(Symbol &symbol, std::string &name, uint32_t byte_offset, Symbol &type, DimensionList &dimensionList, bool little_endian, uint32_t inBitSize = 0,
+          uint32_t inBitOffset = 0);
+    Field(Symbol &symbol, std::string &name, uint32_t byte_offset, Symbol &type, bool little_endian, uint32_t inBitSize = 0, uint32_t inBitOffset = 0);
+    virtual ~Field();
+    uint32_t     getByteOffset() const;
+    void         setByteOffset(uint32_t byteOffset);
+    bool         isLittleEndian() const;
+    void         setLittleEndian(bool littleEndian);
+    uint32_t     getMultiplicity() const;
+    uint32_t     getArraySize() const;
+    void         setMultiplicity(uint32_t multiplicity);
+    std::string &getName();
+    void         setName(const std::string &name);
+    Symbol      &getSymbol() const;
+    Symbol      &getType();
+    uint32_t     getId(void) const;
+    void         setId(uint32_t newId);
+    uint32_t     getBitOffset() const;
+    void         setBitOffset(uint32_t bitOffset);
+    uint32_t     getBitSize() const;
+    void         setBitSize(uint32_t bitSize);
+    Field(Field &field);
+    bool               isBitField(void);
+    DimensionList     &getDimensionList();
+    bool               isArray(void) const;
+    std::string        getDimensionListStr();
 
-private:
-	Symbol 		 					       &symbol;
-	std::string  						    name;
-	uint32_t     						    byte_offset;
-	Symbol 		 						   &type;
-	DimensionList							dimensionList;
-	bool         							little_endian;
-	/*bit fields members.
-	 * If this field is not bit-packed, then the bit_size and bit_offset are 0.*/
-	uint32_t 	 							bit_offset;
-	uint32_t 	 							bit_size;
-    Logger       							logger;
-    uint32_t     							id;
+    const std::string &getShortDescription() const { return short_description; }
+
+    const std::string &getLongDescription() const { return long_description; }
+
+   private:
+    Symbol       &symbol;
+    std::string   name;
+    uint32_t      byte_offset;
+    Symbol       &type;
+    DimensionList dimensionList;
+    bool          little_endian;
+    /*bit fields members.
+     * If this field is not bit-packed, then the bit_size and bit_offset are 0.*/
+    uint32_t      bit_offset;
+    uint32_t      bit_size;
+    Logger        logger;
+    uint32_t      id;
+
+    std::string   short_description;
+    std::string   long_description;
 };
 
 #endif /* FIELD_H_ */
