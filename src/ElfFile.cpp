@@ -210,7 +210,22 @@ void ElfFile::normalizePath(std::string& path)
 }
 
 void                            ElfFile::addDefineMacro(std::string name, std::string value) { defineMacros.push_back(DefineMacro{name, value}); }
-
 void                            ElfFile::addDefineMacro(DefineMacro newMacro) { defineMacros.push_back(newMacro); }
-
 const std::vector<DefineMacro>& ElfFile::getDefineMacros() const { return defineMacros; }
+
+const std::map<std::string, std::vector<uint8_t>>& ElfFile::getInitializedSymbolData() const { return initializedSymbolData; }
+void                                               ElfFile::setInitializedSymbolData(const std::map<std::string, std::vector<uint8_t>>& initializedSymbolData)
+{
+    this->initializedSymbolData = initializedSymbolData;
+}
+
+void                         ElfFile::addVariable(Variable newVariable) { variables.push_back(newVariable); }
+
+const std::vector<Variable>& ElfFile::getVariables() const { return variables; }
+
+void                         ElfFile::addElf32SectionHeader(Elf32_Shdr newSectionHeader) { elf32Headers.push_back(newSectionHeader); }
+
+std::vector<Elf32_Shdr>      ElfFile::getElf32Headers() const { return elf32Headers; }
+
+void                         ElfFile::addElf32SymbolTableSymbol(Elf32Symbol newSymbol) { elf32SymbolTable.push_back(newSymbol); }
+std::vector<Elf32Symbol>     ElfFile::getElf32SymbolTable() const { return elf32SymbolTable; }
