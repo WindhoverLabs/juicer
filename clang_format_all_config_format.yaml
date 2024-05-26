@@ -1,0 +1,24 @@
+root_dir: "src"
+
+#When true, files will only be checked. None will be modified.
+check_all: false
+
+file_extensions: ['.cpp', '.cc', '.C', 'CPP', '.c++', 'cp', '.cxx', '.h', '.hh', '.hpp', '.c']
+
+exclude_dirs:
+  - "cs"
+  - "fm"
+  - "hs"
+  - "mm"
+  - "sch"
+  - "cf"
+  - "sbn"
+  - "io_lib"
+  - "md"
+  - "hk"
+  - "sc"
+  - "ds"
+  - "lc"
+  - "prmlib"
+  - "cfs_lib"
+  - "vm"
