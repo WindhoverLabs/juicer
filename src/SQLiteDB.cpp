@@ -514,8 +514,6 @@ int SQLiteDB::writeMacrosToDatabase(ElfFile& inElf)
             if (sqlite3_step(stmt) != SQLITE_DONE)
             {
                 const char* errorMessage = sqlite3_errmsg(database);
-                //                std::cerr << "Execution failed: " << sqlite3_errmsg(database) << std::endl;
-
                 if (SQLITE_OK == rc)
                 {
                     logger.logDebug(
@@ -536,10 +534,6 @@ int SQLiteDB::writeMacrosToDatabase(ElfFile& inElf)
                         rc = SQLITEDB_ERROR;
                     }
                 }
-            }
-            else
-            {
-                //                std::cout << "Records created successfully" << std::endl;
             }
 
             // Finalize the statement
