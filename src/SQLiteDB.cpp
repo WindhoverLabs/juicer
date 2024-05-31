@@ -484,9 +484,7 @@ int SQLiteDB::writeElfToDatabase(ElfFile& inElf)
  */
 int SQLiteDB::writeMacrosToDatabase(ElfFile& inElf)
 {
-    int   rc           = SQLITEDB_OK;
-    char* errorMessage = NULL;
-
+    int rc = SQLITEDB_OK;
     for (auto macro : inElf.getDefineMacros())
     {
         /*
@@ -494,41 +492,58 @@ int SQLiteDB::writeMacrosToDatabase(ElfFile& inElf)
          * but I'm not sure what is the best way to do that without it being
          * messy.
          */
-        std::string writeMacroQuery{};
 
-        writeMacroQuery +=
-            "INSERT INTO macros(name, value) "
-            "VALUES(\"";
-        writeMacroQuery += macro.getName();
-        writeMacroQuery += "\",";
-        writeMacroQuery += "\"";
-        writeMacroQuery += macro.getValue();
-        writeMacroQuery += "\"";
-        writeMacroQuery += ");";
+        // Create a SQL statement with placeholders
+        sqlite3_stmt* stmt;
+        const char*   sql = "INSERT INTO macros (name, value) VALUES (?, ?);";
 
-        logger.logDebug("Sending \"%s\" query to database.", writeMacroQuery.c_str());
+        // Prepare the SQL statement
+        rc                = sqlite3_prepare_v2(database, sql, -1, &stmt, NULL);
 
-        rc = sqlite3_exec(database, writeMacroQuery.c_str(), NULL, NULL, &errorMessage);
-
-        if (SQLITE_OK == rc)
+        if (rc != SQLITE_OK)
         {
-            logger.logDebug(
-                "Elf values were written to the macros schema with "
-                "SQLITE_OK status.");
+            std::cerr << "SQL error: " << sqlite3_errmsg(database) << std::endl;
         }
         else
         {
-            if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+            // Bind values to placeholders
+            sqlite3_bind_text(stmt, 1, macro.getName().c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 2, macro.getValue().c_str(), -1, SQLITE_STATIC);
+
+            // Execute the SQL statement
+            if (sqlite3_step(stmt) != SQLITE_DONE)
             {
-                logger.logDebug("%s.", errorMessage);
-                rc = SQLITE_OK;
+                const char* errorMessage = sqlite3_errmsg(database);
+                //                std::cerr << "Execution failed: " << sqlite3_errmsg(database) << std::endl;
+
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Elf values were written to the macros schema with "
+                        "SQLITE_OK status.");
+                }
+                else
+                {
+                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    {
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITE_OK;
+                    }
+                    else
+                    {
+                        logger.logDebug("There was an error while writing data to the elfs table.");
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITEDB_ERROR;
+                    }
+                }
             }
             else
             {
-                logger.logDebug("There was an error while writing data to the elfs table.");
-                logger.logDebug("%s.", errorMessage);
-                rc = SQLITEDB_ERROR;
+                //                std::cout << "Records created successfully" << std::endl;
             }
+
+            // Finalize the statement
+            sqlite3_finalize(stmt);
         }
     }
 
