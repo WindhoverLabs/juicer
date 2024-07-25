@@ -21,6 +21,8 @@
 Square sq = {};
 Circle ci = {};
 
+CFE_ES_HousekeepingTlm_t hk{};
+
 int vector_x = 100;
 
 unsigned int some_unsiged_int = 12;

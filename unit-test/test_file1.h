@@ -20,6 +20,134 @@ union Oject
 };
 
 
+#define CFE_MISSION_ES_PERF_MAX_IDS 128
+
+/*************************************************************************/
+
+/**
+**  \cfeestlm Executive Services Housekeeping Packet
+**/
+typedef struct CFE_ES_HousekeepingTlm_Payload
+{
+    uint8_t CommandCounter;      /**< \cfetlmmnemonic \ES_CMDPC
+                                \brief The ES Application Command Counter */
+    uint8_t CommandErrorCounter; /**< \cfetlmmnemonic \ES_CMDEC
+                           \brief The ES Application Command Error Counter */
+
+    uint16_t CFECoreChecksum;    /**< \cfetlmmnemonic \ES_CKSUM
+                                    \brief Checksum of cFE Core Code */
+    uint8_t CFEMajorVersion;     /**< \cfetlmmnemonic \ES_CFEMAJORVER
+                                    \brief Major Version Number of cFE */
+    uint8_t CFEMinorVersion;     /**< \cfetlmmnemonic \ES_CFEMINORVER
+                                    \brief Minor Version Number of cFE */
+    uint8_t CFERevision;         /**< \cfetlmmnemonic \ES_CFEREVISION
+                                    \brief Sub-Minor Version Number of cFE */
+    uint8_t CFEMissionRevision;  /**< \cfetlmmnemonic \ES_CFEMISSIONREV
+                                    \brief Mission Version Number of cFE */
+    uint8_t OSALMajorVersion;    /**< \cfetlmmnemonic \ES_OSMAJORVER
+                                    \brief OS Abstraction Layer Major Version Number */
+    uint8_t OSALMinorVersion;    /**< \cfetlmmnemonic \ES_OSMINORVER
+                                    \brief OS Abstraction Layer Minor Version Number */
+    uint8_t OSALRevision;        /**< \cfetlmmnemonic \ES_OSREVISION
+                                    \brief OS Abstraction Layer Revision Number */
+    uint8_t OSALMissionRevision; /**< \cfetlmmnemonic \ES_OSMISSIONREV
+                                    \brief OS Abstraction Layer MissionRevision Number */
+
+    uint8_t PSPMajorVersion;    /**< \cfetlmmnemonic \ES_PSPMAJORVER
+                                   \brief Platform Support Package Major Version Number */
+    uint8_t PSPMinorVersion;    /**< \cfetlmmnemonic \ES_PSPMINORVER
+                                   \brief Platform Support Package Minor Version Number */
+    uint8_t PSPRevision;        /**< \cfetlmmnemonic \ES_PSPREVISION
+                                   \brief Platform Support Package Revision Number */
+    uint8_t PSPMissionRevision; /**< \cfetlmmnemonic \ES_PSPMISSIONREV
+                                   \brief Platform Support Package MissionRevision Number */
+
+    uint32_t SysLogBytesUsed; /**< \cfetlmmnemonic \ES_SYSLOGBYTEUSED
+                                             \brief Total number of bytes used in system log */
+    uint32_t SysLogSize;      /**< \cfetlmmnemonic \ES_SYSLOGSIZE
+                                             \brief Total size of the system log */
+    uint32_t SysLogEntries;               /**< \cfetlmmnemonic \ES_SYSLOGENTRIES
+                                             \brief Number of entries in the system log */
+    uint32_t SysLogMode;                  /**< \cfetlmmnemonic \ES_SYSLOGMODE
+                                             \brief Write/Overwrite Mode */
+
+    uint32_t ERLogIndex;   /**< \cfetlmmnemonic \ES_ERLOGINDEX
+                              \brief Current index of the ER Log (wraps around) */
+    uint32_t ERLogEntries; /**< \cfetlmmnemonic \ES_ERLOGENTRIES
+                              \brief Number of entries made in the ER Log since the power on */
+
+    uint32_t RegisteredCoreApps;     /**< \cfetlmmnemonic \ES_REGCOREAPPS
+                                        \brief Number of Applications registered with ES */
+    uint32_t RegisteredExternalApps; /**< \cfetlmmnemonic \ES_REGEXTAPPS
+                                        \brief Number of Applications registered with ES */
+    uint32_t RegisteredTasks;        /**< \cfetlmmnemonic \ES_REGTASKS
+                                        \brief Number of Tasks ( main AND child tasks ) registered with ES */
+    uint32_t RegisteredLibs;         /**< \cfetlmmnemonic \ES_REGLIBS
+                                        \brief Number of Libraries registered with ES */
+
+    uint32_t ResetType;          /**< \cfetlmmnemonic \ES_RESETTYPE
+                                    \brief Reset type ( PROCESSOR or POWERON ) */
+    uint32_t ResetSubtype;       /**< \cfetlmmnemonic \ES_RESETSUBTYPE
+                                    \brief Reset Sub Type */
+    uint32_t ProcessorResets;    /**< \cfetlmmnemonic \ES_PROCRESETCNT
+                                    \brief Number of processor resets since last power on */
+    uint32_t MaxProcessorResets; /**< \cfetlmmnemonic \ES_MAXPROCRESETS
+                                    \brief Max processor resets before a power on is done */
+    uint32_t BootSource;         /**< \cfetlmmnemonic \ES_BOOTSOURCE
+                                    \brief Boot source ( as provided from BSP ) */
+
+    uint32_t PerfState;                                        /**< \cfetlmmnemonic \ES_PERFSTATE
+                                                                  \brief Current state of Performance Analyzer */
+    uint32_t PerfMode;                                         /**< \cfetlmmnemonic \ES_PERFMODE
+                                                                  \brief Current mode of Performance Analyzer */
+    uint32_t PerfTriggerCount;                                 /**< \cfetlmmnemonic \ES_PERFTRIGCNT
+                                                                  \brief Number of Times Performance Analyzer has Triggered */
+    uint32_t PerfFilterMask[CFE_MISSION_ES_PERF_MAX_IDS / 32]; /**< \cfetlmmnemonic \ES_PERFFLTRMASK
+                                                          \brief Current Setting of Performance Analyzer Filter Masks */
+    uint32_t
+        PerfTriggerMask[CFE_MISSION_ES_PERF_MAX_IDS / 32]; /**< \cfetlmmnemonic \ES_PERFTRIGMASK
+                                                        \brief Current Setting of Performance Analyzer Trigger Masks */
+    uint32_t PerfDataStart;                                  /**< \cfetlmmnemonic \ES_PERFDATASTART
+                                                                \brief Identifies First Stored Entry in Performance Analyzer Log */
+    uint32_t PerfDataEnd;                                    /**< \cfetlmmnemonic \ES_PERFDATAEND
+                                                                \brief Identifies Last Stored Entry in Performance Analyzer Log */
+    uint32_t PerfDataCount;                                  /**< \cfetlmmnemonic \ES_PERFDATACNT
+                                                                \brief Number of Entries Put Into the Performance Analyzer Log */
+    uint32_t
+        PerfDataToWrite;                 /**< \cfetlmmnemonic \ES_PERFDATA2WRITE
+                                              \brief Number of Performance Analyzer Log Entries Left to be Written to Log Dump File */
+    uint32_t HeapBytesFree;    /**< \cfetlmmnemonic \ES_HEAPBYTESFREE
+                                            \brief Number of free bytes remaining in the OS heap */
+    uint32_t HeapBlocksFree;   /**< \cfetlmmnemonic \ES_HEAPBLKSFREE
+                                            \brief Number of free blocks remaining in the OS heap */
+    uint32_t HeapMaxBlockSize; /**< \cfetlmmnemonic \ES_HEAPMAXBLK
+                                            \brief Number of bytes in the largest free block */
+} CFE_ES_HousekeepingTlm_Payload_t;
+
+
+/**
+ * \brief cFS telemetry header
+ *
+ * This provides the definition of CFE_MSG_TelemetryHeader_t
+ */
+struct CFE_MSG_TelemetryHeader
+{
+    uint8_t                  Msg;      /**< \brief Base message */
+    uint8_t Sec;      /**< \brief Secondary header */
+    uint8_t                              Spare[4]; /**< \brief Pad to avoid compiler padding if payload
+                                                             requires 64 bit alignment */
+};
+
+typedef struct CFE_MSG_TelemetryHeader CFE_MSG_TelemetryHeader_t;
+
+typedef struct CFE_ES_HousekeepingTlm
+{
+    CFE_MSG_TelemetryHeader_t        TelemetryHeader; /**< \brief Telemetry header */
+    CFE_ES_HousekeepingTlm_Payload_t Payload;         /**< \brief Telemetry payload */
+} CFE_ES_HousekeepingTlm_t;
+
+
+
 
 /**
  *The fields padding1 and padding2(as the name implies) are to prevent
