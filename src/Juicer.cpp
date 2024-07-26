@@ -3545,6 +3545,13 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
             /* Set the error code so we don't do anymore processing. */
             res = DW_DLV_ERROR;
         }
+        else
+        {
+            if ("CFE_MSG_TelemetryHeader" == baseTypeSymbol->getName())
+            {
+                std::cout << "break;";
+            }
+        }
     }
 
     /* Get the size of this datatype. */
@@ -3591,14 +3598,14 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
                 Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex - 1)};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
             }
             else
             {
                 Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
                 std::string checkSum{};
                 newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
             }
         }
     }

@@ -140,9 +140,14 @@ struct CFE_MSG_TelemetryHeader
 
 typedef struct CFE_MSG_TelemetryHeader CFE_MSG_TelemetryHeader_t;
 
+typedef struct CFE_MSG_TelemetryHeader CFE_MSG_TelemetryHeader_t3;
+
+typedef  CFE_MSG_TelemetryHeader_t CFE_MSG_TelemetryHeader_t2;
+
 typedef struct CFE_ES_HousekeepingTlm
 {
-    CFE_MSG_TelemetryHeader_t        TelemetryHeader; /**< \brief Telemetry header */
+    CFE_MSG_TelemetryHeader_t2        TelemetryHeader; /**< \brief Telemetry header */
+    CFE_MSG_TelemetryHeader_t3        TelemetryHeader2; /**< \brief Telemetry header */
     CFE_ES_HousekeepingTlm_Payload_t Payload;         /**< \brief Telemetry payload */
 } CFE_ES_HousekeepingTlm_t;
 

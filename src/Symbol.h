@@ -24,11 +24,16 @@ class Field;
 class Enumeration;
 class ElfFile;
 
+/**
+ *@class Symbol represents a "symbol" in the dwarf.
+ *These include intrinsic types and struct types.
+ */
 class Symbol
 {
    public:
     Symbol(ElfFile &elf);
     Symbol(ElfFile &elf, std::string &name, uint32_t byte_size, Artifact);
+    Symbol(ElfFile &elf, std::string &name, uint32_t byte_size, Artifact, Symbol &targetSymbol);
     virtual ~Symbol();
     const std::string &getName(void) const;
     void               setName(std::string &name);
@@ -57,6 +62,12 @@ class Symbol
 
     const std::string                         &getLongDescription() const { return long_description; }
 
+    void                                       setTargetSymbol(Symbol *newTargetSymbol);
+
+    Symbol                                    *getTargetSymbol();
+
+    bool                                       hasTargetSymbol();
+
    private:
     ElfFile                                  &elf;
     std::string                               name;
@@ -66,6 +77,7 @@ class Symbol
     std::vector<std::unique_ptr<Field>>       fields;
     std::vector<std::unique_ptr<Enumeration>> enumerations;
     Artifact                                  artifact;
+    Symbol                                   *targetSymbol{nullptr};  // This is useful for typedef'd names
 
     std::string                               short_description;
     std::string                               long_description;

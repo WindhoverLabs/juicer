@@ -217,3 +217,19 @@ bool Symbol::hasBitFields(void)
 }
 
 Artifact& Symbol::getArtifact() { return artifact; }
+
+/**
+ * @brief Symbol::setTargetSymbol
+ * @note Might make sense to use std:optional for targetSymbol, however need to upgrade to C++17 first.
+ * @param newTargetSymbol
+ */
+void      Symbol::setTargetSymbol(Symbol* newTargetSymbol) { targetSymbol = newTargetSymbol; }
+
+/**
+ * @brief Symbol::hasTargetSymbol
+ * If this function returns false, then
+ * that means this is the concrete symbol not a typdef'd(aliased) symbol.
+ */
+bool      Symbol::hasTargetSymbol() { return targetSymbol != nullptr; }
+
+Symbol*   Symbol::getTargetSymbol() { return targetSymbol; }

@@ -1023,6 +1023,53 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
         }
     }
 
+    // Add symbol to target_symbol mappings to database
+    for (auto&& symbol : inElf.getSymbols())
+    {
+        if (symbol->hasTargetSymbol())
+        {
+            /*
+             * @todo I want to store these SQLite magical values into MACROS,
+             * but I'm not sure what is the best way to do that without it being
+             * messy.
+             */
+            std::string writeSymbolQuery{};
+            writeSymbolQuery += "UPDATE symbols SET target_symbol = ";
+
+            writeSymbolQuery += "\"";
+            writeSymbolQuery += std::to_string(symbol->getTargetSymbol()->getId());
+            writeSymbolQuery += "\"";
+
+            writeSymbolQuery += " WHERE id = ";
+
+            writeSymbolQuery += "\"";
+            writeSymbolQuery += std::to_string(symbol->getId());
+            writeSymbolQuery += "\"";
+
+            rc                = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL, &errorMessage);
+
+            if (SQLITE_OK == rc)
+            {
+                logger.logDebug(
+                    "Symbol values were written to the symbols schema with "
+                    "SQLITE_OK status.");
+
+                /*Write the id to this symbol so that other tables can use it as
+                 *a foreign key */
+                sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+
+                symbol->setId(lastRowId);
+            }
+            else
+            {
+                logger.logError(
+                    "Looks like something went wrong with query "
+                    "\"%s\":\"%s\"",
+                    writeSymbolQuery, errorMessage);
+            }
+        }
+    }
+
     return rc;
 }
 

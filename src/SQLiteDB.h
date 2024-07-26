@@ -40,10 +40,12 @@
                                   name TEXT UNIQUE NOT NULL,\
                                   byte_size INTEGER NOT NULL,\
                                   artifact INTEGER,\
+								  target_symbol INTEGER,\
                                   short_description TEXT ,\
                                   long_description TEXT ,\
                                   FOREIGN KEY(elf) REFERENCES elfs(id),\
 								  FOREIGN KEY(artifact) REFERENCES artifacts(id)\
+								  FOREIGN KEY(target_symbol) REFERENCES symbols(id)\
                                   UNIQUE(name));"
 
 #define CREATE_DIMENSION_TABLE \
