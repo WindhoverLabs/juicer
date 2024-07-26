@@ -1053,12 +1053,6 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
                 logger.logDebug(
                     "Symbol values were written to the symbols schema with "
                     "SQLITE_OK status.");
-
-                /*Write the id to this symbol so that other tables can use it as
-                 *a foreign key */
-                sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
-
-                symbol->setId(lastRowId);
             }
             else
             {
