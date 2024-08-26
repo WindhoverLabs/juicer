@@ -3547,10 +3547,7 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
         }
         else
         {
-            if ("CFE_MSG_TelemetryHeader" == baseTypeSymbol->getName())
-            {
-                std::cout << "break;";
-            }
+            // FIXME:Handle else case
         }
     }
 
