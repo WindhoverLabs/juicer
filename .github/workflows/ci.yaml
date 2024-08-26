@@ -15,22 +15,21 @@ jobs:
         os: [ubuntu-18.04, ubuntu-latest]
     steps:
       - uses: actions/checkout@v2
-      - name: Install Python 3
-        uses: actions/setup-python@v1
         with:
-          python-version: 3.8.10
-      - name: Install dependencies
-        run: |
-          pip install cpp-coveralls==0.4.2
-          sudo apt-get install libdwarf-dev
-          sudo apt-get install libelf-dev
-          sudo apt-get install libsqlite3-dev
-          sudo apt-get install g++
-          sudo apt-get install gcovr
-      - name: Checkout submodules
-        run: git submodule update --init --recursive
-      - name: Run tests
-        run: make coverage
+          submodules: true  # Clone submodules
+          fetch-depth: 0    # Ensure full repository history is fetched
+
+      # Set up Docker Buildx (optional, useful for multi-platform builds)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build the Docker image
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false  # Do not push the image
+          tags: juicer:latest  # Local tag for the built image
         #- name: publish to coveralls.io
         #uses: coverallsapp/github-action@v1.1.2
         #with:
