@@ -148,6 +148,12 @@
 								  FOREIGN KEY (elf) REFERENCES elfs(id),\
                                   UNIQUE (name, type, elf));"
 
+#define CREATE_ENCODINGS_TABLE \
+    "CREATE TABLE IF NOT EXISTS encodings(\
+                                  id INTEGER PRIMARY KEY,\
+                                  encoding TEXT NOT NULL,\
+                                  UNIQUE (encoding));"
+
 //#define CREATE_DATA_OBJECTS_TABLE \
 //    "CREATE TABLE IF NOT EXISTS data_objects(\
 //                                  id INTEGER PRIMARY KEY,\
@@ -185,6 +191,7 @@ class SQLiteDB : public IDataContainer
     int                 createVariablesSchema(void);
     int                 createElfSectionsSchema(void);
     int                 createElfSymbolTableSchema(void);
+    int                 createEncodingsTableSchema(void);
     int                 writeElfToDatabase(ElfFile &inModule);
     int                 writeMacrosToDatabase(ElfFile &inModule);
     int                 writeVariablesToDatabase(ElfFile &inModule);

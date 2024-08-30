@@ -16,6 +16,7 @@
 #include "Artifact.h"
 #include "DimensionList.h"
 #include "ElfFile.h"
+#include "Encoding.h"
 #include "Enumeration.h"
 #include "Field.h"
 #include "Logger.h"
@@ -81,6 +82,8 @@ class Symbol
 
     std::string                               short_description;
     std::string                               long_description;
+
+    Encoding                                  encoding;
 };
 
 #endif /* SYMBOL_H_ */

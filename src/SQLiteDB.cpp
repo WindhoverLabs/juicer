@@ -1397,8 +1397,22 @@ int SQLiteDB::createSchemas(void)
                                         if (SQLITE_OK == rc)
                                         {
                                             logger.logDebug(
-                                                "createElfSectionsSchema() created the variables schema "
+                                                "createElfSymbolTableSchema() created the variables schema "
                                                 "successfully.");
+
+                                            rc = createEncodingsTableSchema();
+
+                                            if (SQLITE_OK == rc)
+                                            {
+                                                logger.logDebug(
+                                                    "createEncodingsTableSchema() created the variables schema "
+                                                    "successfully.");
+                                            }
+                                            else
+                                            {
+                                                logger.logDebug("createEncodingsTableSchema() failed.");
+                                                rc = SQLITEDB_ERROR;
+                                            }
                                         }
                                         else
                                         {
@@ -1776,6 +1790,30 @@ int SQLiteDB::createElfSymbolTableSchema(void)
      * necessary to pass in, but I really think we should for better error
      * logging.*/
     rc             = sqlite3_exec(database, createVariablesTableQuery.c_str(), NULL, NULL, NULL);
+
+    if (SQLITE_OK == rc)
+    {
+        logger.logDebug("Created table \"artifacts\" with OK status");
+    }
+    else
+    {
+        logger.logError("Failed to create the artifacts table. '%s'", sqlite3_errmsg(database));
+        rc = SQLITEDB_ERROR;
+    }
+
+    return rc;
+}
+
+int SQLiteDB::createEncodingsTableSchema(void)
+{
+    std::string createEncodingsTableQuery{CREATE_ENCODINGS_TABLE};
+
+    int         rc = SQLITE_OK;
+
+    /*@todo The last argument for sqlite3_exec is an error handler that is not
+     * necessary to pass in, but I really think we should for better error
+     * logging.*/
+    rc             = sqlite3_exec(database, createEncodingsTableQuery.c_str(), NULL, NULL, NULL);
 
     if (SQLITE_OK == rc)
     {
