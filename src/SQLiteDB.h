@@ -202,6 +202,7 @@ class SQLiteDB : public IDataContainer
     int                 writeFieldsToDatabase(ElfFile &inModule);
     int                 writeEnumerationsToDatabase(ElfFile &inModule);
     int                 writeDimensionsListToDatabase(ElfFile &inElf);
+    int                 writeEncodingsToDatabase(ElfFile &inElf);
     static int          doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
     bool                doesSymbolExist(std::string name);
     bool                doesArtifactExist(std::string name);

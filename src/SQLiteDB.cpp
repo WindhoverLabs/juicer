@@ -351,6 +351,22 @@ int SQLiteDB::write(ElfFile& inElf)
                                     logger.logDebug(
                                         "Variable entries were written to the variables schema "
                                         "with SQLITE_OK status.");
+
+                                    rc = writeEncodingsToDatabase(inElf);
+
+                                    if (SQLITEDB_ERROR != rc)
+                                    {
+                                        logger.logDebug(
+                                            "Variable entries were written to the variables schema "
+                                            "with SQLITE_OK status.");
+                                    }
+                                    else
+                                    {
+                                        logger.logDebug(
+                                            "There was an error while writing variable entries to the"
+                                            " database.");
+                                        rc = SQLITEDB_ERROR;
+                                    }
                                 }
                                 else
                                 {
@@ -1327,99 +1343,80 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
 
 int SQLiteDB::writeEncodingsToDatabase(ElfFile& inElf)
 {
-    int         rc           = SQLITEDB_OK;
-    char*       errorMessage = NULL;
+    int                      rc        = SQLITEDB_OK;
+    /**
+     * @note This list of encodings can be found in dwarf.h or
+     *  in DWARF5 specification document section 5.1.1 titled "Base Type Encodings"
+     */
+    std::vector<std::string> encodings = std::vector<std::string>{"DW_ATE_address",
+                                                                  "DW_ATE_boolean",
+                                                                  "DW_ATE_complex_float",
+                                                                  "DW_ATE_float",
+                                                                  "DW_ATE_signed",
+                                                                  "DW_ATE_signed_char",
+                                                                  "DW_ATE_unsigned",
+                                                                  "DW_ATE_unsigned_char",
+                                                                  "DW_ATE_imaginary_float",
+                                                                  "DW_ATE_packed_decimal",
+                                                                  "DW_ATE_numeric_string",
+                                                                  "DW_ATE_edited",
+                                                                  "DW_ATE_signed_fixed",
+                                                                  "DW_ATE_unsigned_fixed",
+                                                                  "DW_ATE_decimal_float",
+                                                                  "DW_ATE_UTF",
+                                                                  "DW_ATE_UCS",
+                                                                  "DW_ATE_ASCII"};
 
-    std::string writeEnumerationQuery{};
-
-    writeEnumerationQuery +=
-        "INSERT INTO encodings(name)"
-        "VALUES(";
-    writeEnumerationQuery += ",\"";
-    writeEnumerationQuery += "DW_ATE_address";
-    writeEnumerationQuery += "\"";
-
-    writeEnumerationQuery += ");";
-
-    rc                     = sqlite3_exec(database, writeEnumerationQuery.c_str(), NULL, NULL, &errorMessage);
-
-    if (SQLITE_OK == rc)
+    for (std::string encoding : encodings)
     {
-        logger.logDebug(
-            "Enumeration values were written to the enumerations schema with "
-            "SQLITE_OK status.");
-    }
-    else
-    {
-        logger.logDebug("There was an error while writing data to the enumerations table. %s.", errorMessage);
+        // Create a SQL statement with placeholders
+        sqlite3_stmt* stmt;
+        const char*   sql = "INSERT INTO encodings (encoding) VALUES (?);";
 
-        if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+        // Prepare the SQL statement
+        rc                = sqlite3_prepare_v2(database, sql, -1, &stmt, NULL);
+
+        if (rc != SQLITE_OK)
         {
-            rc = SQLITE_OK;
+            std::cerr << "SQL error: " << sqlite3_errmsg(database) << std::endl;
         }
         else
         {
-            rc = SQLITEDB_ERROR;
+            // Bind values to placeholders
+            sqlite3_bind_text(stmt, 1, encoding.c_str(), -1, SQLITE_STATIC);
+
+            // Execute the SQL statement
+            if (sqlite3_step(stmt) != SQLITE_DONE)
+            {
+                const char* errorMessage = sqlite3_errmsg(database);
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Elf values were written to the encodings schema with "
+                        "SQLITE_OK status.");
+                }
+                else
+                {
+                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    {
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITE_OK;
+                    }
+                    else
+                    {
+                        logger.logDebug("There was an error while writing data to the encodings table.");
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITEDB_ERROR;
+                    }
+                }
+            }
+
+            // Finalize the statement
+            sqlite3_finalize(stmt);
         }
     }
 
-    // /**
-    //  * @note Are we allowed for ground tools to do this for loops?
-    //  * I know for Flight Software we need to explicitly state the "++i",
-    //  * but should/can we do this here with loops for Juicer?
-    //  */
-    // for (auto enumeration : inElf.getEnumerations())
-    // {
-    //     /*
-    //      * @todo I want to store these SQLite magical values into MACROS,
-    //      * but I'm not sure what is the best way to do that without it being
-    //      * messy.
-    //      */
-    //     std::string writeEnumerationQuery{};
-
-    //     writeEnumerationQuery +=
-    //         "INSERT INTO enumerations(symbol, value, name, long_description, short_description)"
-    //         "VALUES(";
-    //     writeEnumerationQuery += std::to_string(enumeration->getSymbol().getId());
-    //     writeEnumerationQuery += ",";
-    //     writeEnumerationQuery += std::to_string(enumeration->getValue());
-    //     writeEnumerationQuery += ",\"";
-    //     writeEnumerationQuery += enumeration->getName();
-    //     writeEnumerationQuery += "\"";
-
-    //     writeEnumerationQuery += ",\"";
-    //     writeEnumerationQuery += enumeration->getLongDescription();
-    //     writeEnumerationQuery += "\"";
-
-    //     writeEnumerationQuery += ",";
-    //     writeEnumerationQuery += "\"";
-    //     writeEnumerationQuery += enumeration->getShortDescription();
-    //     writeEnumerationQuery += "\"";
-
-    //     writeEnumerationQuery += ");";
-
-    //     rc                     = sqlite3_exec(database, writeEnumerationQuery.c_str(), NULL, NULL, &errorMessage);
-
-    //     if (SQLITE_OK == rc)
-    //     {
-    //         logger.logDebug(
-    //             "Enumeration values were written to the enumerations schema with "
-    //             "SQLITE_OK status.");
-    //     }
-    //     else
-    //     {
-    //         logger.logDebug("There was an error while writing data to the enumerations table. %s.", errorMessage);
-
-    //         if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
-    //         {
-    //             rc = SQLITE_OK;
-    //         }
-    //         else
-    //         {
-    //             rc = SQLITEDB_ERROR;
-    //         }
-    //     }
-    // }
+    return rc;
 }
 
 /**
