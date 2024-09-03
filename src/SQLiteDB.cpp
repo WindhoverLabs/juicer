@@ -1316,6 +1316,103 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
     return rc;
 }
 
+int SQLiteDB::writeEncodingsToDatabase(ElfFile& inElf)
+{
+    int         rc           = SQLITEDB_OK;
+    char*       errorMessage = NULL;
+
+    std::string writeEnumerationQuery{};
+
+    writeEnumerationQuery +=
+        "INSERT INTO encodings(name)"
+        "VALUES(";
+    writeEnumerationQuery += ",\"";
+    writeEnumerationQuery += "DW_ATE_address";
+    writeEnumerationQuery += "\"";
+
+    writeEnumerationQuery += ");";
+
+    rc                     = sqlite3_exec(database, writeEnumerationQuery.c_str(), NULL, NULL, &errorMessage);
+
+    if (SQLITE_OK == rc)
+    {
+        logger.logDebug(
+            "Enumeration values were written to the enumerations schema with "
+            "SQLITE_OK status.");
+    }
+    else
+    {
+        logger.logDebug("There was an error while writing data to the enumerations table. %s.", errorMessage);
+
+        if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+        {
+            rc = SQLITE_OK;
+        }
+        else
+        {
+            rc = SQLITEDB_ERROR;
+        }
+    }
+
+    // /**
+    //  * @note Are we allowed for ground tools to do this for loops?
+    //  * I know for Flight Software we need to explicitly state the "++i",
+    //  * but should/can we do this here with loops for Juicer?
+    //  */
+    // for (auto enumeration : inElf.getEnumerations())
+    // {
+    //     /*
+    //      * @todo I want to store these SQLite magical values into MACROS,
+    //      * but I'm not sure what is the best way to do that without it being
+    //      * messy.
+    //      */
+    //     std::string writeEnumerationQuery{};
+
+    //     writeEnumerationQuery +=
+    //         "INSERT INTO enumerations(symbol, value, name, long_description, short_description)"
+    //         "VALUES(";
+    //     writeEnumerationQuery += std::to_string(enumeration->getSymbol().getId());
+    //     writeEnumerationQuery += ",";
+    //     writeEnumerationQuery += std::to_string(enumeration->getValue());
+    //     writeEnumerationQuery += ",\"";
+    //     writeEnumerationQuery += enumeration->getName();
+    //     writeEnumerationQuery += "\"";
+
+    //     writeEnumerationQuery += ",\"";
+    //     writeEnumerationQuery += enumeration->getLongDescription();
+    //     writeEnumerationQuery += "\"";
+
+    //     writeEnumerationQuery += ",";
+    //     writeEnumerationQuery += "\"";
+    //     writeEnumerationQuery += enumeration->getShortDescription();
+    //     writeEnumerationQuery += "\"";
+
+    //     writeEnumerationQuery += ");";
+
+    //     rc                     = sqlite3_exec(database, writeEnumerationQuery.c_str(), NULL, NULL, &errorMessage);
+
+    //     if (SQLITE_OK == rc)
+    //     {
+    //         logger.logDebug(
+    //             "Enumeration values were written to the enumerations schema with "
+    //             "SQLITE_OK status.");
+    //     }
+    //     else
+    //     {
+    //         logger.logDebug("There was an error while writing data to the enumerations table. %s.", errorMessage);
+
+    //         if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+    //         {
+    //             rc = SQLITE_OK;
+    //         }
+    //         else
+    //         {
+    //             rc = SQLITEDB_ERROR;
+    //         }
+    //     }
+    // }
+}
+
 /**
  *@brief This method creates all of the schemas that will be needed to store
  *the DWARF and ELF data.
