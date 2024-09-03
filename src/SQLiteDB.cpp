@@ -109,6 +109,35 @@ bool SQLiteDB::doesSymbolExist(std::string name)
     return row_count == 0 ? false : true;
 }
 
+bool SQLiteDB::doEncodingsExist()
+{
+    int32_t     row_count    = 0;
+
+    int         rc           = SQLITE_OK;
+
+    char*       errorMessage = nullptr;
+
+    std::string countRowsQuery{"SELECT COUNT(*) FROM encodings"};
+    countRowsQuery += "";
+    countRowsQuery += ";";
+
+    rc              = sqlite3_exec(database, countRowsQuery.c_str(), SQLiteDB::doesRowExistCallback, &row_count, &errorMessage);
+
+    if (SQLITE_OK != rc)
+    {
+        logger.logWarning(
+            "Looks like there was a problem sending query \"%s\" "
+            "to the database.",
+            countRowsQuery.c_str());
+        logger.logError("%s", errorMessage);
+        row_count = 0;
+    }
+
+    printf("doEncodingsExist**1:%d, rc:%d\n", row_count, rc);
+
+    return row_count == 0 ? false : true;
+}
+
 /**
  *@brief Checks if the symbol called name exists on the symbols table.
  *
@@ -302,6 +331,22 @@ int SQLiteDB::write(ElfFile& inElf)
                 rc = SQLITEDB_ERROR;
             }
 
+            rc = writeEncodingsToDatabase(inElf);
+
+            if (SQLITEDB_ERROR != rc)
+            {
+                logger.logDebug(
+                    "Variable entries were written to the variables schema "
+                    "with SQLITE_OK status.");
+            }
+            else
+            {
+                logger.logDebug(
+                    "There was an error while writing variable entries to the"
+                    " database.");
+                rc = SQLITEDB_ERROR;
+            }
+
             rc = writeSymbolsToDatabase(inElf);
 
             if (SQLITEDB_ERROR != rc)
@@ -351,22 +396,6 @@ int SQLiteDB::write(ElfFile& inElf)
                                     logger.logDebug(
                                         "Variable entries were written to the variables schema "
                                         "with SQLITE_OK status.");
-
-                                    rc = writeEncodingsToDatabase(inElf);
-
-                                    if (SQLITEDB_ERROR != rc)
-                                    {
-                                        logger.logDebug(
-                                            "Variable entries were written to the variables schema "
-                                            "with SQLITE_OK status.");
-                                    }
-                                    else
-                                    {
-                                        logger.logDebug(
-                                            "There was an error while writing variable entries to the"
-                                            " database.");
-                                        rc = SQLITEDB_ERROR;
-                                    }
                                 }
                                 else
                                 {
@@ -553,7 +582,17 @@ int SQLiteDB::writeMacrosToDatabase(ElfFile& inElf)
             }
 
             // Finalize the statement
-            sqlite3_finalize(stmt);
+            rc = sqlite3_finalize(stmt);
+            if (rc != SQLITE_OK)
+            {
+                logger.logDebug("There was an error while finalizing the sql statement for encodings table.");
+            }
+            else
+            {
+                // sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+
+                // inElf.encodingsMap.at(encoding.first).setId(lastRowId);
+            }
         }
     }
 
@@ -1000,50 +1039,112 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
              */
             std::string writeSymbolQuery{};
 
-            writeSymbolQuery +=
-                "INSERT INTO symbols(elf, name, byte_size, artifact, long_description, short_description) "
-                "VALUES(";
-            writeSymbolQuery += std::to_string(symbol->getElf().getId());
-            writeSymbolQuery += ",\"";
-            writeSymbolQuery += symbol->getName();
-
-            writeSymbolQuery += "\",";
-            writeSymbolQuery += std::to_string(symbol->getByteSize());
-            writeSymbolQuery += ",";
-            writeSymbolQuery += std::to_string(symbol->getArtifact().getId());
-
-            writeSymbolQuery += ",\"";
-            writeSymbolQuery += symbol->getLongDescription();
-
-            writeSymbolQuery += "\",";
-
-            writeSymbolQuery += "\"";
-            writeSymbolQuery += symbol->getShortDescription();
-
-            writeSymbolQuery += "\"";
-
-            writeSymbolQuery += ")";
-
-            rc                = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL, &errorMessage);
-
-            if (SQLITE_OK == rc)
+            if (!symbol->hasEncoding())
             {
-                logger.logDebug(
-                    "Symbol values were written to the symbols schema with "
-                    "SQLITE_OK status.");
+                writeSymbolQuery +=
+                    "INSERT INTO symbols(elf, name, byte_size, artifact, long_description, short_description) "
+                    "VALUES(";
+                writeSymbolQuery += std::to_string(symbol->getElf().getId());
+                writeSymbolQuery += ",\"";
+                writeSymbolQuery += symbol->getName();
 
-                /*Write the id to this symbol so that other tables can use it as
-                 *a foreign key */
-                sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+                writeSymbolQuery += "\",";
+                writeSymbolQuery += std::to_string(symbol->getByteSize());
+                writeSymbolQuery += ",";
+                writeSymbolQuery += std::to_string(symbol->getArtifact().getId());
 
-                symbol->setId(lastRowId);
+                writeSymbolQuery += ",\"";
+                writeSymbolQuery += symbol->getLongDescription();
+
+                writeSymbolQuery += "\",";
+
+                writeSymbolQuery += "\"";
+                writeSymbolQuery += symbol->getShortDescription();
+
+                writeSymbolQuery += "\"";
+
+                writeSymbolQuery += ")";
+
+                rc                = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL, &errorMessage);
+
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Symbol values were written to the symbols schema with "
+                        "SQLITE_OK status.");
+
+                    /*Write the id to this symbol so that other tables can use it as
+                     *a foreign key */
+                    sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+
+                    symbol->setId(lastRowId);
+                }
+                else
+                {
+                    logger.logError(
+                        "Looks like something went wrong with query "
+                        "\"%s\":\"%s\"",
+                        writeSymbolQuery, errorMessage);
+                }
             }
+
             else
             {
-                logger.logError(
-                    "Looks like something went wrong with query "
-                    "\"%s\":\"%s\"",
-                    writeSymbolQuery, errorMessage);
+                std::cout << "symbol-->" << symbol->getName() << std::endl;
+                std::cout << "encoding-->" << symbol->getElf().getDWARFEncoding(symbol->getEncoding()).getName();
+
+                std::cout << "encoding id-->" << std::to_string(symbol->getElf().getDWARFEncoding(symbol->getEncoding()).getId()) << std::endl;
+                writeSymbolQuery +=
+                    "INSERT INTO symbols(elf, name, byte_size, encoding, artifact, long_description, short_description) "
+                    "VALUES(";
+                writeSymbolQuery += std::to_string(symbol->getElf().getId());
+                writeSymbolQuery += ",\"";
+                writeSymbolQuery += symbol->getName();
+
+                writeSymbolQuery += "\",";
+                writeSymbolQuery += std::to_string(symbol->getByteSize());
+                writeSymbolQuery += ",";
+
+                writeSymbolQuery += "\"";
+                writeSymbolQuery += std::to_string(symbol->getElf().getDWARFEncoding(symbol->getEncoding()).getId());
+                // writeSymbolQuery += "-47";
+                writeSymbolQuery += "\",";
+
+                writeSymbolQuery += std::to_string(symbol->getArtifact().getId());
+
+                writeSymbolQuery += ",\"";
+                writeSymbolQuery += symbol->getLongDescription();
+
+                writeSymbolQuery += "\",";
+
+                writeSymbolQuery += "\"";
+                writeSymbolQuery += symbol->getShortDescription();
+
+                writeSymbolQuery += "\"";
+
+                writeSymbolQuery += ")";
+
+                rc                = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL, &errorMessage);
+
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Symbol values were written to the symbols schema with "
+                        "SQLITE_OK status.");
+
+                    /*Write the id to this symbol so that other tables can use it as
+                     *a foreign key */
+                    sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+
+                    symbol->setId(lastRowId);
+                }
+                else
+                {
+                    logger.logError(
+                        "Looks like something went wrong with query "
+                        "\"%s\":\"%s\"",
+                        writeSymbolQuery, errorMessage);
+                }
             }
         }
     }
@@ -1343,79 +1444,253 @@ int SQLiteDB::writeEnumerationsToDatabase(ElfFile& inElf)
 
 int SQLiteDB::writeEncodingsToDatabase(ElfFile& inElf)
 {
-    int                      rc        = SQLITEDB_OK;
-    /**
-     * @note This list of encodings can be found in dwarf.h or
-     *  in DWARF5 specification document section 5.1.1 titled "Base Type Encodings"
-     */
-    std::vector<std::string> encodings = std::vector<std::string>{"DW_ATE_address",
-                                                                  "DW_ATE_boolean",
-                                                                  "DW_ATE_complex_float",
-                                                                  "DW_ATE_float",
-                                                                  "DW_ATE_signed",
-                                                                  "DW_ATE_signed_char",
-                                                                  "DW_ATE_unsigned",
-                                                                  "DW_ATE_unsigned_char",
-                                                                  "DW_ATE_imaginary_float",
-                                                                  "DW_ATE_packed_decimal",
-                                                                  "DW_ATE_numeric_string",
-                                                                  "DW_ATE_edited",
-                                                                  "DW_ATE_signed_fixed",
-                                                                  "DW_ATE_unsigned_fixed",
-                                                                  "DW_ATE_decimal_float",
-                                                                  "DW_ATE_UTF",
-                                                                  "DW_ATE_UCS",
-                                                                  "DW_ATE_ASCII"};
+    int                   rc             = SQLITEDB_OK;
 
-    for (std::string encoding : encodings)
+    std::vector<Encoding> dwarfEncodings = inElf.getDWARFEncodings();
+
+    if (!doEncodingsExist())
     {
-        // Create a SQL statement with placeholders
-        sqlite3_stmt* stmt;
-        const char*   sql = "INSERT INTO encodings (encoding) VALUES (?);";
-
-        // Prepare the SQL statement
-        rc                = sqlite3_prepare_v2(database, sql, -1, &stmt, NULL);
-
-        if (rc != SQLITE_OK)
+        for (Encoding encoding : dwarfEncodings)
         {
-            std::cerr << "SQL error: " << sqlite3_errmsg(database) << std::endl;
-        }
-        else
-        {
-            // Bind values to placeholders
-            sqlite3_bind_text(stmt, 1, encoding.c_str(), -1, SQLITE_STATIC);
+            // Create a SQL statement with placeholders
+            sqlite3_stmt* stmt;
+            const char*   sql = "INSERT INTO encodings (encoding) VALUES (?);";
 
-            // Execute the SQL statement
-            if (sqlite3_step(stmt) != SQLITE_DONE)
+            // Prepare the SQL statement
+            rc                = sqlite3_prepare_v2(database, sql, -1, &stmt, NULL);
+
+            if (rc != SQLITE_OK)
             {
-                const char* errorMessage = sqlite3_errmsg(database);
-                if (SQLITE_OK == rc)
+                std::cerr << "SQL error: " << sqlite3_errmsg(database) << std::endl;
+            }
+            else
+            {
+                // Bind values to placeholders
+                sqlite3_bind_text(stmt, 1, encoding.getName().c_str(), -1, SQLITE_STATIC);
+
+                rc = sqlite3_step(stmt);
+
+                // Execute the SQL statement
+                if (rc != SQLITE_DONE)
                 {
-                    logger.logDebug(
-                        "Elf values were written to the encodings schema with "
-                        "SQLITE_OK status.");
-                }
-                else
-                {
-                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    const char* errorMessage = sqlite3_errmsg(database);
+                    if (SQLITE_OK == rc)
                     {
-                        logger.logDebug("%s.", errorMessage);
-                        rc = SQLITE_OK;
+                        logger.logDebug(
+                            "Elf values were written to the encodings schema with "
+                            "SQLITE_OK status.");
                     }
                     else
                     {
-                        logger.logDebug("There was an error while writing data to the encodings table.");
-                        logger.logDebug("%s.", errorMessage);
-                        rc = SQLITEDB_ERROR;
+                        if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                        {
+                            logger.logDebug("%s.", errorMessage);
+                            rc = SQLITE_OK;
+                        }
+                        else
+                        {
+                            logger.logDebug("There was an error while writing data to the encodings table.");
+                            logger.logDebug("%s.", errorMessage);
+                            rc = SQLITEDB_ERROR;
+                        }
+                    }
+                }
+
+                // Finalize the statement
+                rc = sqlite3_finalize(stmt);
+                if (rc != SQLITE_OK)
+                {
+                    logger.logDebug("There was an error while finalizing the sql statement for encodings table.");
+                }
+                else
+                {
+                    sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
+
+                    if (encoding.getName() == "DW_ATE_address")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_address).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_boolean")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_boolean).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_complex_float")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_complex_float).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_float")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_float).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_signed")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_signed).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_unsigned")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_unsigned).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_signed_char")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_signed_char).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_unsigned_char")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_unsigned_char).setId(lastRowId);
+                    }
+
+                    else if (encoding.getName() == "DW_ATE_unsigned_char")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_unsigned_char).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_imaginary_float")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_imaginary_float).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_packed_decimal")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_packed_decimal).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_numeric_string")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_numeric_string).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_edited")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_edited).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_signed_fixed")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_signed_fixed).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_unsigned_fixed")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_unsigned_fixed).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_decimal_float")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_decimal_float).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_UCS")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_UCS).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_address")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_address).setId(lastRowId);
+                    }
+                    else if (encoding.getName() == "DW_ATE_ASCII")
+                    {
+                        inElf.getDWARFEncoding(DW_ATE_ASCII).setId(lastRowId);
                     }
                 }
             }
-
-            // Finalize the statement
-            sqlite3_finalize(stmt);
         }
     }
+    else
+    {
+        printf("writeEncodingsToDatabase********1\n");
+        std::map<std::string, std::vector<std::string>> symbolsMap{};
 
+        std::string                                     getSymbolIdQuery{"SELECT * FROM encodings;"};
+
+        char*                                           errorMessage;
+
+        rc = sqlite3_exec(database, getSymbolIdQuery.c_str(), SQLiteDB::selectCallback, &symbolsMap, &errorMessage);
+
+        if (SQLITE_OK == rc)
+        {
+            /**
+             * We know there is only one element in our map, since symbol names are unique.
+             */
+            for (auto pair : symbolsMap)
+            {
+                // symbol->setId(std::stoi(pair.first));
+
+                Encoding      encoding{pair.second.at(0)};
+
+                sqlite3_int64 lastRowId = std::stoi(pair.first);
+
+                if (encoding.getName() == "DW_ATE_address")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_address).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_boolean")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_boolean).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_complex_float")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_complex_float).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_float")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_float).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_signed")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_signed).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_unsigned")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_unsigned).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_signed_char")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_signed_char).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_unsigned_char")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_unsigned_char).setId(lastRowId);
+                }
+
+                else if (encoding.getName() == "DW_ATE_unsigned_char")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_unsigned_char).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_imaginary_float")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_imaginary_float).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_packed_decimal")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_packed_decimal).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_numeric_string")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_numeric_string).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_edited")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_edited).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_signed_fixed")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_signed_fixed).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_unsigned_fixed")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_unsigned_fixed).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_decimal_float")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_decimal_float).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_UCS")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_UCS).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_address")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_address).setId(lastRowId);
+                }
+                else if (encoding.getName() == "DW_ATE_ASCII")
+                {
+                    inElf.getDWARFEncoding(DW_ATE_ASCII).setId(lastRowId);
+                }
+            }
+        }
+    }
     return rc;
 }
 

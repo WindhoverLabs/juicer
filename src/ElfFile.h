@@ -16,10 +16,12 @@
 
 #include "DefineMacro.h"
 #include "Elf32Symbol.h"
+#include "Encoding.h"
 #include "Field.h"
 #include "Juicer.h"
 #include "Logger.h"
 #include "Variable.h"
+#include "dwarf.h"
 
 class Symbol;
 class Field;
@@ -80,6 +82,10 @@ class ElfFile
     void                                               addElf32SymbolTableSymbol(Elf32Symbol newSymbol);
     std::vector<Elf32Symbol>                           getElf32SymbolTable() const;
 
+    std::vector<Encoding>                              getDWARFEncodings();
+
+    Encoding                                          &getDWARFEncoding(int encoding);
+
    private:
     std::string                                 md5;
     /**
@@ -111,6 +117,37 @@ class ElfFile
 
     std::vector<Elf32Symbol>                    elf32SymbolTable{};
     std::vector<Elf32_Sym>                      elf32StringsTable{};
+
+    /**
+     * @note This list of encodings can be found in dwarf.h or
+     *  in DWARF5 specification document section 5.1.1 titled "Base Type Encodings"
+     */
+    /**
+     * @brief encodingMap maps the DWARF macros to strings.
+     */
+    std::map<int, Encoding>                     encodingsMap = {
+        {DW_ATE_address, Encoding{"DW_ATE_address"}},
+        {DW_ATE_boolean, Encoding{"DW_ATE_boolean"}},
+        {DW_ATE_complex_float, Encoding{"DW_ATE_complex_float"}},
+        {DW_ATE_float, Encoding{"DW_ATE_float"}},
+        {DW_ATE_signed, Encoding{"DW_ATE_signed"}},
+        {DW_ATE_signed_char, Encoding{"DW_ATE_signed_char"}},
+        {DW_ATE_unsigned, Encoding{"DW_ATE_unsigned"}},
+        {DW_ATE_unsigned_char, Encoding{"DW_ATE_unsigned_char"}},
+        {DW_ATE_imaginary_float, Encoding{"DW_ATE_imaginary_float"}},
+        {DW_ATE_packed_decimal, Encoding{"DW_ATE_packed_decimal"}},
+        {DW_ATE_numeric_string, Encoding{"DW_ATE_numeric_string"}},
+        {DW_ATE_edited, Encoding{"DW_ATE_edited"}},
+        {DW_ATE_signed_fixed, Encoding{"DW_ATE_signed_fixed"}},
+        {DW_ATE_unsigned_fixed, Encoding{"DW_ATE_unsigned_fixed"}},
+        {DW_ATE_decimal_float, Encoding{"DW_ATE_decimal_float"}},
+        {DW_ATE_UTF, Encoding{"DW_ATE_UTF"}},
+        {DW_ATE_UCS, Encoding{"DW_ATE_UCS"}},
+        {DW_ATE_ASCII, Encoding{"DW_ATE_ASCII"}},
+
+    };
+
+    Encoding &getDWARFEncoding();
 };
 
 #endif /* ElfFile_H_ */

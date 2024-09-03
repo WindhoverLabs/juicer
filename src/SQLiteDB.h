@@ -40,12 +40,14 @@
                                   name TEXT UNIQUE NOT NULL,\
                                   byte_size INTEGER NOT NULL,\
                                   artifact INTEGER,\
-								  target_symbol INTEGER,\
+                                  target_symbol INTEGER,\
+                                  encoding INTEGER,\
                                   short_description TEXT ,\
                                   long_description TEXT ,\
                                   FOREIGN KEY(elf) REFERENCES elfs(id),\
 								  FOREIGN KEY(artifact) REFERENCES artifacts(id)\
-								  FOREIGN KEY(target_symbol) REFERENCES symbols(id)\
+                                  FOREIGN KEY(target_symbol) REFERENCES symbols(id)\
+                                  FOREIGN KEY(encoding) REFERENCES encodings(id)\
                                   UNIQUE(name));"
 
 #define CREATE_DIMENSION_TABLE \
@@ -206,6 +208,8 @@ class SQLiteDB : public IDataContainer
     static int          doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
     bool                doesSymbolExist(std::string name);
     bool                doesArtifactExist(std::string name);
+
+    bool                doEncodingsExist();
 
    public:
     SQLiteDB();

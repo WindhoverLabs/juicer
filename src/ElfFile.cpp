@@ -246,3 +246,26 @@ std::vector<Elf32_Shdr>      ElfFile::getElf32Headers() const { return elf32Head
 
 void                         ElfFile::addElf32SymbolTableSymbol(Elf32Symbol newSymbol) { elf32SymbolTable.push_back(newSymbol); }
 std::vector<Elf32Symbol>     ElfFile::getElf32SymbolTable() const { return elf32SymbolTable; }
+
+/**
+ * @brief ElfFile::getEncodings
+ * @return a list of encodings as per DWARF5 specification document section 5.1.1 titled "Base Type Encodings"
+ */
+std::vector<Encoding>        ElfFile::getDWARFEncodings()
+{
+    std::vector<Encoding> encodings{};
+
+    for (std::pair<int, Encoding> e : encodingsMap)
+    {
+        encodings.push_back(e.second);
+    }
+    return encodings;
+}
+
+/**
+ * @brief ElfFile::getDWARFEncoding
+ * @param encoding
+ * @todo add error-checking since we know the valid values
+ * @return
+ */
+Encoding& ElfFile::getDWARFEncoding(int encoding) { return encodingsMap.at(encoding); }

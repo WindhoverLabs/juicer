@@ -69,6 +69,12 @@ class Symbol
 
     bool                                       hasTargetSymbol();
 
+    void                                       setEncoding(int newEncoding);
+
+    bool                                       hasEncoding();
+
+    int                                        getEncoding();
+
    private:
     ElfFile                                  &elf;
     std::string                               name;
@@ -83,7 +89,7 @@ class Symbol
     std::string                               short_description;
     std::string                               long_description;
 
-    Encoding                                  encoding;
+    int                                       encoding{-1};
 };
 
 #endif /* SYMBOL_H_ */

@@ -233,3 +233,14 @@ void      Symbol::setTargetSymbol(Symbol* newTargetSymbol) { targetSymbol = newT
 bool      Symbol::hasTargetSymbol() { return targetSymbol != nullptr; }
 
 Symbol*   Symbol::getTargetSymbol() { return targetSymbol; }
+
+/**
+ * @brief Symbol::setEncoding
+ * @param newEncoding an integer which is one of the values specified in
+ *  in dwarf.h or in DWARF5 specification document section 5.1.1 titled "Base Type Encodings"
+ */
+void      Symbol::setEncoding(int newEncoding) { encoding = newEncoding; }
+
+bool      Symbol::hasEncoding() { return encoding != -1; }
+
+int       Symbol::getEncoding() { return encoding; }

@@ -3226,10 +3226,11 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
     Dwarf_Attribute attr_struct;
     Symbol         *outSymbol = nullptr;
     std::string     cName;
-    Dwarf_Error     error = 0;
+    Dwarf_Error     error         = 0;
+    Dwarf_Signed    encodingValue = -1;
 
     /* Get the name attribute of this Die. */
-    res                   = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
+    res                           = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
     if (res != DW_DLV_OK)
     {
         logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
@@ -3254,6 +3255,21 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
     else
     {
         cName = dieName;
+    }
+
+    res = dwarf_attr(inDie, DW_AT_encoding, &attr_struct, &error);
+    if (res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+    }
+
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_formsdata(attr_struct, &encodingValue, &error);
+        if (res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
     }
 
     outSymbol = elf.getSymbol(cName);
@@ -3342,6 +3358,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                     }
                 }
             }
+            outSymbol->setEncoding(encodingValue);
         }
     }
 
@@ -3355,6 +3372,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile &elf, Symbol &symbol, Dwarf
     Dwarf_Die       enumeratorDie = 0;
     Dwarf_Signed    encodingValue;
     Dwarf_Error     error = 0;
+    std::string     symbolEncoding{};
 
     /* Get the fields by getting the first child. */
     if (res == DW_DLV_OK)
@@ -3446,13 +3464,15 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile &elf, Symbol &symbol, Dwarf
             {
                 case DW_ATE_signed:
                 {
-                    res = dwarf_formsdata(attr_struct, &enumeratorValue, &error);
+                    res            = dwarf_formsdata(attr_struct, &enumeratorValue, &error);
+                    symbolEncoding = "DW_ATE_signed";
                     break;
                 }
 
                 case DW_ATE_unsigned:
                 {
-                    res = dwarf_formudata(attr_struct, (Dwarf_Unsigned *)&enumeratorValue, &error);
+                    res            = dwarf_formudata(attr_struct, (Dwarf_Unsigned *)&enumeratorValue, &error);
+                    symbolEncoding = "DW_ATE_unsigned";
                     break;
                 }
                 default:
@@ -3474,6 +3494,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile &elf, Symbol &symbol, Dwarf
             Dwarf_Die   siblingDie      = 0;
 
             symbol.addEnumeration(sEnumeratorName, enumeratorValue);
+            symbol.setEncoding(encodingValue);
 
             res = dwarf_siblingof(dbg, enumeratorDie, &siblingDie, &error);
             if (res == DW_DLV_ERROR)
