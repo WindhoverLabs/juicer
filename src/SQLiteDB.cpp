@@ -613,7 +613,6 @@ int SQLiteDB::writeVariablesToDatabase(ElfFile& inElf)
 
     for (auto variable : inElf.getVariables())
     {
-
         inElf.getInitializedSymbolData();
 
         /*
@@ -783,7 +782,6 @@ int SQLiteDB::writeElfSymboltableSymbolsToDatabase(ElfFile& inElf)
 
     for (auto elf32Symbol : inElf.getElf32SymbolTable())
     {
-
         inElf.getInitializedSymbolData();
 
         /*
