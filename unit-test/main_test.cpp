@@ -232,13 +232,35 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(rc == JUICER_OK);
 
-    std::string getCircleStructQuery{"SELECT * FROM symbols WHERE name = \"Circle\"; "};
-
-    sqlite3*    database;
+    sqlite3* database;
 
     rc = sqlite3_open("./test_db.sqlite", &database);
 
     REQUIRE(rc == SQLITE_OK);
+
+    std::string                                     getAllEncodings{"SELECT * FROM encodings"};
+
+    std::vector<std::map<std::string, std::string>> encodingsRecords{};
+
+    rc = sqlite3_exec(database, getAllEncodings.c_str(), selectCallbackUsingColNameAsKey, &encodingsRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(encodingsRecords.size() == 18);
+
+    /**
+     * @brief encodingMap A map of row_id -> encoding.
+     * i.e {"1":"DW_ATE_address", "2":"DW_ATE_boolean", etc}. Useful for avoiding having to look up the encoding by foreign of a symbol
+     * every time.
+     */
+    std::map<std::string, std::string> encodingMap{};
+
+    for (auto encodingRecord : encodingsRecords)
+    {
+        encodingMap[encodingRecord["id"]] = encodingRecord["encoding"];
+    }
+
+    std::string                                     getCircleStructQuery{"SELECT * FROM symbols WHERE name = \"Circle\"; "};
 
     std::vector<std::map<std::string, std::string>> circleRecords{};
 
@@ -254,9 +276,17 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(circleRecords.at(0).find("name") != circleRecords.at(0).end());
     REQUIRE(circleRecords.at(0).find("byte_size") != circleRecords.at(0).end());
     REQUIRE(circleRecords.at(0).find("id") != circleRecords.at(0).end());
+    REQUIRE(circleRecords.at(0).find("target_symbol") != circleRecords.at(0).end());
+    REQUIRE(circleRecords.at(0).find("encoding") != circleRecords.at(0).end());
+    REQUIRE(circleRecords.at(0).find("short_description") != circleRecords.at(0).end());
+    REQUIRE(circleRecords.at(0).find("long_description") != circleRecords.at(0).end());
 
     REQUIRE(circleRecords.at(0)["name"] == "Circle");
     REQUIRE(circleRecords.at(0)["byte_size"] == std::to_string(sizeof(Circle)));
+    REQUIRE(circleRecords.at(0)["target_symbol"] == "NULL");
+    REQUIRE(circleRecords.at(0)["encoding"] == "NULL");
+    REQUIRE(circleRecords.at(0)["short_description"] == "");
+    REQUIRE(circleRecords.at(0)["long_description"] == "");
 
     /**
      *Check the fields of the Circle struct.
@@ -291,6 +321,12 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
         REQUIRE(record.find("name") != record.end());
         REQUIRE(record.find("byte_offset") != record.end());
         REQUIRE(record.find("type") != record.end());
+
+        REQUIRE(record.find("little_endian") != record.end());
+        REQUIRE(record.find("bit_size") != record.end());
+        REQUIRE(record.find("bit_offset") != record.end());
+        REQUIRE(record.find("short_description") != record.end());
+        REQUIRE(record.find("long_description") != record.end());
     }
 
     REQUIRE(fieldsRecords.at(0)["name"] == "diameter");
@@ -318,6 +354,10 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(fieldsRecords.at(0)["byte_offset"] == std::to_string(offsetof(Circle, diameter)));
     REQUIRE(fieldsRecords.at(0)["type"] == diameterType);
     REQUIRE(fieldsRecords.at(0)["little_endian"] == little_endian);
+    REQUIRE(fieldsRecords.at(0)["bit_size"] == "0");
+    REQUIRE(fieldsRecords.at(0)["bit_offset"] == "0");
+    REQUIRE(fieldsRecords.at(0)["short_description"] == "");
+    REQUIRE(fieldsRecords.at(0)["long_description"] == "");
 
     REQUIRE(fieldsRecords.at(1)["name"] == "radius");
 
@@ -339,6 +379,10 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(fieldsRecords.at(1)["byte_offset"] == std::to_string(offsetof(Circle, radius)));
     REQUIRE(fieldsRecords.at(1)["type"] == radiusType);
     REQUIRE(fieldsRecords.at(1)["little_endian"] == little_endian);
+    REQUIRE(fieldsRecords.at(1)["bit_size"] == "0");
+    REQUIRE(fieldsRecords.at(1)["bit_offset"] == "0");
+    REQUIRE(fieldsRecords.at(1)["short_description"] == "");
+    REQUIRE(fieldsRecords.at(1)["long_description"] == "");
 
     std::string getPointsType{"SELECT * FROM symbols where id="};
 
@@ -358,6 +402,10 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(fieldsRecords.at(2)["byte_offset"] == std::to_string(offsetof(Circle, points)));
     REQUIRE(fieldsRecords.at(2)["type"] == PointsType);
     REQUIRE(fieldsRecords.at(2)["little_endian"] == little_endian);
+    REQUIRE(fieldsRecords.at(1)["bit_size"] == "0");
+    REQUIRE(fieldsRecords.at(1)["bit_offset"] == "0");
+    REQUIRE(fieldsRecords.at(1)["short_description"] == "");
+    REQUIRE(fieldsRecords.at(1)["long_description"] == "");
 
     /**
      *Check the correctness of the types
@@ -383,10 +431,18 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
         REQUIRE(record.find("name") != record.end());
         REQUIRE(record.find("byte_size") != record.end());
         REQUIRE(record.find("elf") != record.end());
+        REQUIRE(record.find("target_symbol") != record.end());
+        REQUIRE(record.find("encoding") != record.end());
+        REQUIRE(record.find("short_description") != record.end());
+        REQUIRE(record.find("long_description") != record.end());
     }
 
     REQUIRE(diameterFieldSymbolRecord.at(0)["name"] == "float");
     REQUIRE(diameterFieldSymbolRecord.at(0)["byte_size"] == std::to_string(sizeof(float)));
+    REQUIRE(diameterFieldSymbolRecord.at(0)["target_symbol"] == "NULL");
+    REQUIRE(encodingMap.at(diameterFieldSymbolRecord.at(0).at("encoding")) == "DW_ATE_float");
+    REQUIRE(diameterFieldSymbolRecord.at(0)["short_description"] == "");
+    REQUIRE(diameterFieldSymbolRecord.at(0)["long_description"] == "");
 
     std::string getRadiusFieldTypes{"SELECT * FROM symbols WHERE id = "};
     getRadiusFieldTypes += radiusType;
@@ -408,10 +464,18 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
         REQUIRE(record.find("name") != record.end());
         REQUIRE(record.find("byte_size") != record.end());
         REQUIRE(record.find("elf") != record.end());
+        REQUIRE(record.find("target_symbol") != record.end());
+        REQUIRE(record.find("encoding") != record.end());
+        REQUIRE(record.find("short_description") != record.end());
+        REQUIRE(record.find("long_description") != record.end());
     }
 
     REQUIRE(radiusFieldTypesRecords.at(0)["name"] == "float");
     REQUIRE(radiusFieldTypesRecords.at(0)["byte_size"] == std::to_string(sizeof(float)));
+    REQUIRE(radiusFieldTypesRecords.at(0)["target_symbol"] == "NULL");
+    REQUIRE(encodingMap.at(radiusFieldTypesRecords.at(0).at("encoding")) == "DW_ATE_float");
+    REQUIRE(radiusFieldTypesRecords.at(0)["short_description"] == "");
+    REQUIRE(radiusFieldTypesRecords.at(0)["long_description"] == "");
 
     std::string getPointsFieldTypes{"SELECT * FROM symbols WHERE id = "};
     getPointsFieldTypes += PointsType;
@@ -426,6 +490,11 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(pointsFieldTypesRecords.at(0)["name"] == "int");
     REQUIRE(pointsFieldTypesRecords.at(0)["byte_size"] == std::to_string(sizeof(int)));
+
+    REQUIRE(pointsFieldTypesRecords.at(0)["target_symbol"] == "NULL");
+    REQUIRE(encodingMap.at(pointsFieldTypesRecords.at(0).at("encoding")) == "DW_ATE_signed");
+    REQUIRE(pointsFieldTypesRecords.at(0)["short_description"] == "");
+    REQUIRE(pointsFieldTypesRecords.at(0)["long_description"] == "");
 
     REQUIRE(fieldsRecords.at(3)["name"] == "mode");
 
@@ -466,6 +535,10 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
         REQUIRE(record.find("name") != record.end());
         REQUIRE(record.find("byte_size") != record.end());
         REQUIRE(record.find("elf") != record.end());
+        REQUIRE(record.find("target_symbol") != record.end());
+        REQUIRE(record.find("encoding") != record.end());
+        REQUIRE(record.find("short_description") != record.end());
+        REQUIRE(record.find("long_description") != record.end());
     }
 
     std::string getModeEnums{"SELECT * FROM enumerations WHERE symbol = "};
@@ -491,6 +564,8 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
         REQUIRE(record.find("symbol") != record.end());
         REQUIRE(record.find("value") != record.end());
         REQUIRE(record.find("name") != record.end());
+        REQUIRE(record.find("short_description") != record.end());
+        REQUIRE(record.find("long_description") != record.end());
     }
 
     // Enforce order of records by value
@@ -566,6 +641,28 @@ TEST_CASE(
 
     REQUIRE(rc == SQLITE_OK);
 
+    std::string                                     getAllEncodings{"SELECT * FROM encodings"};
+
+    std::vector<std::map<std::string, std::string>> encodingsRecords{};
+
+    rc = sqlite3_exec(database, getAllEncodings.c_str(), selectCallbackUsingColNameAsKey, &encodingsRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(encodingsRecords.size() == 18);
+
+    /**
+     * @brief encodingMap A map of row_id -> encoding.
+     * i.e {"1":"DW_ATE_address", "2":"DW_ATE_boolean", etc}. Useful for avoiding having to look up the encoding by foreign of a symbol
+     * every time.
+     */
+    std::map<std::string, std::string> encodingMap{};
+
+    for (auto encodingRecord : encodingsRecords)
+    {
+        encodingMap[encodingRecord["id"]] = encodingRecord["encoding"];
+    }
+
     columnNameToRowMap circleDataMap{};
     circleDataMap.colName = "name";
 
@@ -581,6 +678,11 @@ TEST_CASE(
 
     REQUIRE(circleRecords.at(0)["name"] == "Circle");
     REQUIRE(circleRecords.at(0)["byte_size"] == std::to_string(sizeof(Circle)));
+
+    REQUIRE(circleRecords.at(0)["target_symbol"] == "NULL");
+    REQUIRE(circleRecords.at(0).at("encoding") == "NULL");
+    REQUIRE(circleRecords.at(0)["short_description"] == "");
+    REQUIRE(circleRecords.at(0)["long_description"] == "");
 
     /**
      *Check the fields of the Circle struct.
@@ -692,6 +794,9 @@ TEST_CASE(
     REQUIRE(circleFieldsRecords.at(0)["type"] == diameterType);
     REQUIRE(circleFieldsRecords.at(0)["little_endian"] == little_endian);
 
+    REQUIRE(circleFieldsRecords.at(0)["short_description"] == "");
+    REQUIRE(circleFieldsRecords.at(0)["long_description"] == "");
+
     std::string getRadiusType{"SELECT * FROM symbols where id="};
 
     getRadiusType += circleFieldsRecords.at(1)["type"];
@@ -713,6 +818,9 @@ TEST_CASE(
     REQUIRE(circleFieldsRecords.at(1)["type"] == radiusType);
     REQUIRE(circleFieldsRecords.at(1)["little_endian"] == little_endian);
 
+    REQUIRE(circleFieldsRecords.at(1)["short_description"] == "");
+    REQUIRE(circleFieldsRecords.at(1)["long_description"] == "");
+
     /**
      *Check the correctness of the types
      */
@@ -729,6 +837,11 @@ TEST_CASE(
 
     REQUIRE(diameterFieldTypeRecords.at(0)["name"] == "float");
     REQUIRE(diameterFieldTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(float)));
+
+    REQUIRE(diameterFieldTypeRecords.at(0)["target_symbol"] == "NULL");
+    REQUIRE(encodingMap.at(diameterFieldTypeRecords.at(0).at("encoding")) == "DW_ATE_float");
+    REQUIRE(diameterFieldTypeRecords.at(0)["short_description"] == "");
+    REQUIRE(diameterFieldTypeRecords.at(0)["long_description"] == "");
 
     /**
      * *Clean up our database handle and objects in memory.
@@ -779,6 +892,28 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     REQUIRE(rc == SQLITE_OK);
 
+    std::string                                     getAllEncodings{"SELECT * FROM encodings"};
+
+    std::vector<std::map<std::string, std::string>> encodingsRecords{};
+
+    rc = sqlite3_exec(database, getAllEncodings.c_str(), selectCallbackUsingColNameAsKey, &encodingsRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(encodingsRecords.size() == 18);
+
+    /**
+     * @brief encodingMap A map of row_id -> encoding.
+     * i.e {"1":"DW_ATE_address", "2":"DW_ATE_boolean", etc}. Useful for avoiding having to look up the encoding by foreign of a symbol
+     * every time.
+     */
+    std::map<std::string, std::string> encodingMap{};
+
+    for (auto encodingRecord : encodingsRecords)
+    {
+        encodingMap[encodingRecord["id"]] = encodingRecord["encoding"];
+    }
+
     std::vector<std::map<std::string, std::string>> squareRecords{};
 
     rc = sqlite3_exec(database, getSquareStructQuery.c_str(), selectCallbackUsingColNameAsKey, &squareRecords, &errorMessage);
@@ -801,6 +936,11 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
 
     REQUIRE(squareRecords.at(0)["name"] == "Square");
     REQUIRE(squareRecords.at(0)["byte_size"] == std::to_string(sizeof(Square)));
+
+    REQUIRE(squareRecords.at(0)["target_symbol"] == "NULL");
+    REQUIRE(squareRecords.at(0).at("encoding") == "NULL");
+    REQUIRE(squareRecords.at(0)["short_description"] == "");
+    REQUIRE(squareRecords.at(0)["long_description"] == "");
 
     std::string square_id          = squareRecords.at(0)["id"];
 
@@ -875,6 +1015,15 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     rc = sqlite3_exec(database, getStuffType.c_str(), selectCallbackUsingColNameAsKey, &stuffTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
     REQUIRE(stuffTypeRecords.size() == 1);
+
+    REQUIRE(stuffTypeRecords.at(0)["name"] == "uint16_t");
+    REQUIRE(stuffTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint16_t)));
+
+    // TODO:Add a "follow_symbol_target" function to test typedef'd types
+    //  REQUIRE(stuffTypeRecords.at(0)["target_symbol"] == "NULL");
+    //  REQUIRE(encodingMap.at(stuffTypeRecords.at(0).at("encoding")) == "DW_ATE_unsigned");
+    //  REQUIRE(stuffTypeRecords.at(0)["short_description"] == "");
+    //  REQUIRE(stuffTypeRecords.at(0)["long_description"] == "");
 
     std::string stuffType{stuffTypeRecords.at(0)["id"]};
 
@@ -1401,6 +1550,6 @@ TEST_CASE("Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct a
     REQUIRE(matrix1DDimensionListsRecords.at(0)["dim_order"] == "0");
     REQUIRE(matrix1DDimensionListsRecords.at(0)["upper_bound"] == "1");
 
-    // REQUIRE(remove("./test_db.sqlite")==0);
+    REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
 }
