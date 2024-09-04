@@ -13,9 +13,15 @@ RUN apt-get install -y libelf-dev
 RUN apt-get install -y libsqlite3-dev
 RUN apt-get install -y libssl-dev
 RUN apt-get install -y doxygen
+RUN apt-get install -y gcovr
 
 RUN mkdir /home/docker
 COPY . /home/docker/juicer
+
+
+RUN cd /home/docker/juicer && make clean
+RUN cd /home/docker/juicer && make docs
+
 RUN cd /home/docker/juicer && make
 RUN cd /home/docker/juicer && make clean
 RUN cd /home/docker/juicer && make build-tests
@@ -31,9 +37,7 @@ RUN ./juicer-ut "[main_test#7]"
 RUN ./juicer-ut "[main_test#8]"
 RUN ./juicer-ut "[Module]"
 RUN ./juicer-ut "[Symbol]"
-
-RUN cd /home/docker/juicer && make clean
-RUN cd /home/docker/juicer && make docs
+RUN cd /home/docker/juicer && make coverage
 
 
 

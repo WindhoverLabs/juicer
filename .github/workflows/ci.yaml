@@ -30,8 +30,10 @@ jobs:
           context: .
           push: false  # Do not push the image
           tags: juicer:latest  # Local tag for the built image
+      - name: Copy coverage report to host
+        run: img_id=$(docker create juicer:latest) && docker cp $img_id:/home/docker/juicer/build/coverage .
       - name: publish to coveralls.io
         uses: coverallsapp/github-action@v2
         with:
-         github-token: ${{ github.token }}
+         github-token: ${{ secrets.COVERALLS_REPO_TOKEN }}
 
