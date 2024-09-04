@@ -1,4 +1,4 @@
-root_dir: "src"
+root_dir: "."
 
 #When true, files will only be checked. None will be modified.
 check_all: false
@@ -22,3 +22,4 @@ exclude_dirs:
   - "prmlib"
   - "cfs_lib"
   - "vm"
+  - "Catch2"

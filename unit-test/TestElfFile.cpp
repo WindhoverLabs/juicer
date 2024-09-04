@@ -5,16 +5,17 @@
  *      Author: vagrant
  */
 
-#include "../src/ElfFile.h"
-#include "catch.hpp"
 #include <limits.h>
 
+#include "../src/ElfFile.h"
+#include "catch.hpp"
 
 /**
  *@todo This testing module is not done yet.
  */
 
-TEST_CASE( "Correctness of a Module object instance", "[Module] " ) {
+TEST_CASE("Correctness of a Module object instance", "[Module] ")
+{
     std::string newElfName{"ABC"};
     uint32_t    elfId = 102;
     ElfFile     myElf{newElfName};
@@ -25,11 +26,6 @@ TEST_CASE( "Correctness of a Module object instance", "[Module] " ) {
     newElfName.insert(0, resolvedPath);
 
     myElf.setId(elfId);
-    REQUIRE( myElf.getName() == newElfName );
-    REQUIRE( myElf.getId() == elfId );
-
+    REQUIRE(myElf.getName() == newElfName);
+    REQUIRE(myElf.getId() == elfId);
 }
-
-
-
-

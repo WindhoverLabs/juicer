@@ -4,8 +4,8 @@
  *  Created on: Aug 12, 2020
  *      Author: vagrant
  */
-#include "catch.hpp"
 #include "Enumeration.h"
+#include "catch.hpp"
 
 /**
  * @brief Unit tests for Enumeration class.
@@ -16,9 +16,9 @@ TEST_CASE("Test Enumeration name correctness", "[Enumeration]")
     std::string symbolName{"string"};
     std::string elfName{"ABC"};
 
-    ElfFile symbolModule{elfName};
+    ElfFile     symbolModule{elfName};
 
-    Symbol enumSymbol{symbolModule};
+    Symbol      enumSymbol{symbolModule};
     enumSymbol.setName(symbolName);
     std::string colorName{"Color"};
 
@@ -34,11 +34,11 @@ TEST_CASE("Test Enumeration value correctness", "[Enumeration]")
     std::string symbolName{"string"};
     std::string elfName{"ABC"};
 
-    ElfFile symbolModule{elfName};
+    ElfFile     symbolModule{elfName};
 
-    Symbol enumSymbol{symbolModule};
+    Symbol      enumSymbol{symbolModule};
     enumSymbol.setName(symbolName);
-    uint64_t value{714};
+    uint64_t    value{714};
 
     Enumeration colorEnumeration{enumSymbol};
 
@@ -47,15 +47,17 @@ TEST_CASE("Test Enumeration value correctness", "[Enumeration]")
     REQUIRE(colorEnumeration.getValue() == value);
 }
 
-TEST_CASE("Test Constructor Enumeration(Symbol &symbol) "
-                    " correctness ", "[Enumeration]")
+TEST_CASE(
+    "Test Constructor Enumeration(Symbol &symbol) "
+    " correctness ",
+    "[Enumeration]")
 {
     std::string symbolName{"string"};
     std::string elfName{"ABC"};
 
-    ElfFile symbolModule{elfName};
+    ElfFile     symbolModule{elfName};
 
-    Symbol enumSymbol{symbolModule};
+    Symbol      enumSymbol{symbolModule};
     enumSymbol.setName(symbolName);
 
     Enumeration colorEnumeration{enumSymbol};
@@ -63,17 +65,19 @@ TEST_CASE("Test Constructor Enumeration(Symbol &symbol) "
     REQUIRE(colorEnumeration.getSymbol().getName() == symbolName);
 }
 
-TEST_CASE("Test Constructor Enumeration(Symbol &symbol, std::string &name, uint64_t value) "
-                    " correctness ", "[Enumeration]")
+TEST_CASE(
+    "Test Constructor Enumeration(Symbol &symbol, std::string &name, uint64_t value) "
+    " correctness ",
+    "[Enumeration]")
 {
     std::string symbolName{"string"};
     std::string enumName{"Color"};
     uint64_t    value{714};
     std::string elfName{"ABC"};
 
-    ElfFile      symbolModule{elfName};
+    ElfFile     symbolModule{elfName};
 
-    Symbol enumSymbol{symbolModule};
+    Symbol      enumSymbol{symbolModule};
     enumSymbol.setName(symbolName);
 
     Enumeration colorEnumeration{enumSymbol, enumName, value};

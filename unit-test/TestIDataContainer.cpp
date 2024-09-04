@@ -5,6 +5,7 @@
  *      Author: vagrant
  */
 #include <catch.hpp>
+
 #include "IDataContainer.h"
 
 /**
