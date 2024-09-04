@@ -1075,10 +1075,6 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 
             else
             {
-                std::cout << "symbol-->" << symbol->getName() << std::endl;
-                std::cout << "encoding-->" << symbol->getElf().getDWARFEncoding(symbol->getEncoding()).getName();
-
-                std::cout << "encoding id-->" << std::to_string(symbol->getElf().getDWARFEncoding(symbol->getEncoding()).getId()) << std::endl;
                 writeSymbolQuery +=
                     "INSERT INTO symbols(elf, name, byte_size, encoding, artifact, long_description, short_description) "
                     "VALUES(";
