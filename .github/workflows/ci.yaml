@@ -34,7 +34,7 @@ jobs:
       - name: Build Docker image
         run: docker build --no-cache -t juicer:latest -f Dockerfile . 
       - name: Copy coverage report to host
-        run: docker image ls && img_id=$(docker create juicer:latest) && docker cp $img_id:/home/docker/juicer/build/coverage .
+        run: docker image ls && img_id=$(docker create juicer:latest) && docker cp $img_id:/home/docker/juicer/coverage.gcov .
       - name: publish to coveralls.io
         uses: coverallsapp/github-action@v2
         with:

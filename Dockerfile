@@ -38,6 +38,8 @@ RUN ./juicer-ut "[main_test#8]"
 RUN ./juicer-ut "[Module]"
 RUN ./juicer-ut "[Symbol]"
 RUN cd /home/docker/juicer && make coverage
+#Useful for CI
+RUN cd /home/docker/juicer &&  gcovr --filter /home/docker/juicer/src/ --object-directory /home/docker/juicer/build/ut_obj/  .  > coverage.gcov 
 
 
 
