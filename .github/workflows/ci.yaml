@@ -30,8 +30,8 @@ jobs:
           context: .
           push: false  # Do not push the image
           tags: juicer:latest  # Local tag for the built image
-        #- name: publish to coveralls.io
-        #uses: coverallsapp/github-action@v1.1.2
-        #with:
-        #  github-token: ${{ github.token }}
+      - name: publish to coveralls.io
+        uses: coverallsapp/github-action@v2
+        with:
+         github-token: ${{ github.token }}
 
