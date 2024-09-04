@@ -1,5 +1,6 @@
 
 [![Run juicer tests](https://github.com/WindhoverLabs/juicer/actions/workflows/ci.yaml/badge.svg)](https://github.com/WindhoverLabs/juicer/actions/workflows/ci.yaml)
+[![Coverage Status](https://coveralls.io/repos/github/WindhoverLabs/juicer/badge.svg?branch=unit_test_updates)](https://coveralls.io/github/WindhoverLabs/juicer?branch=unit_test_updates)
 
 # Table of Contents
 1. [Dependencies](#dependencies)
