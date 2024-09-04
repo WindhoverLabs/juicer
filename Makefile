@@ -46,7 +46,7 @@ UT_LDLIBS   := $(LDLIBS) -lgcov
 CC          := g++
 LD          := g++
 
-.PHONY: all clean run-tests coverage
+.PHONY: all clean run-tests coverage docs
 
 # Target recipes
 $(EXE): $(OBJ)
