@@ -165,7 +165,7 @@ std::string getmd5sumFromSystem(char resolvedPath[PATH_MAX]) {
 	std::string MD5CommandStr { "md5sum " };
 	MD5CommandStr += resolvedPath;
 	MD5CommandStr += " >MD5.txt";
-	std::system(MD5CommandStr.c_str()); // executes the UNIX command "ls -l >test.txt"
+    std::system(MD5CommandStr.c_str()); // executes the UNIX command "md5sum resolvedPath[PATH_MAX] >MD5.txt"
 	std::strstream expectedMD5 { };
 	expectedMD5 << std::ifstream("MD5.txt").rdbuf();
 	REQUIRE(remove("./MD5.txt") == 0);
