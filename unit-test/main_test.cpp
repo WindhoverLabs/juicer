@@ -477,7 +477,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     rc = sqlite3_exec(database, getModeEnums.c_str(), selectCallbackUsingColNameAsKey, &modeEnumsRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
 
-    REQUIRE(modeType == "31");
+    REQUIRE(modeType == "39");
 
     REQUIRE(modeEnumsRecords.size() == 8);
 
@@ -793,7 +793,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
         numberOfColumns++;
     }
 
-    REQUIRE(numberOfColumns == 7);
+    REQUIRE(numberOfColumns == 9);
 
     /**
      * Check the correctness of Square struct.
@@ -1180,7 +1180,7 @@ TEST_CASE("Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct a
         numberOfColumns++;
     }
 
-    REQUIRE(numberOfColumns == 7);
+    REQUIRE(numberOfColumns == 9);
 
     /**
      * Check the correctness of Square struct.
