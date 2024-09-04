@@ -24,12 +24,15 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       # Build the Docker image
+      # - name: Build Docker image
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: .
+      #     push: false  # Do not push the image
+      #     tags: juicer:latest  # Local tag for the built image
+
       - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false  # Do not push the image
-          tags: juicer:latest  # Local tag for the built image
+        run: docker build --no-cache -t juicer:latest -f Dockerfile . 
       - name: Copy coverage report to host
         run: docker image ls && img_id=$(docker create juicer:latest) && docker cp $img_id:/home/docker/juicer/build/coverage .
       - name: publish to coveralls.io
