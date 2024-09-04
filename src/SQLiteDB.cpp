@@ -613,11 +613,8 @@ int SQLiteDB::writeVariablesToDatabase(ElfFile& inElf)
 
     for (auto variable : inElf.getVariables())
     {
-        //        std::string          symbolInitializedDataName = symbolDataPair.first;
-        //        std::vector<uint8_t> symbolInitializedData     = symbolDataPair.second;
 
         inElf.getInitializedSymbolData();
-        uint32_t    typeID;
 
         /*
          * @todo I want to store these SQLite magical values into MACROS,
@@ -697,11 +694,7 @@ int SQLiteDB::writeElfSectionsToDatabase(ElfFile& inElf)
 
     for (auto elf32Section : inElf.getElf32Headers())
     {
-        //        std::string          symbolInitializedDataName = symbolDataPair.first;
-        //        std::vector<uint8_t> symbolInitializedData     = symbolDataPair.second;
-
         inElf.getInitializedSymbolData();
-        uint32_t    typeID;
 
         /*
          * @todo I want to store these SQLite magical values into MACROS,
@@ -790,11 +783,8 @@ int SQLiteDB::writeElfSymboltableSymbolsToDatabase(ElfFile& inElf)
 
     for (auto elf32Symbol : inElf.getElf32SymbolTable())
     {
-        //        std::string          symbolInitializedDataName = symbolDataPair.first;
-        //        std::vector<uint8_t> symbolInitializedData     = symbolDataPair.second;
 
         inElf.getInitializedSymbolData();
-        uint32_t    typeID;
 
         /*
          * @todo I want to store these SQLite magical values into MACROS,
