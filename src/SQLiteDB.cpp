@@ -132,9 +132,6 @@ bool SQLiteDB::doEncodingsExist()
         logger.logError("%s", errorMessage);
         row_count = 0;
     }
-
-    printf("doEncodingsExist**1:%d, rc:%d\n", row_count, rc);
-
     return row_count == 0 ? false : true;
 }
 
@@ -1589,7 +1586,6 @@ int SQLiteDB::writeEncodingsToDatabase(ElfFile& inElf)
     }
     else
     {
-        printf("writeEncodingsToDatabase********1\n");
         std::map<std::string, std::vector<std::string>> symbolsMap{};
 
         std::string                                     getSymbolIdQuery{"SELECT * FROM encodings;"};
