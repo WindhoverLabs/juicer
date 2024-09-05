@@ -178,6 +178,35 @@ std::string getmd5sumFromSystem(char resolvedPath[PATH_MAX])
     return expectedMD5Str;
 }
 
+std::map<std::string, std::string> followTargetSymbol(sqlite3* database, std::string symbolID)
+{
+    std::string symbolQuery{"SELECT * FROM symbols where id="};
+    int         rc  = 0;
+
+    symbolQuery    += symbolID;
+    symbolQuery    += ";";
+
+    std::map<std::string, std::string>              targetSymbolRecord{};
+
+    std::vector<std::map<std::string, std::string>> symbolRecords{};
+
+    char*                                           errorMessage = nullptr;
+
+    rc = sqlite3_exec(database, symbolQuery.c_str(), selectCallbackUsingColNameAsKey, &symbolRecords, &errorMessage);
+
+    REQUIRE(rc == JUICER_OK);
+
+    if (symbolRecords.at(0).at("target_symbol") != "NULL")
+    {
+        targetSymbolRecord = followTargetSymbol(database, symbolRecords.at(0).at("target_symbol"));
+    }
+    else
+    {
+        return symbolRecords.at(0);
+    }
+    return targetSymbolRecord;
+}
+
 TEST_CASE("Test Juicer at the highest level with SQLiteDB", "[main_test#1]")
 {
     Juicer          juicer;
@@ -1019,11 +1048,9 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     REQUIRE(stuffTypeRecords.at(0)["name"] == "uint16_t");
     REQUIRE(stuffTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint16_t)));
 
-    // TODO:Add a "follow_symbol_target" function to test typedef'd types
-    //  REQUIRE(stuffTypeRecords.at(0)["target_symbol"] == "NULL");
-    //  REQUIRE(encodingMap.at(stuffTypeRecords.at(0).at("encoding")) == "DW_ATE_unsigned");
-    //  REQUIRE(stuffTypeRecords.at(0)["short_description"] == "");
-    //  REQUIRE(stuffTypeRecords.at(0)["long_description"] == "");
+    REQUIRE(encodingMap.at(followTargetSymbol(database, stuffTypeRecords.at(0)["target_symbol"]).at("encoding")) == "DW_ATE_unsigned");
+    REQUIRE(stuffTypeRecords.at(0)["short_description"] == "");
+    REQUIRE(stuffTypeRecords.at(0)["long_description"] == "");
 
     std::string stuffType{stuffTypeRecords.at(0)["id"]};
 
@@ -1042,6 +1069,13 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     REQUIRE(rc == SQLITE_OK);
     REQUIRE(padding1TypeRecords.size() == 1);
 
+    REQUIRE(padding1TypeRecords.at(0)["name"] == "uint16_t");
+    REQUIRE(padding1TypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint16_t)));
+
+    REQUIRE(encodingMap.at(followTargetSymbol(database, padding1TypeRecords.at(0)["target_symbol"]).at("encoding")) == "DW_ATE_unsigned");
+    REQUIRE(padding1TypeRecords.at(0)["short_description"] == "");
+    REQUIRE(padding1TypeRecords.at(0)["long_description"] == "");
+
     std::string padding1Type{padding1TypeRecords.at(0)["id"]};
 
     REQUIRE(squareFieldsRecords.at(2)["name"] == "padding1");
@@ -1058,6 +1092,13 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     rc = sqlite3_exec(database, getLengthType.c_str(), selectCallbackUsingColNameAsKey, &lengthTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
     REQUIRE(lengthTypeRecords.size() == 1);
+
+    REQUIRE(lengthTypeRecords.at(0)["name"] == "int32_t");
+    REQUIRE(lengthTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(int32_t)));
+
+    REQUIRE(encodingMap.at(followTargetSymbol(database, lengthTypeRecords.at(0)["target_symbol"]).at("encoding")) == "DW_ATE_signed");
+    REQUIRE(lengthTypeRecords.at(0)["short_description"] == "");
+    REQUIRE(lengthTypeRecords.at(0)["long_description"] == "");
 
     std::string lengthType{lengthTypeRecords.at(0)["id"]};
 
@@ -1076,6 +1117,13 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     REQUIRE(rc == SQLITE_OK);
     REQUIRE(moreStuffTypeRecords.size() == 1);
 
+    REQUIRE(moreStuffTypeRecords.at(0)["name"] == "uint16_t");
+    REQUIRE(moreStuffTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint16_t)));
+
+    REQUIRE(encodingMap.at(followTargetSymbol(database, moreStuffTypeRecords.at(0)["target_symbol"]).at("encoding")) == "DW_ATE_unsigned");
+    REQUIRE(moreStuffTypeRecords.at(0)["short_description"] == "");
+    REQUIRE(moreStuffTypeRecords.at(0)["long_description"] == "");
+
     std::string moreStuffType{moreStuffTypeRecords.at(0)["id"]};
 
     REQUIRE(squareFieldsRecords.at(4)["name"] == "more_stuff");
@@ -1093,6 +1141,13 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     REQUIRE(rc == SQLITE_OK);
     REQUIRE(padding2TypeRecords.size() == 1);
 
+    REQUIRE(padding2TypeRecords.at(0)["name"] == "uint16_t");
+    REQUIRE(padding2TypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint16_t)));
+
+    REQUIRE(encodingMap.at(followTargetSymbol(database, padding2TypeRecords.at(0)["target_symbol"]).at("encoding")) == "DW_ATE_unsigned");
+    REQUIRE(padding2TypeRecords.at(0)["short_description"] == "");
+    REQUIRE(padding2TypeRecords.at(0)["long_description"] == "");
+
     std::string padding2Type{padding2TypeRecords.at(0)["id"]};
 
     REQUIRE(squareFieldsRecords.at(5)["name"] == "padding2");
@@ -1109,6 +1164,14 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     rc = sqlite3_exec(database, getFloatingStuffType.c_str(), selectCallbackUsingColNameAsKey, &floatingStuffTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
     REQUIRE(floatingStuffTypeRecords.size() == 1);
+
+    REQUIRE(floatingStuffTypeRecords.at(0)["name"] == "float");
+    REQUIRE(floatingStuffTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(float)));
+    REQUIRE(floatingStuffTypeRecords.at(0)["target_symbol"] == "NULL");
+
+    REQUIRE(encodingMap.at(floatingStuffTypeRecords.at(0)["encoding"]) == "DW_ATE_float");
+    REQUIRE(floatingStuffTypeRecords.at(0)["short_description"] == "");
+    REQUIRE(floatingStuffTypeRecords.at(0)["long_description"] == "");
 
     std::string floatingStuffType{floatingStuffTypeRecords.at(0)["id"]};
 
