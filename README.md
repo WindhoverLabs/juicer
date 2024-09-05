@@ -11,7 +11,8 @@
 6. [Environment Setup](#environment-setup)
 7. [Testing](#testing)
 8. [DWARF Support](#dwarf_support)
-9. [vxWorks Support](#vxWorks)
+9. [Notes on Macros](#notes_on_macros)
+10. [vxWorks Support](#vxWorks)
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
@@ -296,15 +297,16 @@ At the moment `juicer` follows the DWARF4 specification, which is the standard i
 As juicer evolves, dwarf support will grow and evolve as well. At the moment, we don't adhere to a particular DWARF version as we add support to the things that we need for our code base, which is airliner. In other words, we *mostly* support `C` code, or `C++` code without any cutting edge/modern features. For example, modern features such as `templates` or `namespaces` are not supported. If juicer finds these things in your elf files, it will simply ignore them. To have a more concrete idea of what we *do* support in the DWARF, take a look at the table below which records all DWARF tags we support.
 
 ### Dwarf Tags
-| Name | Description |
-| ---| --- |
-| DW_TAG_base_type | This is the tag that represents intrinsic types such as `int` and `char`. |
-| DW_TAG_typedef | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}`. At the moment, types such as `typedef int16 my_int` do *not* work. We will investigate this issue in the future, however, it is not a priority at the moment.|
+| Name                  | Description |
+|-----------------------| --- |
+| DW_TAG_base_type      | This is the tag that represents intrinsic types such as `int` and `char`. |
+| DW_TAG_typedef        | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}`. At the moment, types such as `typedef int16 my_int` do *not* work. We will investigate this issue in the future, however, it is not a priority at the moment.|
 | DW_TAG_structure_type | This is the tag that represents structs such as  `struct Square{ int width; int length; };` |
-| DW_TAG_array_type | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Noe that this does not include dynamic arrays such as those allocated by malloc or new calls.|
-| DW_TAG_pointer_type | This is the tag that represents pointers in code such as `int* ptr = nullptr`|
+| DW_TAG_array_type     | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Noe that this does not include dynamic arrays such as those allocated by malloc or new calls.|
+| DW_TAG_pointer_type   | This is the tag that represents pointers in code such as `int* ptr = nullptr`|
 | DW_TAG_enumeration_type | This is the tag that represents enumerations such as `enum Color{RED,BLUE,YELLOW};` |
-| DW_TAG_const_type | This is the tag that represents C/C++ const qualified type such as `sizetype`, which is used by containers(like std::vector) in the STL C++ library.  |
+| DW_TAG_const_type     | This is the tag that represents C/C++ const qualified type such as `sizetype`, which is used by containers(like std::vector) in the STL C++ library.  |
+|  DW_MACRO_define      | This tag represents define macros such as "#define CFE_MISSION_ES_PERF_MAX_IDS 128"|
 
 For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/DWARF4.pdf).
 
@@ -321,6 +323,14 @@ referenced by the type attribute of pointer types and typedef declarations for '
 
 juicer behaves accordingly. If a pointer does not have a type(meaning it does not have a DW_AT_type attribute), then it is assumed that the pointer in question is of the `void*` type.
 
+
+## Notes On #define Macros <a name="notes_on_macros"></a>
+During testing we found that we the following pattern causes the macro being defined to disappear from the DWARF section:
+```C
+#define CFE_MISSION_ES_PERF_MAX_IDS 128
+#define CFE_MISSION_ES_PERF_MAX_IDS 160
+
+```
 
 ## VxWorks Support <a name="vxWorks"></a>
 At the moment vxWorks support is a work in progress. Support is currently *not* tested, so at the moment it is on its own [branch]
