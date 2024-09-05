@@ -1337,7 +1337,10 @@ TEST_CASE("Write Elf File to database with invalid verbosity", "[main_test#8]")
     REQUIRE(remove("./test_db.sqlite") == 0);
 }
 
-TEST_CASE("Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct after Juicer has processed it.", "[main_test#9]")
+TEST_CASE(
+    "Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct after Juicer has processed it. "
+    "This also tests the \"extras\" features such ELF mage data.",
+    "[main_test#9]")
 {
     /**
      * This assumes that the test_file was compiled on
@@ -1360,12 +1363,13 @@ TEST_CASE("Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct a
     logger.logInfo("IDataContainer was constructed successfully for unit test.");
 
     juicer.setIDC(idc);
+    juicer.setExtras(true);
 
     rc = juicer.parse(inputFile);
 
     REQUIRE(rc == JUICER_OK);
 
-    std::string getSquareStructQuery{"SELECT * FROM symbols WHERE name = \"Square\"; "};
+    std::string getSquareStructQuery{"SELECT * FROM symbols WHERE name = \"CFE_ES_HousekeepingTlm_Payload_t\"; "};
 
     /**
      *Clean up our database handle and objects in memory.
@@ -1378,16 +1382,16 @@ TEST_CASE("Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct a
 
     REQUIRE(rc == SQLITE_OK);
 
-    std::vector<std::map<std::string, std::string>> squareRecords{};
+    std::vector<std::map<std::string, std::string>> hkRecords{};
 
-    rc = sqlite3_exec(database, getSquareStructQuery.c_str(), selectCallbackUsingColNameAsKey, &squareRecords, &errorMessage);
+    rc = sqlite3_exec(database, getSquareStructQuery.c_str(), selectCallbackUsingColNameAsKey, &hkRecords, &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(squareRecords.size() == 1);
+    REQUIRE(hkRecords.size() == 1);
 
     uint32_t numberOfColumns = 0;
 
-    for (auto pair : squareRecords.at(0))
+    for (auto pair : hkRecords.at(0))
     {
         numberOfColumns++;
     }
@@ -1398,18 +1402,20 @@ TEST_CASE("Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct a
      * Check the correctness of Square struct.
      */
 
-    REQUIRE(squareRecords.at(0)["name"] == "Square");
-    REQUIRE(squareRecords.at(0)["byte_size"] == std::to_string(sizeof(Square)));
+    REQUIRE(hkRecords.at(0)["name"] == "CFE_ES_HousekeepingTlm_Payload_t");
 
-    std::string square_id          = squareRecords.at(0)["id"];
+    REQUIRE(hkRecords.at(0)["target_symbol"] != "NULL");
+    REQUIRE(hkRecords.at(0)["byte_size"] == std::to_string(sizeof(CFE_ES_HousekeepingTlm_Payload_t)));
 
-    std::string square_artifact_id = squareRecords.at(0)["artifact"];
+    std::string hkTargetSymbolId = followTargetSymbol(database, hkRecords.at(0)["id"]).at("id");
 
-    REQUIRE(!square_artifact_id.empty());
+    std::string squareArtifactId = hkRecords.at(0)["artifact"];
+
+    REQUIRE(!squareArtifactId.empty());
 
     std::string getSquareArtifact{"SELECT * FROM artifacts WHERE id = "};
 
-    getSquareArtifact += square_artifact_id;
+    getSquareArtifact += squareArtifactId;
     getSquareArtifact += ";";
 
     std::vector<std::map<std::string, std::string>> squareArtifactRecords{};
@@ -1431,110 +1437,134 @@ TEST_CASE("Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct a
     std::string expectedMD5Str = getmd5sumFromSystem(resolvedPath);
     REQUIRE(expectedMD5Str == squareArtifactRecords.at(0)["md5"]);
 
-    std::string getSquareFields{"SELECT * FROM fields WHERE symbol = "};
+    std::string getHKFields{"SELECT * FROM fields WHERE symbol = "};
 
-    getSquareFields += square_id;
-    getSquareFields += ";";
+    getHKFields += hkTargetSymbolId;
+    getHKFields += ";";
 
-    std::vector<std::map<std::string, std::string>> squareFieldsRecords{};
+    std::vector<std::map<std::string, std::string>> hkFieldsRecords{};
 
-    rc = sqlite3_exec(database, getSquareFields.c_str(), selectCallbackUsingColNameAsKey, &squareFieldsRecords, &errorMessage);
+    rc = sqlite3_exec(database, getHKFields.c_str(), selectCallbackUsingColNameAsKey, &hkFieldsRecords, &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(squareFieldsRecords.size() == 9);
+    REQUIRE(hkFieldsRecords.size() == 42);
 
     // Enforce order of records by offset
-    std::sort(squareFieldsRecords.begin(), squareFieldsRecords.end(), [](std::map<std::string, std::string> a, std::map<std::string, std::string> b)
+    std::sort(hkFieldsRecords.begin(), hkFieldsRecords.end(), [](std::map<std::string, std::string> a, std::map<std::string, std::string> b)
               { return std::stoi(a["byte_offset"]) < std::stoi(b["byte_offset"]); });
 
-    std::string getWidthType{"SELECT * FROM symbols where id="};
-    getWidthType += squareFieldsRecords.at(0)["type"];
-    getWidthType += ";";
+    std::string getCommandCounterType{"SELECT * FROM symbols where id="};
+    getCommandCounterType += hkFieldsRecords.at(0)["type"];
+    getCommandCounterType += ";";
 
-    std::vector<std::map<std::string, std::string>> widthTypeRecords{};
+    std::vector<std::map<std::string, std::string>> CommandCounterTypeRecords{};
 
-    rc = sqlite3_exec(database, getWidthType.c_str(), selectCallbackUsingColNameAsKey, &widthTypeRecords, &errorMessage);
+    rc = sqlite3_exec(database, getCommandCounterType.c_str(), selectCallbackUsingColNameAsKey, &CommandCounterTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(widthTypeRecords.size() == 1);
+    REQUIRE(CommandCounterTypeRecords.size() == 1);
 
-    std::string widthType{widthTypeRecords.at(0)["id"]};
+    std::string widthType{CommandCounterTypeRecords.at(0)["id"]};
 
-    REQUIRE(squareFieldsRecords.at(0)["symbol"] == squareRecords.at(0)["id"]);
-    REQUIRE(squareFieldsRecords.at(0)["name"] == "width");
-    REQUIRE(squareFieldsRecords.at(0)["byte_offset"] == std::to_string(offsetof(Square, width)));
-    REQUIRE(squareFieldsRecords.at(0)["type"] == widthType);
-    REQUIRE(squareFieldsRecords.at(0)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(0)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(0)["name"] == "CommandCounter");
+    REQUIRE(hkFieldsRecords.at(0)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, CommandCounter)));
+    REQUIRE(hkFieldsRecords.at(0)["type"] == widthType);
+    REQUIRE(hkFieldsRecords.at(0)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(0)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(0)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(0)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(0)["long_description"] == "");
 
-    std::string getStuffType{"SELECT * FROM symbols where id="};
-    getStuffType += squareFieldsRecords.at(1)["type"];
-    getStuffType += ";";
+    std::string getCommandErrorCounterType{"SELECT * FROM symbols where id="};
+    getCommandErrorCounterType += hkFieldsRecords.at(1)["type"];
+    getCommandErrorCounterType += ";";
 
-    std::vector<std::map<std::string, std::string>> stuffTypeRecords{};
+    std::vector<std::map<std::string, std::string>> CommandErrorCounterTypeRecords{};
 
-    rc = sqlite3_exec(database, getStuffType.c_str(), selectCallbackUsingColNameAsKey, &stuffTypeRecords, &errorMessage);
+    rc = sqlite3_exec(database, getCommandErrorCounterType.c_str(), selectCallbackUsingColNameAsKey, &CommandErrorCounterTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(stuffTypeRecords.size() == 1);
+    REQUIRE(CommandErrorCounterTypeRecords.size() == 1);
 
-    std::string stuffType{stuffTypeRecords.at(0)["id"]};
+    std::string CommandErrorCounterType{CommandErrorCounterTypeRecords.at(0)["id"]};
 
-    REQUIRE(squareFieldsRecords.at(1)["name"] == "stuff");
-    REQUIRE(squareFieldsRecords.at(1)["byte_offset"] == std::to_string(offsetof(Square, stuff)));
-    REQUIRE(squareFieldsRecords.at(1)["type"] == stuffType);
-    REQUIRE(squareFieldsRecords.at(1)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(1)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(1)["name"] == "CommandErrorCounter");
+    REQUIRE(hkFieldsRecords.at(1)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, CommandErrorCounter)));
+    REQUIRE(hkFieldsRecords.at(1)["type"] == CommandErrorCounterType);
+    REQUIRE(hkFieldsRecords.at(1)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(1)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(1)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(1)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(1)["long_description"] == "");
 
-    std::string getPadding1Type{"SELECT * FROM symbols where id="};
-    getPadding1Type += squareFieldsRecords.at(2)["type"];
-    getPadding1Type += ";";
+    std::string getCFECoreChecksumTypeType{"SELECT * FROM symbols where id="};
+    getCFECoreChecksumTypeType += hkFieldsRecords.at(2)["type"];
+    getCFECoreChecksumTypeType += ";";
 
-    std::vector<std::map<std::string, std::string>> padding1TypeRecords{};
+    std::vector<std::map<std::string, std::string>> CFECoreChecksumTypeTypeRecords{};
 
-    rc = sqlite3_exec(database, getPadding1Type.c_str(), selectCallbackUsingColNameAsKey, &padding1TypeRecords, &errorMessage);
+    rc = sqlite3_exec(database, getCFECoreChecksumTypeType.c_str(), selectCallbackUsingColNameAsKey, &CFECoreChecksumTypeTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(padding1TypeRecords.size() == 1);
+    REQUIRE(CFECoreChecksumTypeTypeRecords.size() == 1);
 
-    std::string padding1Type{padding1TypeRecords.at(0)["id"]};
+    std::string CFECoreChecksumType{CFECoreChecksumTypeTypeRecords.at(0)["id"]};
 
-    REQUIRE(squareFieldsRecords.at(2)["name"] == "padding1");
-    REQUIRE(squareFieldsRecords.at(2)["byte_offset"] == std::to_string(offsetof(Square, padding1)));
-    REQUIRE(squareFieldsRecords.at(2)["type"] == padding1Type);
-    REQUIRE(squareFieldsRecords.at(2)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(2)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(2)["name"] == "CFECoreChecksum");
+    REQUIRE(hkFieldsRecords.at(2)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, CFECoreChecksum)));
+    REQUIRE(hkFieldsRecords.at(2)["type"] == CFECoreChecksumType);
+    REQUIRE(hkFieldsRecords.at(2)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(2)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(2)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(2)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(2)["long_description"] == "");
 
-    std::string getLengthType{"SELECT * FROM symbols where id="};
-    getLengthType += squareFieldsRecords.at(3)["type"];
-    getLengthType += ";";
+    std::string getCFEMajorVersionType{"SELECT * FROM symbols where id="};
+    getCFEMajorVersionType += hkFieldsRecords.at(3)["type"];
+    getCFEMajorVersionType += ";";
 
-    std::vector<std::map<std::string, std::string>> lengthTypeRecords{};
+    std::vector<std::map<std::string, std::string>> CFEMajorVersionTypeRecords{};
 
-    rc = sqlite3_exec(database, getLengthType.c_str(), selectCallbackUsingColNameAsKey, &lengthTypeRecords, &errorMessage);
+    rc = sqlite3_exec(database, getCFEMajorVersionType.c_str(), selectCallbackUsingColNameAsKey, &CFEMajorVersionTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(lengthTypeRecords.size() == 1);
+    REQUIRE(CFEMajorVersionTypeRecords.size() == 1);
 
-    std::string lengthType{lengthTypeRecords.at(0)["id"]};
+    std::string CFEMajorVersionType{CFEMajorVersionTypeRecords.at(0)["id"]};
 
-    REQUIRE(squareFieldsRecords.at(3)["name"] == "length");
-    REQUIRE(squareFieldsRecords.at(3)["byte_offset"] == std::to_string(offsetof(Square, length)));
-    REQUIRE(squareFieldsRecords.at(3)["type"] == lengthType);
-    REQUIRE(squareFieldsRecords.at(3)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(3)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(3)["name"] == "CFEMajorVersion");
+    REQUIRE(hkFieldsRecords.at(3)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, CFEMajorVersion)));
+    REQUIRE(hkFieldsRecords.at(3)["type"] == CFEMajorVersionType);
+    REQUIRE(hkFieldsRecords.at(3)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(3)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(3)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(3)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(3)["long_description"] == "");
 
     std::string getMoreStuffType{"SELECT * FROM symbols where id="};
-    getMoreStuffType += squareFieldsRecords.at(4)["type"];
+    getMoreStuffType += hkFieldsRecords.at(4)["type"];
     getMoreStuffType += ";";
 
-    std::vector<std::map<std::string, std::string>> moreStuffTypeRecords{};
+    std::vector<std::map<std::string, std::string>> CFEMinorVersionTypeTypeRecords{};
 
-    rc = sqlite3_exec(database, getMoreStuffType.c_str(), selectCallbackUsingColNameAsKey, &moreStuffTypeRecords, &errorMessage);
+    rc = sqlite3_exec(database, getMoreStuffType.c_str(), selectCallbackUsingColNameAsKey, &CFEMinorVersionTypeTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(moreStuffTypeRecords.size() == 1);
+    REQUIRE(CFEMinorVersionTypeTypeRecords.size() == 1);
 
-    std::string moreStuffType{moreStuffTypeRecords.at(0)["id"]};
+    std::string CFEMinorVersionType{CFEMinorVersionTypeTypeRecords.at(0)["id"]};
 
-    REQUIRE(squareFieldsRecords.at(4)["name"] == "more_stuff");
-    REQUIRE(squareFieldsRecords.at(4)["byte_offset"] == std::to_string(offsetof(Square, more_stuff)));
-    REQUIRE(squareFieldsRecords.at(4)["type"] == moreStuffType);
-    REQUIRE(squareFieldsRecords.at(4)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(4)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(4)["name"] == "CFEMinorVersion");
+    REQUIRE(hkFieldsRecords.at(4)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, CFEMinorVersion)));
+    REQUIRE(hkFieldsRecords.at(4)["type"] == CFEMinorVersionType);
+    REQUIRE(hkFieldsRecords.at(4)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(4)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(4)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(4)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(4)["long_description"] == "");
 
     std::string getPadding2Type{"SELECT * FROM symbols where id="};
-    getPadding2Type += squareFieldsRecords.at(5)["type"];
+    getPadding2Type += hkFieldsRecords.at(5)["type"];
     getPadding2Type += ";";
 
     std::vector<std::map<std::string, std::string>> padding2TypeRecords{};
@@ -1545,73 +1575,843 @@ TEST_CASE("Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct a
 
     std::string padding2Type{padding2TypeRecords.at(0)["id"]};
 
-    REQUIRE(squareFieldsRecords.at(5)["name"] == "padding2");
-    REQUIRE(squareFieldsRecords.at(5)["byte_offset"] == std::to_string(offsetof(Square, padding2)));
-    REQUIRE(squareFieldsRecords.at(5)["type"] == padding2Type);
-    REQUIRE(squareFieldsRecords.at(5)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(5)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(5)["name"] == "CFERevision");
+    REQUIRE(hkFieldsRecords.at(5)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, CFERevision)));
+    REQUIRE(hkFieldsRecords.at(5)["type"] == padding2Type);
+    REQUIRE(hkFieldsRecords.at(5)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(5)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(5)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(5)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(5)["long_description"] == "");
 
-    std::string getFloatingStuffType{"SELECT * FROM symbols where id="};
-    getFloatingStuffType += squareFieldsRecords.at(6)["type"];
-    getFloatingStuffType += ";";
+    std::string getCFEMissionRevisioType{"SELECT * FROM symbols where id="};
+    getCFEMissionRevisioType += hkFieldsRecords.at(6)["type"];
+    getCFEMissionRevisioType += ";";
 
-    std::vector<std::map<std::string, std::string>> floatingStuffTypeRecords{};
+    std::vector<std::map<std::string, std::string>> CFEMissionRevisionTypeRecords{};
 
-    rc = sqlite3_exec(database, getFloatingStuffType.c_str(), selectCallbackUsingColNameAsKey, &floatingStuffTypeRecords, &errorMessage);
+    rc = sqlite3_exec(database, getCFEMissionRevisioType.c_str(), selectCallbackUsingColNameAsKey, &CFEMissionRevisionTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(floatingStuffTypeRecords.size() == 1);
+    REQUIRE(CFEMissionRevisionTypeRecords.size() == 1);
 
-    std::string floatingStuffType{floatingStuffTypeRecords.at(0)["id"]};
+    std::string CFEMissionRevisionType{CFEMissionRevisionTypeRecords.at(0)["id"]};
 
-    REQUIRE(squareFieldsRecords.at(6)["name"] == "floating_stuff");
-    REQUIRE(squareFieldsRecords.at(6)["byte_offset"] == std::to_string(offsetof(Square, floating_stuff)));
-    REQUIRE(squareFieldsRecords.at(6)["type"] == floatingStuffType);
-    REQUIRE(squareFieldsRecords.at(6)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(6)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(6)["name"] == "CFEMissionRevision");
+    REQUIRE(hkFieldsRecords.at(6)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, CFEMissionRevision)));
+    REQUIRE(hkFieldsRecords.at(6)["type"] == CFEMissionRevisionType);
+    REQUIRE(hkFieldsRecords.at(6)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(6)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(6)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(6)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(6)["long_description"] == "");
 
-    // Test matrix3D[2][4][4]
-    std::string getMatrix3DDimensionLists{"SELECT * FROM dimension_lists WHERE field_id="};
-    getMatrix3DDimensionLists += squareFieldsRecords.at(7)["id"];
-    getMatrix3DDimensionLists += ";";
+    std::string getOSALMajorVersionType{"SELECT * FROM symbols where id="};
+    getOSALMajorVersionType += hkFieldsRecords.at(7)["type"];
+    getOSALMajorVersionType += ";";
 
-    std::vector<std::map<std::string, std::string>> matrix3DDimensionListsRecords{};
+    std::vector<std::map<std::string, std::string>> OSALMajorVersionTypeRecords{};
 
-    rc = sqlite3_exec(database, getMatrix3DDimensionLists.c_str(), selectCallbackUsingColNameAsKey, &matrix3DDimensionListsRecords, &errorMessage);
+    rc = sqlite3_exec(database, getOSALMajorVersionType.c_str(), selectCallbackUsingColNameAsKey, &OSALMajorVersionTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(matrix3DDimensionListsRecords.size() == 3);
+    REQUIRE(OSALMajorVersionTypeRecords.size() == 1);
+
+    std::string OSALMajorVersionType{OSALMajorVersionTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(7)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(7)["name"] == "OSALMajorVersion");
+    REQUIRE(hkFieldsRecords.at(7)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, OSALMajorVersion)));
+    REQUIRE(hkFieldsRecords.at(7)["type"] == OSALMajorVersionType);
+    REQUIRE(hkFieldsRecords.at(7)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(7)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(7)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(7)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(7)["long_description"] == "");
+
+    std::string getOSALMinorVersionType{"SELECT * FROM symbols where id="};
+    getOSALMinorVersionType += hkFieldsRecords.at(8)["type"];
+    getOSALMinorVersionType += ";";
+
+    std::vector<std::map<std::string, std::string>> OSALMinorVersionTypeRecords{};
+
+    rc = sqlite3_exec(database, getOSALMinorVersionType.c_str(), selectCallbackUsingColNameAsKey, &OSALMinorVersionTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(OSALMinorVersionTypeRecords.size() == 1);
+
+    std::string OSALMinorVersionType{OSALMinorVersionTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(8)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(8)["name"] == "OSALMinorVersion");
+    REQUIRE(hkFieldsRecords.at(8)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, OSALMinorVersion)));
+    REQUIRE(hkFieldsRecords.at(8)["type"] == OSALMinorVersionType);
+    REQUIRE(hkFieldsRecords.at(8)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(8)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(8)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(8)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(8)["long_description"] == "");
+
+    std::string getOSALRevisionType{"SELECT * FROM symbols where id="};
+    getOSALRevisionType += hkFieldsRecords.at(9)["type"];
+    getOSALRevisionType += ";";
+
+    std::vector<std::map<std::string, std::string>> OSALRevisionTypeRecords{};
+
+    rc = sqlite3_exec(database, getOSALRevisionType.c_str(), selectCallbackUsingColNameAsKey, &OSALRevisionTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(OSALRevisionTypeRecords.size() == 1);
+
+    std::string OSALRevisionType{OSALRevisionTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(9)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(9)["name"] == "OSALRevision");
+    REQUIRE(hkFieldsRecords.at(9)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, OSALRevision)));
+    REQUIRE(hkFieldsRecords.at(9)["type"] == OSALRevisionType);
+    REQUIRE(hkFieldsRecords.at(9)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(9)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(9)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(9)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(9)["long_description"] == "");
+
+    std::string getOSALMissionRevisionType{"SELECT * FROM symbols where id="};
+    getOSALMissionRevisionType += hkFieldsRecords.at(10)["type"];
+    getOSALMissionRevisionType += ";";
+
+    std::vector<std::map<std::string, std::string>> OSALMissionRevisionTypeRecords{};
+
+    rc = sqlite3_exec(database, getOSALMissionRevisionType.c_str(), selectCallbackUsingColNameAsKey, &OSALMissionRevisionTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(OSALMissionRevisionTypeRecords.size() == 1);
+
+    std::string OSALMissionRevisionType{OSALMissionRevisionTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(10)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(10)["name"] == "OSALMissionRevision");
+    REQUIRE(hkFieldsRecords.at(10)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, OSALMissionRevision)));
+    REQUIRE(hkFieldsRecords.at(10)["type"] == OSALMissionRevisionType);
+    REQUIRE(hkFieldsRecords.at(10)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(10)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(10)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(10)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(10)["long_description"] == "");
+
+    std::string getPSPMajorVersionType{"SELECT * FROM symbols where id="};
+    getPSPMajorVersionType += hkFieldsRecords.at(11)["type"];
+    getPSPMajorVersionType += ";";
+
+    std::vector<std::map<std::string, std::string>> PSPMajorVersionTypeRecords{};
+
+    rc = sqlite3_exec(database, getPSPMajorVersionType.c_str(), selectCallbackUsingColNameAsKey, &PSPMajorVersionTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PSPMajorVersionTypeRecords.size() == 1);
+
+    std::string PSPMajorVersionType{PSPMajorVersionTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(11)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(11)["name"] == "PSPMajorVersion");
+    REQUIRE(hkFieldsRecords.at(11)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PSPMajorVersion)));
+    REQUIRE(hkFieldsRecords.at(11)["type"] == PSPMajorVersionType);
+    REQUIRE(hkFieldsRecords.at(11)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(11)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(11)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(11)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(11)["long_description"] == "");
+
+    std::string getPSPMinorVersionType{"SELECT * FROM symbols where id="};
+    getPSPMinorVersionType += hkFieldsRecords.at(12)["type"];
+    getPSPMinorVersionType += ";";
+
+    std::vector<std::map<std::string, std::string>> PSPMinorVersionTypeRecords{};
+
+    rc = sqlite3_exec(database, getPSPMinorVersionType.c_str(), selectCallbackUsingColNameAsKey, &PSPMinorVersionTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PSPMinorVersionTypeRecords.size() == 1);
+
+    std::string PSPMinorVersionType{PSPMinorVersionTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(12)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(12)["name"] == "PSPMinorVersion");
+    REQUIRE(hkFieldsRecords.at(12)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PSPMinorVersion)));
+    REQUIRE(hkFieldsRecords.at(12)["type"] == PSPMinorVersionType);
+    REQUIRE(hkFieldsRecords.at(12)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(12)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(12)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(12)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(12)["long_description"] == "");
+
+    std::string getPSPRevisionType{"SELECT * FROM symbols where id="};
+    getPSPRevisionType += hkFieldsRecords.at(13)["type"];
+    getPSPRevisionType += ";";
+
+    std::vector<std::map<std::string, std::string>> PSPRevisionTypeRecords{};
+
+    rc = sqlite3_exec(database, getPSPRevisionType.c_str(), selectCallbackUsingColNameAsKey, &PSPRevisionTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PSPRevisionTypeRecords.size() == 1);
+
+    std::string PSPRevisionType{PSPRevisionTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(13)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(13)["name"] == "PSPRevision");
+    REQUIRE(hkFieldsRecords.at(13)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PSPRevision)));
+    REQUIRE(hkFieldsRecords.at(13)["type"] == PSPRevisionType);
+    REQUIRE(hkFieldsRecords.at(13)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(13)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(13)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(13)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(13)["long_description"] == "");
+
+    std::string getPSPMissionRevisionType{"SELECT * FROM symbols where id="};
+    getPSPMissionRevisionType += hkFieldsRecords.at(14)["type"];
+    getPSPMissionRevisionType += ";";
+
+    std::vector<std::map<std::string, std::string>> PSPMissionRevisionTypeRecords{};
+
+    rc = sqlite3_exec(database, getPSPMissionRevisionType.c_str(), selectCallbackUsingColNameAsKey, &PSPMissionRevisionTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PSPMissionRevisionTypeRecords.size() == 1);
+
+    std::string PSPMissionRevisionType{PSPMissionRevisionTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(14)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(14)["name"] == "PSPMissionRevision");
+    REQUIRE(hkFieldsRecords.at(14)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PSPMissionRevision)));
+    REQUIRE(hkFieldsRecords.at(14)["type"] == PSPMissionRevisionType);
+    REQUIRE(hkFieldsRecords.at(14)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(14)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(14)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(14)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(14)["long_description"] == "");
+
+    std::string getSysLogBytesUsedType{"SELECT * FROM symbols where id="};
+    getSysLogBytesUsedType += hkFieldsRecords.at(15)["type"];
+    getSysLogBytesUsedType += ";";
+
+    std::vector<std::map<std::string, std::string>> SysLogBytesUsedTypeRecords{};
+
+    rc = sqlite3_exec(database, getSysLogBytesUsedType.c_str(), selectCallbackUsingColNameAsKey, &SysLogBytesUsedTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(SysLogBytesUsedTypeRecords.size() == 1);
+
+    std::string SysLogBytesUsedType{SysLogBytesUsedTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(15)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(15)["name"] == "SysLogBytesUsed");
+    REQUIRE(hkFieldsRecords.at(15)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, SysLogBytesUsed)));
+    REQUIRE(hkFieldsRecords.at(15)["type"] == SysLogBytesUsedType);
+    REQUIRE(hkFieldsRecords.at(15)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(15)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(15)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(15)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(15)["long_description"] == "");
+
+    std::string getSysLogSizeType{"SELECT * FROM symbols where id="};
+    getSysLogSizeType += hkFieldsRecords.at(16)["type"];
+    getSysLogSizeType += ";";
+
+    std::vector<std::map<std::string, std::string>> SysLogSizeTypeRecords{};
+
+    rc = sqlite3_exec(database, getSysLogSizeType.c_str(), selectCallbackUsingColNameAsKey, &SysLogSizeTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(SysLogSizeTypeRecords.size() == 1);
+
+    std::string SysLogSizeType{SysLogSizeTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(16)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(16)["name"] == "SysLogSize");
+    REQUIRE(hkFieldsRecords.at(16)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, SysLogSize)));
+    REQUIRE(hkFieldsRecords.at(16)["type"] == SysLogSizeType);
+    REQUIRE(hkFieldsRecords.at(16)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(16)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(16)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(16)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(16)["long_description"] == "");
+
+    std::string getSysLogEntriesType{"SELECT * FROM symbols where id="};
+    getSysLogEntriesType += hkFieldsRecords.at(17)["type"];
+    getSysLogEntriesType += ";";
+
+    std::vector<std::map<std::string, std::string>> SysLogEntriesTypeRecords{};
+
+    rc = sqlite3_exec(database, getSysLogEntriesType.c_str(), selectCallbackUsingColNameAsKey, &SysLogEntriesTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(SysLogEntriesTypeRecords.size() == 1);
+
+    std::string SysLogEntriesType{SysLogEntriesTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(17)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(17)["name"] == "SysLogEntries");
+    REQUIRE(hkFieldsRecords.at(17)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, SysLogEntries)));
+    REQUIRE(hkFieldsRecords.at(17)["type"] == SysLogEntriesType);
+    REQUIRE(hkFieldsRecords.at(17)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(17)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(17)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(17)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(17)["long_description"] == "");
+
+    std::string getSysLogModeType{"SELECT * FROM symbols where id="};
+    getSysLogModeType += hkFieldsRecords.at(18)["type"];
+    getSysLogModeType += ";";
+
+    std::vector<std::map<std::string, std::string>> SysLogModeTypeRecords{};
+
+    rc = sqlite3_exec(database, getSysLogModeType.c_str(), selectCallbackUsingColNameAsKey, &SysLogModeTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(SysLogModeTypeRecords.size() == 1);
+
+    std::string SysLogModeType{SysLogModeTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(18)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(18)["name"] == "SysLogMode");
+    REQUIRE(hkFieldsRecords.at(18)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, SysLogMode)));
+    REQUIRE(hkFieldsRecords.at(18)["type"] == SysLogModeType);
+    REQUIRE(hkFieldsRecords.at(18)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(18)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(18)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(18)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(18)["long_description"] == "");
+
+    std::string getERLogIndexType{"SELECT * FROM symbols where id="};
+    getERLogIndexType += hkFieldsRecords.at(19)["type"];
+    getERLogIndexType += ";";
+
+    std::vector<std::map<std::string, std::string>> ERLogIndexTypeRecords{};
+
+    rc = sqlite3_exec(database, getERLogIndexType.c_str(), selectCallbackUsingColNameAsKey, &ERLogIndexTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(ERLogIndexTypeRecords.size() == 1);
+
+    std::string ERLogIndexType{ERLogIndexTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(19)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(19)["name"] == "ERLogIndex");
+    REQUIRE(hkFieldsRecords.at(19)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, ERLogIndex)));
+    REQUIRE(hkFieldsRecords.at(19)["type"] == ERLogIndexType);
+    REQUIRE(hkFieldsRecords.at(19)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(19)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(19)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(19)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(19)["long_description"] == "");
+
+    std::string getERLogEntriesType{"SELECT * FROM symbols where id="};
+    getERLogEntriesType += hkFieldsRecords.at(20)["type"];
+    getERLogEntriesType += ";";
+
+    std::vector<std::map<std::string, std::string>> ERLogEntriesTypeRecords{};
+
+    rc = sqlite3_exec(database, getERLogEntriesType.c_str(), selectCallbackUsingColNameAsKey, &ERLogEntriesTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(ERLogEntriesTypeRecords.size() == 1);
+
+    std::string ERLogEntriesType{ERLogEntriesTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(20)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(20)["name"] == "ERLogEntries");
+    REQUIRE(hkFieldsRecords.at(20)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, ERLogEntries)));
+    REQUIRE(hkFieldsRecords.at(20)["type"] == ERLogEntriesType);
+    REQUIRE(hkFieldsRecords.at(20)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(20)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(20)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(20)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(20)["long_description"] == "");
+
+    std::string getRegisteredCoreAppsType{"SELECT * FROM symbols where id="};
+    getRegisteredCoreAppsType += hkFieldsRecords.at(21)["type"];
+    getRegisteredCoreAppsType += ";";
+
+    std::vector<std::map<std::string, std::string>> RegisteredCoreAppsTypeRecords{};
+
+    rc = sqlite3_exec(database, getRegisteredCoreAppsType.c_str(), selectCallbackUsingColNameAsKey, &RegisteredCoreAppsTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(RegisteredCoreAppsTypeRecords.size() == 1);
+
+    std::string RegisteredCoreAppsType{RegisteredCoreAppsTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(21)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(21)["name"] == "RegisteredCoreApps");
+    REQUIRE(hkFieldsRecords.at(21)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, RegisteredCoreApps)));
+    REQUIRE(hkFieldsRecords.at(21)["type"] == RegisteredCoreAppsType);
+    REQUIRE(hkFieldsRecords.at(21)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(21)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(21)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(21)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(21)["long_description"] == "");
+
+    std::string getRegisteredExternalAppsType{"SELECT * FROM symbols where id="};
+    getRegisteredExternalAppsType += hkFieldsRecords.at(22)["type"];
+    getRegisteredExternalAppsType += ";";
+
+    std::vector<std::map<std::string, std::string>> RegisteredExternalAppsTypeRecords{};
+
+    rc = sqlite3_exec(database, getRegisteredExternalAppsType.c_str(), selectCallbackUsingColNameAsKey, &RegisteredExternalAppsTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(RegisteredExternalAppsTypeRecords.size() == 1);
+
+    std::string RegisteredExternalAppsType{RegisteredExternalAppsTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(22)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(22)["name"] == "RegisteredExternalApps");
+    REQUIRE(hkFieldsRecords.at(22)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, RegisteredExternalApps)));
+    REQUIRE(hkFieldsRecords.at(22)["type"] == RegisteredExternalAppsType);
+    REQUIRE(hkFieldsRecords.at(22)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(22)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(22)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(22)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(22)["long_description"] == "");
+
+    std::string getRegisteredTasksType{"SELECT * FROM symbols where id="};
+    getRegisteredTasksType += hkFieldsRecords.at(23)["type"];
+    getRegisteredTasksType += ";";
+
+    std::vector<std::map<std::string, std::string>> RegisteredTasksTypeRecords{};
+
+    rc = sqlite3_exec(database, getRegisteredTasksType.c_str(), selectCallbackUsingColNameAsKey, &RegisteredTasksTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(RegisteredTasksTypeRecords.size() == 1);
+
+    std::string RegisteredTasksType{RegisteredTasksTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(23)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(23)["name"] == "RegisteredTasks");
+    REQUIRE(hkFieldsRecords.at(23)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, RegisteredTasks)));
+    REQUIRE(hkFieldsRecords.at(23)["type"] == RegisteredTasksType);
+    REQUIRE(hkFieldsRecords.at(23)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(23)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(23)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(23)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(23)["long_description"] == "");
+
+    std::string getRegisteredLibsType{"SELECT * FROM symbols where id="};
+    getRegisteredLibsType += hkFieldsRecords.at(24)["type"];
+    getRegisteredLibsType += ";";
+
+    std::vector<std::map<std::string, std::string>> RegisteredLibsTypeRecords{};
+
+    rc = sqlite3_exec(database, getRegisteredLibsType.c_str(), selectCallbackUsingColNameAsKey, &RegisteredLibsTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(RegisteredLibsTypeRecords.size() == 1);
+
+    std::string RegisteredLibsType{RegisteredLibsTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(24)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(24)["name"] == "RegisteredLibs");
+    REQUIRE(hkFieldsRecords.at(24)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, RegisteredLibs)));
+    REQUIRE(hkFieldsRecords.at(24)["type"] == RegisteredLibsType);
+    REQUIRE(hkFieldsRecords.at(24)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(24)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(24)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(24)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(24)["long_description"] == "");
+
+    std::string getResetTypeType{"SELECT * FROM symbols where id="};
+    getResetTypeType += hkFieldsRecords.at(25)["type"];
+    getResetTypeType += ";";
+
+    std::vector<std::map<std::string, std::string>> ResetTypeTypeRecords{};
+
+    rc = sqlite3_exec(database, getResetTypeType.c_str(), selectCallbackUsingColNameAsKey, &ResetTypeTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(ResetTypeTypeRecords.size() == 1);
+
+    std::string ResetTypeType{ResetTypeTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(25)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(25)["name"] == "ResetType");
+    REQUIRE(hkFieldsRecords.at(25)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, ResetType)));
+    REQUIRE(hkFieldsRecords.at(25)["type"] == ResetTypeType);
+    REQUIRE(hkFieldsRecords.at(25)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(25)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(25)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(25)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(25)["long_description"] == "");
+
+    std::string getResetSubtypeType{"SELECT * FROM symbols where id="};
+    getResetSubtypeType += hkFieldsRecords.at(26)["type"];
+    getResetSubtypeType += ";";
+
+    std::vector<std::map<std::string, std::string>> ResetSubtypeTypeRecords{};
+
+    rc = sqlite3_exec(database, getResetSubtypeType.c_str(), selectCallbackUsingColNameAsKey, &ResetSubtypeTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(ResetSubtypeTypeRecords.size() == 1);
+
+    std::string ResetSubtypeType{ResetSubtypeTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(26)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(26)["name"] == "ResetSubtype");
+    REQUIRE(hkFieldsRecords.at(26)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, ResetSubtype)));
+    REQUIRE(hkFieldsRecords.at(26)["type"] == ResetSubtypeType);
+    REQUIRE(hkFieldsRecords.at(26)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(26)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(26)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(26)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(26)["long_description"] == "");
+
+    std::string getProcessorResetsType{"SELECT * FROM symbols where id="};
+    getProcessorResetsType += hkFieldsRecords.at(27)["type"];
+    getProcessorResetsType += ";";
+
+    std::vector<std::map<std::string, std::string>> ProcessorResetsTypeRecords{};
+
+    rc = sqlite3_exec(database, getProcessorResetsType.c_str(), selectCallbackUsingColNameAsKey, &ProcessorResetsTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(ProcessorResetsTypeRecords.size() == 1);
+
+    std::string ProcessorResetsType{ProcessorResetsTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(27)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(27)["name"] == "ProcessorResets");
+    REQUIRE(hkFieldsRecords.at(27)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, ProcessorResets)));
+    REQUIRE(hkFieldsRecords.at(27)["type"] == ProcessorResetsType);
+    REQUIRE(hkFieldsRecords.at(27)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(27)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(27)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(27)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(27)["long_description"] == "");
+
+    std::string getMaxProcessorResetsType{"SELECT * FROM symbols where id="};
+    getMaxProcessorResetsType += hkFieldsRecords.at(28)["type"];
+    getMaxProcessorResetsType += ";";
+
+    std::vector<std::map<std::string, std::string>> MaxProcessorResetsTypeRecords{};
+
+    rc = sqlite3_exec(database, getMaxProcessorResetsType.c_str(), selectCallbackUsingColNameAsKey, &MaxProcessorResetsTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(MaxProcessorResetsTypeRecords.size() == 1);
+
+    std::string MaxProcessorResetsType{MaxProcessorResetsTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(28)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(28)["name"] == "MaxProcessorResets");
+    REQUIRE(hkFieldsRecords.at(28)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, MaxProcessorResets)));
+    REQUIRE(hkFieldsRecords.at(28)["type"] == MaxProcessorResetsType);
+    REQUIRE(hkFieldsRecords.at(28)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(28)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(28)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(28)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(28)["long_description"] == "");
+
+    std::string getBootSourceType{"SELECT * FROM symbols where id="};
+    getBootSourceType += hkFieldsRecords.at(29)["type"];
+    getBootSourceType += ";";
+
+    std::vector<std::map<std::string, std::string>> BootSourceTypeRecords{};
+
+    rc = sqlite3_exec(database, getBootSourceType.c_str(), selectCallbackUsingColNameAsKey, &BootSourceTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(BootSourceTypeRecords.size() == 1);
+
+    std::string BootSourceType{BootSourceTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(29)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(29)["name"] == "BootSource");
+    REQUIRE(hkFieldsRecords.at(29)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, BootSource)));
+    REQUIRE(hkFieldsRecords.at(29)["type"] == BootSourceType);
+    REQUIRE(hkFieldsRecords.at(29)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(29)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(29)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(29)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(29)["long_description"] == "");
+
+    std::string getPerfStateType{"SELECT * FROM symbols where id="};
+    getPerfStateType += hkFieldsRecords.at(30)["type"];
+    getPerfStateType += ";";
+
+    std::vector<std::map<std::string, std::string>> PerfStateTypeRecords{};
+
+    rc = sqlite3_exec(database, getPerfStateType.c_str(), selectCallbackUsingColNameAsKey, &PerfStateTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PerfStateTypeRecords.size() == 1);
+
+    std::string PerfStateType{PerfStateTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(30)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(30)["name"] == "PerfState");
+    REQUIRE(hkFieldsRecords.at(30)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PerfState)));
+    REQUIRE(hkFieldsRecords.at(30)["type"] == PerfStateType);
+    REQUIRE(hkFieldsRecords.at(30)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(30)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(30)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(30)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(30)["long_description"] == "");
+
+    std::string getPerfModeType{"SELECT * FROM symbols where id="};
+    getPerfModeType += hkFieldsRecords.at(31)["type"];
+    getPerfModeType += ";";
+
+    std::vector<std::map<std::string, std::string>> PerfModeTypeRecords{};
+
+    rc = sqlite3_exec(database, getPerfModeType.c_str(), selectCallbackUsingColNameAsKey, &PerfModeTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PerfModeTypeRecords.size() == 1);
+
+    std::string PerfModeType{PerfModeTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(31)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(31)["name"] == "PerfMode");
+    REQUIRE(hkFieldsRecords.at(31)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PerfMode)));
+    REQUIRE(hkFieldsRecords.at(31)["type"] == PerfModeType);
+    REQUIRE(hkFieldsRecords.at(31)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(31)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(31)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(31)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(31)["long_description"] == "");
+
+    std::string getPerfTriggerCountType{"SELECT * FROM symbols where id="};
+    getPerfTriggerCountType += hkFieldsRecords.at(32)["type"];
+    getPerfTriggerCountType += ";";
+
+    std::vector<std::map<std::string, std::string>> PerfTriggerCountTypeRecords{};
+
+    rc = sqlite3_exec(database, getPerfTriggerCountType.c_str(), selectCallbackUsingColNameAsKey, &PerfTriggerCountTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PerfTriggerCountTypeRecords.size() == 1);
+
+    std::string PerfTriggerCountType{PerfTriggerCountTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(32)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(32)["name"] == "PerfTriggerCount");
+    REQUIRE(hkFieldsRecords.at(32)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PerfTriggerCount)));
+    REQUIRE(hkFieldsRecords.at(32)["type"] == PerfTriggerCountType);
+    REQUIRE(hkFieldsRecords.at(32)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(32)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(32)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(32)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(32)["long_description"] == "");
+
+    std::string getPerfFilterMaskType{"SELECT * FROM symbols where id="};
+    getPerfFilterMaskType += hkFieldsRecords.at(33)["type"];
+    getPerfFilterMaskType += ";";
+
+    std::vector<std::map<std::string, std::string>> PerfFilterMaskTypeRecords{};
+
+    rc = sqlite3_exec(database, getPerfFilterMaskType.c_str(), selectCallbackUsingColNameAsKey, &PerfFilterMaskTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PerfFilterMaskTypeRecords.size() == 1);
+
+    std::string PerfFilterMaskType{PerfFilterMaskTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(33)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(33)["name"] == "PerfFilterMask");
+    REQUIRE(hkFieldsRecords.at(33)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PerfFilterMask)));
+    REQUIRE(hkFieldsRecords.at(33)["type"] == PerfFilterMaskType);
+    REQUIRE(hkFieldsRecords.at(33)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(33)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(33)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(33)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(33)["long_description"] == "");
+
+    std::string getDimensionLists{"SELECT * FROM dimension_lists WHERE field_id="};
+    getDimensionLists += hkFieldsRecords.at(33)["id"];
+    getDimensionLists += ";";
+
+    std::vector<std::map<std::string, std::string>> DimensionListsRecords{};
+
+    rc = sqlite3_exec(database, getDimensionLists.c_str(), selectCallbackUsingColNameAsKey, &DimensionListsRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(DimensionListsRecords.size() == 1);
 
     // Enforce order of records by dim_order
-    std::sort(matrix3DDimensionListsRecords.begin(), matrix3DDimensionListsRecords.end(),
+    std::sort(DimensionListsRecords.begin(), DimensionListsRecords.end(),
               [](std::map<std::string, std::string> a, std::map<std::string, std::string> b) { return std::stoi(a["dim_order"]) < std::stoi(b["dim_order"]); });
 
-    REQUIRE(matrix3DDimensionListsRecords.at(0)["field_id"] == squareFieldsRecords.at(7)["id"]);
-    REQUIRE(matrix3DDimensionListsRecords.at(0)["dim_order"] == "0");
-    REQUIRE(matrix3DDimensionListsRecords.at(0)["upper_bound"] == "1");
+    REQUIRE(DimensionListsRecords.at(0)["field_id"] == hkFieldsRecords.at(33)["id"]);
+    REQUIRE(DimensionListsRecords.at(0)["dim_order"] == "0");
+    REQUIRE(DimensionListsRecords.at(0)["upper_bound"] == "3");
 
-    REQUIRE(matrix3DDimensionListsRecords.at(1)["field_id"] == squareFieldsRecords.at(7)["id"]);
-    REQUIRE(matrix3DDimensionListsRecords.at(1)["dim_order"] == "1");
-    REQUIRE(matrix3DDimensionListsRecords.at(1)["upper_bound"] == "3");
+    std::string getPerfTriggerMaskType{"SELECT * FROM symbols where id="};
+    getPerfTriggerMaskType += hkFieldsRecords.at(34)["type"];
+    getPerfTriggerMaskType += ";";
 
-    REQUIRE(matrix3DDimensionListsRecords.at(2)["field_id"] == squareFieldsRecords.at(7)["id"]);
-    REQUIRE(matrix3DDimensionListsRecords.at(2)["dim_order"] == "2");
-    REQUIRE(matrix3DDimensionListsRecords.at(2)["upper_bound"] == "3");
+    std::vector<std::map<std::string, std::string>> PerfTriggerMaskTypeRecords{};
 
-    // Test matrix3D[2][4][4]
-    std::string getMatrix1DDimensionLists{"SELECT * FROM dimension_lists WHERE field_id="};
-    getMatrix1DDimensionLists += squareFieldsRecords.at(8)["id"];
-    getMatrix1DDimensionLists += ";";
-
-    std::vector<std::map<std::string, std::string>> matrix1DDimensionListsRecords{};
-
-    rc = sqlite3_exec(database, getMatrix1DDimensionLists.c_str(), selectCallbackUsingColNameAsKey, &matrix1DDimensionListsRecords, &errorMessage);
+    rc = sqlite3_exec(database, getPerfTriggerMaskType.c_str(), selectCallbackUsingColNameAsKey, &PerfTriggerMaskTypeRecords, &errorMessage);
     REQUIRE(rc == SQLITE_OK);
-    REQUIRE(matrix1DDimensionListsRecords.size() == 1);
+    REQUIRE(PerfTriggerMaskTypeRecords.size() == 1);
+
+    std::string PerfTriggerMaskType{PerfTriggerMaskTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(34)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(34)["name"] == "PerfTriggerMask");
+    REQUIRE(hkFieldsRecords.at(34)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PerfTriggerMask)));
+    REQUIRE(hkFieldsRecords.at(34)["type"] == PerfTriggerMaskType);
+    REQUIRE(hkFieldsRecords.at(34)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(34)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(34)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(34)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(34)["long_description"] == "");
+
+    getDimensionLists  = "SELECT * FROM dimension_lists WHERE field_id=";
+    getDimensionLists += hkFieldsRecords.at(34)["id"];
+    getDimensionLists += ";";
+
+    DimensionListsRecords.clear();
+
+    rc = sqlite3_exec(database, getDimensionLists.c_str(), selectCallbackUsingColNameAsKey, &DimensionListsRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(DimensionListsRecords.size() == 1);
 
     // Enforce order of records by dim_order
-    std::sort(matrix1DDimensionListsRecords.begin(), matrix1DDimensionListsRecords.end(),
+    std::sort(DimensionListsRecords.begin(), DimensionListsRecords.end(),
               [](std::map<std::string, std::string> a, std::map<std::string, std::string> b) { return std::stoi(a["dim_order"]) < std::stoi(b["dim_order"]); });
 
-    REQUIRE(matrix1DDimensionListsRecords.at(0)["field_id"] == squareFieldsRecords.at(8)["id"]);
-    REQUIRE(matrix1DDimensionListsRecords.at(0)["dim_order"] == "0");
-    REQUIRE(matrix1DDimensionListsRecords.at(0)["upper_bound"] == "1");
+    REQUIRE(DimensionListsRecords.at(0)["field_id"] == hkFieldsRecords.at(34)["id"]);
+    REQUIRE(DimensionListsRecords.at(0)["dim_order"] == "0");
+    REQUIRE(DimensionListsRecords.at(0)["upper_bound"] == "3");
+
+    std::string getPerfDataStartType{"SELECT * FROM symbols where id="};
+    getPerfDataStartType += hkFieldsRecords.at(35)["type"];
+    getPerfDataStartType += ";";
+
+    std::vector<std::map<std::string, std::string>> PerfDataStartTypeRecords{};
+
+    rc = sqlite3_exec(database, getPerfDataStartType.c_str(), selectCallbackUsingColNameAsKey, &PerfDataStartTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PerfDataStartTypeRecords.size() == 1);
+
+    std::string PerfDataStartType{PerfDataStartTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(35)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(35)["name"] == "PerfDataStart");
+    REQUIRE(hkFieldsRecords.at(35)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PerfDataStart)));
+    REQUIRE(hkFieldsRecords.at(35)["type"] == PerfDataStartType);
+    REQUIRE(hkFieldsRecords.at(35)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(35)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(35)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(35)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(35)["long_description"] == "");
+
+    std::string getPerfDataEndType{"SELECT * FROM symbols where id="};
+    getPerfDataEndType += hkFieldsRecords.at(36)["type"];
+    getPerfDataEndType += ";";
+
+    std::vector<std::map<std::string, std::string>> PerfDataEndTypeRecords{};
+
+    rc = sqlite3_exec(database, getPerfDataEndType.c_str(), selectCallbackUsingColNameAsKey, &PerfDataEndTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PerfDataEndTypeRecords.size() == 1);
+
+    std::string PerfDataEndType{PerfDataEndTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(36)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(36)["name"] == "PerfDataEnd");
+    REQUIRE(hkFieldsRecords.at(36)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PerfDataEnd)));
+    REQUIRE(hkFieldsRecords.at(36)["type"] == PerfDataEndType);
+    REQUIRE(hkFieldsRecords.at(36)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(36)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(36)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(36)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(36)["long_description"] == "");
+
+    std::string getPerfDataCountType{"SELECT * FROM symbols where id="};
+    getPerfDataCountType += hkFieldsRecords.at(37)["type"];
+    getPerfDataCountType += ";";
+
+    std::vector<std::map<std::string, std::string>> PerfDataCountTypeRecords{};
+
+    rc = sqlite3_exec(database, getPerfDataCountType.c_str(), selectCallbackUsingColNameAsKey, &PerfDataCountTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PerfDataCountTypeRecords.size() == 1);
+
+    std::string PerfDataCountType{PerfDataCountTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(37)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(37)["name"] == "PerfDataCount");
+    REQUIRE(hkFieldsRecords.at(37)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PerfDataCount)));
+    REQUIRE(hkFieldsRecords.at(37)["type"] == PerfDataCountType);
+    REQUIRE(hkFieldsRecords.at(37)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(37)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(37)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(37)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(37)["long_description"] == "");
+
+    std::string getPerfDataToWriteType{"SELECT * FROM symbols where id="};
+    getPerfDataToWriteType += hkFieldsRecords.at(38)["type"];
+    getPerfDataToWriteType += ";";
+
+    std::vector<std::map<std::string, std::string>> PerfDataToWriteTypeRecords{};
+
+    rc = sqlite3_exec(database, getPerfDataToWriteType.c_str(), selectCallbackUsingColNameAsKey, &PerfDataToWriteTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(PerfDataToWriteTypeRecords.size() == 1);
+
+    std::string PerfDataToWriteType{PerfDataToWriteTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(38)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(38)["name"] == "PerfDataToWrite");
+    REQUIRE(hkFieldsRecords.at(38)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, PerfDataToWrite)));
+    REQUIRE(hkFieldsRecords.at(38)["type"] == PerfDataToWriteType);
+    REQUIRE(hkFieldsRecords.at(38)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(38)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(38)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(38)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(38)["long_description"] == "");
+
+    std::string getHeapBytesFreeType{"SELECT * FROM symbols where id="};
+    getHeapBytesFreeType += hkFieldsRecords.at(39)["type"];
+    getHeapBytesFreeType += ";";
+
+    std::vector<std::map<std::string, std::string>> HeapBytesFreeTypeRecords{};
+
+    rc = sqlite3_exec(database, getHeapBytesFreeType.c_str(), selectCallbackUsingColNameAsKey, &HeapBytesFreeTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(HeapBytesFreeTypeRecords.size() == 1);
+
+    std::string HeapBytesFreeType{HeapBytesFreeTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(39)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(39)["name"] == "HeapBytesFree");
+    REQUIRE(hkFieldsRecords.at(39)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, HeapBytesFree)));
+    REQUIRE(hkFieldsRecords.at(39)["type"] == HeapBytesFreeType);
+    REQUIRE(hkFieldsRecords.at(39)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(39)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(39)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(39)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(39)["long_description"] == "");
+
+    std::string getHeapBlocksFreeType{"SELECT * FROM symbols where id="};
+    getHeapBlocksFreeType += hkFieldsRecords.at(40)["type"];
+    getHeapBlocksFreeType += ";";
+
+    std::vector<std::map<std::string, std::string>> HeapBlocksFreeTypeRecords{};
+
+    rc = sqlite3_exec(database, getHeapBlocksFreeType.c_str(), selectCallbackUsingColNameAsKey, &HeapBlocksFreeTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(HeapBlocksFreeTypeRecords.size() == 1);
+
+    std::string HeapBlocksFreeType{HeapBlocksFreeTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(40)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(40)["name"] == "HeapBlocksFree");
+    REQUIRE(hkFieldsRecords.at(40)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, HeapBlocksFree)));
+    REQUIRE(hkFieldsRecords.at(40)["type"] == HeapBlocksFreeType);
+    REQUIRE(hkFieldsRecords.at(40)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(40)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(40)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(40)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(40)["long_description"] == "");
+
+    std::string getHeapMaxBlockSizeType{"SELECT * FROM symbols where id="};
+    getHeapMaxBlockSizeType += hkFieldsRecords.at(41)["type"];
+    getHeapMaxBlockSizeType += ";";
+
+    std::vector<std::map<std::string, std::string>> HeapMaxBlockSizeTypeRecords{};
+
+    rc = sqlite3_exec(database, getHeapMaxBlockSizeType.c_str(), selectCallbackUsingColNameAsKey, &HeapMaxBlockSizeTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(HeapMaxBlockSizeTypeRecords.size() == 1);
+
+    std::string HeapMaxBlockSizeType{HeapMaxBlockSizeTypeRecords.at(0)["id"]};
+
+    REQUIRE(hkFieldsRecords.at(41)["symbol"] == hkTargetSymbolId);
+    REQUIRE(hkFieldsRecords.at(41)["name"] == "HeapMaxBlockSize");
+    REQUIRE(hkFieldsRecords.at(41)["byte_offset"] == std::to_string(offsetof(CFE_ES_HousekeepingTlm_Payload, HeapMaxBlockSize)));
+    REQUIRE(hkFieldsRecords.at(41)["type"] == HeapMaxBlockSizeType);
+    REQUIRE(hkFieldsRecords.at(41)["little_endian"] == little_endian);
+    REQUIRE(hkFieldsRecords.at(41)["bit_size"] == "0");
+    REQUIRE(hkFieldsRecords.at(41)["bit_offset"] == "0");
+    REQUIRE(hkFieldsRecords.at(41)["short_description"] == "");
+    REQUIRE(hkFieldsRecords.at(41)["long_description"] == "");
 
     REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;

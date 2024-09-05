@@ -25,7 +25,6 @@ void        Artifact::setId(uint32_t newID) { id = newID; }
 uint32_t    Artifact::getId() { return id; }
 
 std::string Artifact::getFilePath() const { return filePath; }
-ElfFile&    Artifact::getElf() { return elf; }
 
 void        Artifact::setMD5(std::string newCRC) { md5 = newCRC; }
 std::string Artifact::getMD5() const { return md5; }

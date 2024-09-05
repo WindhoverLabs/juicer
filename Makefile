@@ -32,7 +32,7 @@ UT_OBJ     := $(UT_OBJ:$(SRC_DIR)/%.cpp=$(UT_OBJ_DIR)/%.o)
 
 # Set target flags
 CPPFLAGS    := -MMD -MP -std=c++14 -fmessage-length=0 $(INCLUDES)
-CFLAGS      := -Wall -g
+CFLAGS      := -Wall -g3
 LDFLAGS     := -Llib
 LDLIBS      := -lm -ldwarf -lsqlite3 -lelf -lcrypto
 

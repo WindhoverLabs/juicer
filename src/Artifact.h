@@ -33,7 +33,6 @@ class Artifact
     std::string getMD5() const;
 
     std::string getFilePath() const;
-    ElfFile    &getElf();
 
     ~Artifact();
 };

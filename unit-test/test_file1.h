@@ -25,6 +25,8 @@ union Oject
 
 /**
 **  \cfeestlm Executive Services Housekeeping Packet
+**
+**  struct taken from https://github.com/nasa/cFE/blob/fa5031f3f5db91b482e947f4dc08d9103019d48e/modules/es/config/default_cfe_es_msgstruct.h#L440
 **/
 typedef struct CFE_ES_HousekeepingTlm_Payload
 {
