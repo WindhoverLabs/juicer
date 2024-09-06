@@ -55,8 +55,6 @@ class Symbol
     bool                                       hasBitFields();
     bool                                       isFieldUnique(std::string &name);
     Field                                     *getField(std::string &name) const;
-    bool                                       hasFields(void);
-    bool                                       isEnumerated(void);
     Artifact                                  &getArtifact();
 
     const std::string                         &getShortDescription() const { return short_description; }

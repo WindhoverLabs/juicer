@@ -14,7 +14,6 @@ class Encoding
 {
    public:
     Encoding(std::string name);
-    Encoding();
     std::string& getName();
     void         setId(int);
     int          getId() const;

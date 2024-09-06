@@ -14,11 +14,7 @@ DefineMacro::DefineMacro(std::string inName, std::string inValue) : name{inName}
 
 const std::string& DefineMacro::getName() const { return name; }
 
-void               DefineMacro::setName(const std::string& name) { this->name = name; }
-
 const std::string& DefineMacro::getValue() const { return value; }
-
-void               DefineMacro::setValue(const std::string& value) { this->value = value; }
 
 DefineMacro::~DefineMacro()
 {

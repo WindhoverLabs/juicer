@@ -44,14 +44,11 @@ class Variable;
 class ElfFile
 {
    public:
-    ElfFile();
     ElfFile(std::string &name);
-    ElfFile(const ElfFile &elf);
     virtual ~ElfFile();
     std::vector<std::unique_ptr<Symbol>>              &getSymbols();
 
     std::string                                        getName() const;
-    void                                               setName(std::string &name);
     uint32_t                                           getId(void) const;
     void                                               setId(uint32_t newId);
     Symbol                                            *addSymbol(std::unique_ptr<Symbol> symbol);
@@ -59,7 +56,6 @@ class ElfFile
     Symbol                                            *addSymbol(std::string &inName, uint32_t inByteSize, Artifact newArtifact, Symbol *targetSymbol);
     std::vector<Field *>                               getFields();
     std::vector<Enumeration *>                         getEnumerations();
-    bool                                               isSymbolUnique(std::string &name);
     Symbol                                            *getSymbol(std::string &name);
     const std::string                                 &getDate() const;
     void                                               setDate(const std::string &date);

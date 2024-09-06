@@ -26,37 +26,15 @@ ElfFile::ElfFile(std::string& inName)
     logger.logDebug("Elf '%s' created.", getName().c_str());
 }
 
-ElfFile::ElfFile() : name{""}, id{0} { logger.logError("Cannot call Module default constructor."); }
-
-ElfFile::ElfFile(const ElfFile& elf)
-    : name{elf.name},  // @suppress("Symbol is not resolved")
-      id{0}
-{
-    logger.logError("Cannot call Module copy constructor.");
-}
-
 ElfFile::~ElfFile() {}
 
 std::string ElfFile::getName() const { return name; }
 
-/**
- *@brief
- *
- *@note Absolute paths are enforced.
- */
-void        ElfFile::setName(std::string& inName)
-{
-    logger.logDebug("Module %s renamed to %s.", name.c_str(), inName.c_str());
+uint32_t    ElfFile::getId(void) const { return id; }
 
-    this->name = inName;
-    normalizePath(name);
-}
+void        ElfFile::setId(uint32_t newId) { id = newId; }
 
-uint32_t ElfFile::getId(void) const { return id; }
-
-void     ElfFile::setId(uint32_t newId) { id = newId; }
-
-void     ElfFile::isLittleEndian(bool inLittleEndian)
+void        ElfFile::isLittleEndian(bool inLittleEndian)
 {
     logger.logDebug("ELF %s endian changed from %s to %s.", name.c_str(), little_endian ? "LE" : "BE", inLittleEndian ? "LE" : "BE");
 
@@ -105,25 +83,6 @@ Symbol*     ElfFile::getSymbol(std::string& name)
     }
 
     return returnSymbol;
-}
-
-bool ElfFile::isSymbolUnique(std::string& name)
-{
-    bool    rc     = false;
-    Symbol* symbol = getSymbol(name);
-
-    if (symbol == nullptr)
-    {
-        rc = true;
-    }
-    else
-    {
-        rc = false;
-
-        logger.logDebug("isSymbolUnique is false.");
-    }
-
-    return rc;
 }
 
 Symbol* ElfFile::addSymbol(std::unique_ptr<Symbol> inSymbol)

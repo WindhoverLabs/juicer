@@ -629,7 +629,7 @@ int SQLiteDB::writeVariablesToDatabase(ElfFile& inElf)
         writeVariableQuery += variable.getName();
         writeVariableQuery += "\"";
         writeVariableQuery += ",";
-        writeVariableQuery += std::to_string(inElf.getId());
+        writeVariableQuery += std::to_string(variable.getElf().getId());
 
         writeVariableQuery += ",";
         writeVariableQuery += std::to_string(variable.getType().getId());
@@ -642,7 +642,7 @@ int SQLiteDB::writeVariablesToDatabase(ElfFile& inElf)
 
         writeVariableQuery += ",";
         writeVariableQuery += "\"";
-        writeVariableQuery += variable.getShortDescription();
+        writeVariableQuery += variable.getLongDescription();
         writeVariableQuery += "\"";
 
         writeVariableQuery += ");";

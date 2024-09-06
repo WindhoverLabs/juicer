@@ -17,11 +17,7 @@ class DefineMacro
 
     const std::string& getName() const;
 
-    void               setName(const std::string& name);
-
     const std::string& getValue() const;
-
-    void               setValue(const std::string& value);
 
     virtual ~DefineMacro();
 

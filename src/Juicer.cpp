@@ -306,8 +306,6 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
         case DW_MACRO_import:
         {
             res = dwarf_get_macro_import(mac_context, i, &offset, &error);
-            printf("dwarf_get_macro_import res:%d\n", res);
-            printf("dwarf_get_macro_import offset:%d\n", offset);
 
             if (offset == 0)
             {
@@ -4550,8 +4548,6 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                                                         name.c_str(), symbol->st_size, symbol->st_value, symbol->st_name, symbol->st_info, symbol->st_other,
                                                         symbol->st_shndx);
 
-                                                    std::cout << "stringTableSectionHeader file offset:" << stringTableSectionHeader->sh_offset << std::endl;
-
                                                     symbolSectionStrTableFileOffset = stringTableSectionHeader->sh_offset;
 
                                                     //                            TODO:Map it to DWARF here.
@@ -4575,8 +4571,6 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                                                         uint8_t             *symbolDataCursor = (uint8_t *)symbolSectionDataContents->d_buf;
 
                                                         std::vector<uint8_t> symbolData       = std::vector<uint8_t>();
-                                                        std::cout << "ELF32_ST_TYPE:" << ELF32_ST_TYPE(symbol->st_info) << std::endl;
-                                                        std::cout << "ELF32_ST_BIND:" << ELF32_ST_BIND(symbol->st_info) << std::endl;
 
                                                         if (symbolDataCursor != nullptr)
                                                         {
@@ -4885,8 +4879,6 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                                                                name.c_str(), symbol->st_size, symbol->st_value, symbol->st_name, symbol->st_info,
                                                                symbol->st_other, symbol->st_shndx);
 
-                                                std::cout << "stringTableSectionHeader file offset:" << stringTableSectionHeader->sh_offset << std::endl;
-
                                                 symbolSectionStrTableFileOffset = stringTableSectionHeader->sh_offset;
 
                                                 //                            TODO:Map it to DWARF here.
@@ -4896,8 +4888,6 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
 
                                                 if (symbolSectionHeader != nullptr)
                                                 {
-                                                    //                                                    std::cout << "symbol data section file offset-->" <<
-                                                    //                                                    symbolSectionHeader->sh_offset << std::endl;
                                                     symbolSectionFileOffset = symbolSectionHeader->sh_offset;
                                                 }
 
@@ -4910,8 +4900,6 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                                                     uint8_t             *symbolDataCursor = (uint8_t *)symbolSectionDataContents->d_buf;
 
                                                     std::vector<uint8_t> symbolData       = std::vector<uint8_t>();
-                                                    std::cout << "ELF32_ST_TYPE:" << ELF32_ST_TYPE(symbol->st_info) << std::endl;
-                                                    std::cout << "ELF32_ST_BIND:" << ELF32_ST_BIND(symbol->st_info) << std::endl;
 
                                                     if (symbolDataCursor != nullptr)
                                                     {

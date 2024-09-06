@@ -170,31 +170,6 @@ bool Symbol::isFieldUnique(std::string& name)
 
     return rc;
 }
-
-bool Symbol::hasFields(void)
-{
-    bool rc = false;
-
-    if (fields.size() > 0)
-    {
-        rc = true;
-    }
-
-    return rc;
-}
-
-bool Symbol::isEnumerated(void)
-{
-    bool rc = false;
-
-    if (enumerations.size() > 0)
-    {
-        rc = true;
-    }
-
-    return rc;
-}
-
 /**
  *@brief Checks if this symbol has any fields that are bitfields.
  *
