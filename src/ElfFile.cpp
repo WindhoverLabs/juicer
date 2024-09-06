@@ -85,15 +85,6 @@ Symbol*     ElfFile::getSymbol(std::string& name)
     return returnSymbol;
 }
 
-Symbol* ElfFile::addSymbol(std::unique_ptr<Symbol> inSymbol)
-{
-    logger.logDebug("Adding Symbol %s to Module %s.", inSymbol->getName().c_str(), name.c_str());
-
-    symbols.push_back(std::move(inSymbol));
-
-    return symbols.back().get();
-}
-
 Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact, Symbol* targetSymbol)
 {
     Symbol* symbol = getSymbol(inName);
@@ -185,9 +176,8 @@ void ElfFile::normalizePath(std::string& path)
     path.insert(0, resolvedPath);
 }
 
-void                            ElfFile::addDefineMacro(std::string name, std::string value) { defineMacros.push_back(DefineMacro{name, value}); }
-void                            ElfFile::addDefineMacro(DefineMacro newMacro) { defineMacros.push_back(newMacro); }
-const std::vector<DefineMacro>& ElfFile::getDefineMacros() const { return defineMacros; }
+void                                               ElfFile::addDefineMacro(DefineMacro newMacro) { defineMacros.push_back(newMacro); }
+const std::vector<DefineMacro>&                    ElfFile::getDefineMacros() const { return defineMacros; }
 
 const std::map<std::string, std::vector<uint8_t>>& ElfFile::getInitializedSymbolData() const { return initializedSymbolData; }
 void                                               ElfFile::setInitializedSymbolData(const std::map<std::string, std::vector<uint8_t>>& initializedSymbolData)

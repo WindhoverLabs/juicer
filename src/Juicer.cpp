@@ -69,148 +69,6 @@ struct macro_counts_s
     long mc_unknown;
 };
 
-static void print_one_macro_entry_detail(long i, char *type, struct Dwarf_Macro_Details_s *mdp)
-{
-    /* "DW_MACINFO_*: section-offset file-index [line] string\n" */
-    if (mdp->dmd_macro)
-    {
-        printf("%3ld %s: %6" DW_PR_DUu " %2" DW_PR_DSd " [%4" DW_PR_DSd "] \"%s\" \n", i, type, (Dwarf_Unsigned)mdp->dmd_offset, mdp->dmd_fileindex,
-               mdp->dmd_lineno, mdp->dmd_macro);
-    }
-    else
-    {
-        printf("%3ld %s: %6" DW_PR_DUu " %2" DW_PR_DSd " [%4" DW_PR_DSd "] 0\n", i, type, (Dwarf_Unsigned)mdp->dmd_offset, mdp->dmd_fileindex, mdp->dmd_lineno);
-    }
-}
-
-static void print_one_macro_entry(long i, struct Dwarf_Macro_Details_s *mdp, struct macro_counts_s *counts)
-{
-    switch (mdp->dmd_type)
-    {
-        case 0:
-            counts->mc_code_zero++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_type-code-0", mdp);
-            break;
-
-        case DW_MACINFO_start_file:
-            counts->mc_start_file++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_start_file", mdp);
-            break;
-
-        case DW_MACINFO_end_file:
-            counts->mc_end_file++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_end_file  ", mdp);
-            break;
-
-        case DW_MACINFO_vendor_ext:
-            counts->mc_extension++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_vendor_ext", mdp);
-            break;
-
-        case DW_MACINFO_define:
-            counts->mc_define++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_define    ", mdp);
-            break;
-
-        case DW_MACINFO_undef:
-            counts->mc_undef++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_undef     ", mdp);
-            break;
-
-        default:
-        {
-            char create_type[50]; /* More than large enough. */
-
-            counts->mc_unknown++;
-            snprintf(create_type, sizeof(create_type), "DW_MACINFO_0x%x", mdp->dmd_type);
-            print_one_macro_entry_detail(i, create_type, mdp);
-        }
-        break;
-    }
-}
-
-/*  print data in .debug_macinfo */
-/*  FIXME: should print name of file whose index is in macro data
-    here  --  somewhere.  */
-/*ARGSUSED*/ extern void print_macinfo(Dwarf_Debug dbg, Dwarf_Error err)
-{
-    Dwarf_Off            offset         = 0;
-    Dwarf_Unsigned       max            = 10;
-    Dwarf_Signed         count          = 0;
-    long                 group          = 0;
-    Dwarf_Macro_Details *maclist        = NULL;
-    int                  lres           = 0;
-
-    bool                 do_print_dwarf = true;
-    if (!do_print_dwarf)
-    {
-        return;
-    }
-
-    printf("\n.debug_macinfo\n");
-
-    while ((lres = dwarf_get_macro_details(dbg, offset, max, &count, &maclist, &err)) == DW_DLV_OK)
-    {
-        printf("\n.debug_macinfo2\n");
-        long                  i = 0;
-        struct macro_counts_s counts;
-
-        memset(&counts, 0, sizeof(counts));
-
-        printf("\n");
-        printf("compilation-unit .debug_macinfo # %ld\n", group);
-        printf("num name section-offset file-index [line] \"string\"\n");
-        for (i = 0; i < count; i++)
-        {
-            struct Dwarf_Macro_Details_s *mdp = &maclist[i];
-
-            print_one_macro_entry(i, mdp, &counts);
-        }
-
-        if (counts.mc_start_file == 0)
-        {
-            printf("DW_MACINFO file count of zero is invalid DWARF2/3\n");
-        }
-        if (counts.mc_start_file != counts.mc_end_file)
-        {
-            printf(
-                "Counts of DW_MACINFO file (%ld) end_file (%ld) "
-                "do not match!.\n",
-                counts.mc_start_file, counts.mc_end_file);
-        }
-        if (counts.mc_code_zero < 1)
-        {
-            printf(
-                "Count of zeros in macro group should be non-zero "
-                "(1 preferred), count is %ld\n",
-                counts.mc_code_zero);
-        }
-        printf(
-            "Macro counts: start file %ld, "
-            "end file %ld, "
-            "define %ld, "
-            "undef %ld, "
-            "ext %ld, "
-            "code-zero %ld, "
-            "unknown %ld\n",
-            counts.mc_start_file, counts.mc_end_file, counts.mc_define, counts.mc_undef, counts.mc_extension, counts.mc_code_zero, counts.mc_unknown);
-
-        /* int type= maclist[count - 1].dmd_type; */
-        /* ASSERT: type is zero */
-
-        offset = maclist[count - 1].dmd_offset + 1;
-        dwarf_dealloc(dbg, maclist, DW_DLA_STRING);
-        ++group;
-    }
-    if (lres == DW_DLV_ERROR)
-    {
-        //        std::cout << "dwarf_get_macro_details error" << std::endl;
-        //        print_error(dbg, "dwarf_get_macro_details", lres, err);
-    }
-
-    printf("\n.debug_macinfo3:%d\n", lres);
-}
-
 Juicer::Juicer() {}
 
 DefineMacro Juicer::getDefineMacroFromString(std::string macro_string)
@@ -406,8 +264,6 @@ int Juicer::readCUList(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Error &error)
         ++cu_number;
 
         logger.logDebug("Reading CU %u.", cu_number);
-
-        print_macinfo(dbg, error);
 
         DisplayDie(cu_die, 0);
 
@@ -4369,11 +4225,6 @@ int Juicer::printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level)
         /* Do nothing */
     }
 
-    if (strcmp(name, "CFE_SB_TlmHdr_t") == 0)
-    {
-        printf("hello\n");
-    }
-
     if (tag != DW_TAG_structure_type)
     {
         res = dwarf_tag(print_me, &tag, &error);
@@ -5386,26 +5237,6 @@ uint32_t Juicer::calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die dieSubrang
 }
 
 /**
- *
- * @return The number of elements in the die array entry, including all dimensions. It is assumed that die is of type
- * DW_TAG_array_type.
- */
-int Juicer::calcArraySizeForAllDims(Dwarf_Debug dbg, Dwarf_Die die)
-{
-    int                    arraySize = 0;
-    std::vector<Dwarf_Die> children  = getChildrenVector(dbg, die);
-
-    for (auto child : children)
-    {
-        if (arraySize == 0) arraySize = 1;
-
-        arraySize = arraySize * calcArraySizeForDimension(dbg, child);
-    }
-
-    return arraySize;
-}
-
-/**
  * Assuming that die is a DW_TAG_array_type, iterate through each  DW_TAG_subrange_type and return
  * a std::vector with all them as Dimension objects
  */
@@ -5497,35 +5328,6 @@ int Juicer::getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die)
 
     return siblingCount;
 }
-
-std::vector<Dwarf_Die> Juicer::getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die)
-{
-    int                    res = DW_DLV_OK;
-    std::vector<Dwarf_Die> siblingList{};
-
-    Dwarf_Die              sibling_die;
-
-    Dwarf_Error            error        = 0;
-
-    int                    siblingCount = getNumberOfSiblingsForDie(dbg, die);
-
-    for (int sibling = 0; sibling < siblingCount; sibling++)
-    {
-        res = dwarf_siblingof(dbg, die, &sibling_die, &error);
-        if (res != DW_DLV_OK)
-        {
-            logger.logWarning("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-        }
-        else
-        {
-            siblingList.push_back(sibling_die);
-            die = sibling_die;
-        }
-    }
-
-    return siblingList;
-}
-
 /**
  *@brief Get all of the children of the die in a nice STL vector.
  */

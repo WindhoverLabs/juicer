@@ -129,12 +129,10 @@ class Juicer
     Symbol*                  getBaseTypeSymbol(ElfFile& elf, Dwarf_Die inDie, DimensionList& multiplicity);
     void                     DisplayDie(Dwarf_Die inDie, uint32_t level);
 
-    std::vector<Dwarf_Die>   getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die);
     std::vector<Dwarf_Die>   getChildrenVector(Dwarf_Debug dbg, Dwarf_Die die);
     int                      getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die);
 
     uint32_t                 calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);
-    int                      calcArraySizeForAllDims(Dwarf_Debug dbg, Dwarf_Die die);
 
     DimensionList            getDimList(Dwarf_Debug dbg, Dwarf_Die die);
 
