@@ -1041,6 +1041,14 @@ Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwar
 
                             if (elf.getInitializedSymbolData().find(outName) != elf.getInitializedSymbolData().end())
                             {
+                                /**
+                                 * @todo variableData might be useful if we want to store the data
+                                 * inside the ELF inside of the db.
+                                 * CFS tables is an example of this.
+                                 * Though it should be noted that the data can be
+                                 * extracted by querying the SQL db; query_symbols.py is an example of this.
+                                 *
+                                 */
                                 std::vector<uint8_t> variableData = elf.getInitializedSymbolData().at(outName);
                             }
 
