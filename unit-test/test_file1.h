@@ -11,6 +11,10 @@
 
 #ifndef TEST_FILE_H_
 #define TEST_FILE_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "stdint.h"
 
 union Oject
@@ -28,6 +32,8 @@ union Oject
 **
 **  struct taken from https://github.com/nasa/cFE/blob/fa5031f3f5db91b482e947f4dc08d9103019d48e/modules/es/config/default_cfe_es_msgstruct.h#L440
 **/
+
+extern "C" {
 typedef struct CFE_ES_HousekeepingTlm_Payload
 {
     uint8_t  CommandCounter;      /**< \cfetlmmnemonic \ES_CMDPC
@@ -122,7 +128,7 @@ typedef struct CFE_ES_HousekeepingTlm_Payload
     uint32_t HeapMaxBlockSize;                                  /**< \cfetlmmnemonic \ES_HEAPMAXBLK
                                                                              \brief Number of bytes in the largest free block */
 } CFE_ES_HousekeepingTlm_Payload_t;
-
+}
 /**
  * \brief cFS telemetry header
  *
@@ -205,5 +211,21 @@ struct S
     int     n : 8;
     uint8_t after;
 };
+
+#define CFE_TBL_FILDEF_MAX_NAME_LEN 64
+#define CFE_TBL_FILDEF_FS_HDR_LEN   64
+#define CFE_TBL_FILDEF_OS_FILE_LEN  64
+typedef struct
+{
+    char    ObjectName[64];                          /**< \brief Name of instantiated variable that contains desired table image */
+    char    TableName[CFE_TBL_FILDEF_MAX_NAME_LEN];  /**< \brief Name of Table as defined onboard */
+    char    Description[CFE_TBL_FILDEF_FS_HDR_LEN];  /**< \brief Description of table image that is included in cFE File Header */
+    char    TgtFilename[CFE_TBL_FILDEF_OS_FILE_LEN]; /**< \brief Default filename to be used for output of elf2cfetbl utility  */
+    int32_t ObjectSize;                              /**< \brief Size, in bytes, of instantiated object */
+} CFE_TBL_FileDef_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* TEST_FILE_H_ */

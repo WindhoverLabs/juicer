@@ -8,6 +8,10 @@
  *on our unit tests.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "test_file1.h"
 
 #include <fcntl.h>
@@ -18,51 +22,70 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-Square                   sq = {};
-Circle                   ci = {};
+Square                                         sq              = {};
+Circle                                         ci              = {};
 
-CFE_ES_HousekeepingTlm_t hk{};
+__attribute__((used)) CFE_ES_HousekeepingTlm_t hk              = {};
 
-int                      vector_x               = 100;
+/*
+** Local Structure Declarations
+*/
+static __attribute__((used)) CFE_TBL_FileDef_t CFE_TBL_FileDef = {
+    /* Content format: ObjName[64], TblName[38], Desc[32], TgtFileName[20], ObjSize
+    **    ObjName - variable name of config table, e.g., CI_ConfigDefTbl[]
+    **    TblName - app's table name, e.g., CI.CONFIG_TBL, where CI is the same app name
+    **              used in cfe_es_startup.scr, and CI_defConfigTbl is the same table
+    **              name passed in to CFE_TBL_Register()
+    **    Desc - description of table in string format
+    **    TgtFileName[20] - table file name, compiled as .tbl file extension
+    **    ObjSize - size of the entire table
+    */
 
-unsigned int             some_unsiged_int       = 12;
+    "ADC_ConfigTbl", "ADC.CONFIG_TBL", "ADC default config table", "adc_config.tbl", (sizeof(CFE_ES_HousekeepingTlm_t))};
 
-int8_t                   precise_int8           = 110;
+int            vector_x               = 100;
 
-int16_t                  precise_int16          = 110;
+unsigned int   some_unsiged_int       = 12;
 
-int32_t                  precise_int32          = 110;
+int8_t         precise_int8           = 110;
 
-int64_t                  precise_int64          = 110;
+int16_t        precise_int16          = 110;
 
-uint8_t                  precise_unsigned_int8  = 112;
+int32_t        precise_int32          = 110;
 
-uint16_t                 precise_unsigned_int16 = 112;
+int64_t        precise_int64          = 110;
 
-uint32_t                 precise_unsigned_int32 = 112;
+uint8_t        precise_unsigned_int8  = 112;
 
-uint64_t                 precise_unsigned_int64 = 112;
+uint16_t       precise_unsigned_int16 = 112;
 
-char                     character              = '2';
+uint32_t       precise_unsigned_int32 = 112;
 
-int                      flat_array[]           = {1, 2, 3, 4, 5, 6};
+uint64_t       precise_unsigned_int64 = 112;
 
-float                    some_float             = 1.5;
+char           character              = '2';
 
-short                    some_short             = 20;
+int            flat_array[]           = {1, 2, 3, 4, 5, 6};
 
-unsigned short           some_signed_short      = 14;
+float          some_float             = 1.5;
 
-long                     a_long_value           = 0;
+short          some_short             = 20;
 
-long long                a_very_long_value      = 0;
+unsigned short some_signed_short      = 14;
 
-double                   some_double            = 4.5;
+long           a_long_value           = 0;
 
-int                      vector_y               = 30;
+long long      a_very_long_value      = 0;
 
-char                     alphabet[]             = {'a', 'b', 'c'};
+double         some_double            = 4.5;
 
-enum Color               rainbow                = RED;
+int            vector_y               = 30;
 
-int                      another_array[]        = {20, 21, 22, 34};
+char           alphabet[]             = {'a', 'b', 'c'};
+
+enum Color     rainbow                = RED;
+
+int            another_array[]        = {20, 21, 22, 34};
+#ifdef __cplusplus
+}
+#endif

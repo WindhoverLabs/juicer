@@ -1293,7 +1293,7 @@ TEST_CASE("Write Elf File to database with verbosity set to INFO", "[main_test#7
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
-    Logger          logger{LOGGER_VERBOSITY_INFO};
+    Logger          logger{LOGGER_VERBOSITY_DEBUG};
 
     std::string     inputFile{TEST_FILE_1};
 
@@ -1339,7 +1339,7 @@ TEST_CASE("Write Elf File to database with invalid verbosity", "[main_test#8]")
 
 TEST_CASE(
     "Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct after Juicer has processed it. "
-    "This also tests the \"extras\" features such ELF mage data.",
+    "This also tests the \"extras\" features such as ELF image data.",
     "[main_test#9]")
 {
     /**
