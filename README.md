@@ -22,7 +22,7 @@
 * `Catch2`
 * `g++>=5.4.0`
 * `gcovr`
-* `libarchive-zip-perl` (Needed for unit test verification of crc32)
+  * `libarchive-zip-perl` (Needed for unit test verification of crc32)
 
 
 ## Building it <a name="building_it"></a>
@@ -325,7 +325,7 @@ juicer behaves accordingly. If a pointer does not have a type(meaning it does no
 
 
 ## Notes On #define Macros <a name="notes_on_macros"></a>
-During testing we found that we the following pattern causes the macro being defined to disappear from the DWARF section:
+During testing we found that when the following pattern causes the macro being defined to disappear from the DWARF section:
 ```C
 #define CFE_MISSION_ES_PERF_MAX_IDS 128
 #define CFE_MISSION_ES_PERF_MAX_IDS 160
