@@ -15,8 +15,6 @@ extern "C" {
 #include "test_file1.h"
 
 #include <fcntl.h>
-#include <libdwarf.h>
-#include <libelf.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -86,6 +84,8 @@ char           alphabet[]             = {'a', 'b', 'c'};
 enum Color     rainbow                = RED;
 
 int            another_array[]        = {20, 21, 22, 34};
+
+S              s_struct{};
 #ifdef __cplusplus
 }
 #endif
