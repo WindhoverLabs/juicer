@@ -691,74 +691,153 @@ int SQLiteDB::writeElfSectionsToDatabase(ElfFile& inElf)
     int   rc           = SQLITEDB_OK;
     char* errorMessage = NULL;
 
-    for (auto elf32Section : inElf.getElf32Headers())
+    switch (inElf.getElfClass())
     {
-        inElf.getInitializedSymbolData();
-
-        /*
-         * @todo I want to store these SQLite magical values into MACROS,
-         * but I'm not sure what is the best way to do that without it being
-         * messy.
-         */
-        std::string writeElfSectionsQuery{};
-
-        /**
-         *@todo Not sure if I should make a seperation in the db between 32-bit and 64-bit sections...
-         */
-        writeElfSectionsQuery +=
-            "INSERT INTO elf_sections"
-            "(name, elf, type, flags, address, file_offset, size, link, info, address_alignment, entry_size ) "
-            "VALUES(";
-        //        writeElfSectionsQuery += "\"";
-        writeElfSectionsQuery += std::to_string(elf32Section.sh_name);
-        //        writeElfSectionsQuery += "\"";
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(inElf.getId());
-
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Section.sh_type);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Section.sh_flags);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Section.sh_addr);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Section.sh_offset);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Section.sh_size);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Section.sh_link);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Section.sh_info);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Section.sh_addralign);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Section.sh_entsize);
-
-        writeElfSectionsQuery += ");";
-
-        logger.logDebug("Sending \"%s\" query to database.", writeElfSectionsQuery.c_str());
-
-        rc = sqlite3_exec(database, writeElfSectionsQuery.c_str(), NULL, NULL, &errorMessage);
-
-        if (SQLITE_OK == rc)
+        case ELFCLASS32:
         {
-            logger.logDebug(
-                "Variable values were written to the variables schema with "
-                "SQLITE_OK status.");
+            for (auto elf32Section : inElf.getElf32Headers())
+            {
+                inElf.getInitializedSymbolData();
+
+                /*
+                 * @todo I want to store these SQLite magical values into MACROS,
+                 * but I'm not sure what is the best way to do that without it being
+                 * messy.
+                 */
+                std::string writeElfSectionsQuery{};
+
+                /**
+                 *@todo Not sure if I should make a seperation in the db between 32-bit and 64-bit sections...
+                 */
+                writeElfSectionsQuery +=
+                    "INSERT INTO elf_sections"
+                    "(name, elf, type, flags, address, file_offset, size, link, info, address_alignment, entry_size ) "
+                    "VALUES(";
+                writeElfSectionsQuery += std::to_string(elf32Section.sh_name);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(inElf.getId());
+
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Section.sh_type);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Section.sh_flags);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Section.sh_addr);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Section.sh_offset);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Section.sh_size);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Section.sh_link);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Section.sh_info);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Section.sh_addralign);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Section.sh_entsize);
+
+                writeElfSectionsQuery += ");";
+
+                logger.logDebug("Sending \"%s\" query to database.", writeElfSectionsQuery.c_str());
+
+                rc = sqlite3_exec(database, writeElfSectionsQuery.c_str(), NULL, NULL, &errorMessage);
+
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Variable values were written to the variables schema with "
+                        "SQLITE_OK status.");
+                }
+                else
+                {
+                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    {
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITE_OK;
+                    }
+                    else
+                    {
+                        logger.logDebug("There was an error while writing data to the variables table.");
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITEDB_ERROR;
+                    }
+                }
+            }
+
+            break;
         }
-        else
+        case ELFCLASS64:
         {
-            if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+            for (auto elf64Section : inElf.getElf64Headers())
             {
-                logger.logDebug("%s.", errorMessage);
-                rc = SQLITE_OK;
+                inElf.getInitializedSymbolData();
+
+                /*
+                 * @todo I want to store these SQLite magical values into MACROS,
+                 * but I'm not sure what is the best way to do that without it being
+                 * messy.
+                 */
+                std::string writeElfSectionsQuery{};
+
+                /**
+                 *@todo Not sure if I should make a seperation in the db between 32-bit and 64-bit sections...
+                 */
+                writeElfSectionsQuery +=
+                    "INSERT INTO elf_sections"
+                    "(name, elf, type, flags, address, file_offset, size, link, info, address_alignment, entry_size ) "
+                    "VALUES(";
+                writeElfSectionsQuery += std::to_string(elf64Section.sh_name);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(inElf.getId());
+
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Section.sh_type);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Section.sh_flags);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Section.sh_addr);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Section.sh_offset);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Section.sh_size);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Section.sh_link);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Section.sh_info);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Section.sh_addralign);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Section.sh_entsize);
+
+                writeElfSectionsQuery += ");";
+
+                logger.logDebug("Sending \"%s\" query to database.", writeElfSectionsQuery.c_str());
+
+                rc = sqlite3_exec(database, writeElfSectionsQuery.c_str(), NULL, NULL, &errorMessage);
+
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Variable values were written to the variables schema with "
+                        "SQLITE_OK status.");
+                }
+                else
+                {
+                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    {
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITE_OK;
+                    }
+                    else
+                    {
+                        logger.logDebug("There was an error while writing data to the variables table.");
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITEDB_ERROR;
+                    }
+                }
             }
-            else
-            {
-                logger.logDebug("There was an error while writing data to the variables table.");
-                logger.logDebug("%s.", errorMessage);
-                rc = SQLITEDB_ERROR;
-            }
+
+            break;
         }
     }
 
@@ -780,69 +859,145 @@ int SQLiteDB::writeElfSymboltableSymbolsToDatabase(ElfFile& inElf)
     int   rc           = SQLITEDB_OK;
     char* errorMessage = NULL;
 
-    for (auto elf32Symbol : inElf.getElf32SymbolTable())
+    switch (inElf.getElfClass())
     {
-        inElf.getInitializedSymbolData();
-
-        /*
-         * @todo I want to store these SQLite magical values into MACROS,
-         * but I'm not sure what is the best way to do that without it being
-         * messy.
-         */
-        std::string writeElfSectionsQuery{};
-
-        /**
-         *@todo Not sure if I should make a seperation in the db between 32-bit and 64-bit sections...
-         */
-        writeElfSectionsQuery +=
-            "INSERT INTO elf_symbol_table"
-            "(name, elf, value, size, info, other, section_index, file_offset, string_table_file_offset ) "
-            "VALUES(";
-        //        writeElfSectionsQuery += "\"";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_name);
-        //        writeElfSectionsQuery += "\"";
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(inElf.getId());
-
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_value);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_size);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_info);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_other);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_shndx);
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.getFileOffset());
-        writeElfSectionsQuery += ",";
-        writeElfSectionsQuery += std::to_string(elf32Symbol.getStrTableFileOffset());
-        writeElfSectionsQuery += ");";
-
-        logger.logDebug("Sending \"%s\" query to database.", writeElfSectionsQuery.c_str());
-
-        rc = sqlite3_exec(database, writeElfSectionsQuery.c_str(), NULL, NULL, &errorMessage);
-
-        if (SQLITE_OK == rc)
+        case ELFCLASS32:
         {
-            logger.logDebug(
-                "Variable values were written to the variables schema with "
-                "SQLITE_OK status.");
+            for (auto elf32Symbol : inElf.getElf32SymbolTable())
+            {
+                inElf.getInitializedSymbolData();
+
+                /*
+                 * @todo I want to store these SQLite magical values into MACROS,
+                 * but I'm not sure what is the best way to do that without it being
+                 * messy.
+                 */
+                std::string writeElfSectionsQuery{};
+
+                /**
+                 *@todo Not sure if I should make a seperation in the db between 32-bit and 64-bit sections...
+                 */
+                writeElfSectionsQuery +=
+                    "INSERT INTO elf_symbol_table"
+                    "(name, elf, value, size, info, other, section_index, file_offset, string_table_file_offset ) "
+                    "VALUES(";
+                //        writeElfSectionsQuery += "\"";
+                writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_name);
+                //        writeElfSectionsQuery += "\"";
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(inElf.getId());
+
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_value);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_size);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_info);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_other);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Symbol.getSymbol().st_shndx);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Symbol.getFileOffset());
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf32Symbol.getStrTableFileOffset());
+                writeElfSectionsQuery += ");";
+
+                logger.logDebug("Sending \"%s\" query to database.", writeElfSectionsQuery.c_str());
+
+                rc = sqlite3_exec(database, writeElfSectionsQuery.c_str(), NULL, NULL, &errorMessage);
+
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Variable values were written to the variables schema with "
+                        "SQLITE_OK status.");
+                }
+                else
+                {
+                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    {
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITE_OK;
+                    }
+                    else
+                    {
+                        logger.logDebug("There was an error while writing data to the variables table.");
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITEDB_ERROR;
+                    }
+                }
+            }
+            break;
         }
-        else
+        case ELFCLASS64:
         {
-            if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+            for (auto elf64Symbol : inElf.getElf64SymbolTable())
             {
-                logger.logDebug("%s.", errorMessage);
-                rc = SQLITE_OK;
+                inElf.getInitializedSymbolData();
+
+                /*
+                 * @todo I want to store these SQLite magical values into MACROS,
+                 * but I'm not sure what is the best way to do that without it being
+                 * messy.
+                 */
+                std::string writeElfSectionsQuery{};
+
+                /**
+                 *@todo Not sure if I should make a seperation in the db between 32-bit and 64-bit sections...
+                 */
+                writeElfSectionsQuery +=
+                    "INSERT INTO elf_symbol_table"
+                    "(name, elf, value, size, info, other, section_index, file_offset, string_table_file_offset ) "
+                    "VALUES(";
+                //        writeElfSectionsQuery += "\"";
+                writeElfSectionsQuery += std::to_string(elf64Symbol.getSymbol().st_name);
+                //        writeElfSectionsQuery += "\"";
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(inElf.getId());
+
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Symbol.getSymbol().st_value);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Symbol.getSymbol().st_size);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Symbol.getSymbol().st_info);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Symbol.getSymbol().st_other);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Symbol.getSymbol().st_shndx);
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Symbol.getFileOffset());
+                writeElfSectionsQuery += ",";
+                writeElfSectionsQuery += std::to_string(elf64Symbol.getStrTableFileOffset());
+                writeElfSectionsQuery += ");";
+
+                logger.logDebug("Sending \"%s\" query to database.", writeElfSectionsQuery.c_str());
+
+                rc = sqlite3_exec(database, writeElfSectionsQuery.c_str(), NULL, NULL, &errorMessage);
+
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Variable values were written to the variables schema with "
+                        "SQLITE_OK status.");
+                }
+                else
+                {
+                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    {
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITE_OK;
+                    }
+                    else
+                    {
+                        logger.logDebug("There was an error while writing data to the variables table.");
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITEDB_ERROR;
+                    }
+                }
             }
-            else
-            {
-                logger.logDebug("There was an error while writing data to the variables table.");
-                logger.logDebug("%s.", errorMessage);
-                rc = SQLITEDB_ERROR;
-            }
+            break;
         }
     }
 

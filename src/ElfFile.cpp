@@ -241,11 +241,16 @@ void                         ElfFile::addVariable(Variable newVariable) { variab
 const std::vector<Variable>& ElfFile::getVariables() const { return variables; }
 
 void                         ElfFile::addElf32SectionHeader(Elf32_Shdr newSectionHeader) { elf32Headers.push_back(newSectionHeader); }
+void                         ElfFile::addElf64SectionHeader(Elf64_Shdr newSectionHeader) { elf64Headers.push_back(newSectionHeader); }
 
 std::vector<Elf32_Shdr>      ElfFile::getElf32Headers() const { return elf32Headers; }
+std::vector<Elf64_Shdr>      ElfFile::getElf64Headers() const { return elf64Headers; }
 
 void                         ElfFile::addElf32SymbolTableSymbol(Elf32Symbol newSymbol) { elf32SymbolTable.push_back(newSymbol); }
 std::vector<Elf32Symbol>     ElfFile::getElf32SymbolTable() const { return elf32SymbolTable; }
+
+void                         ElfFile::addElf64SymbolTableSymbol(Elf64Symbol newSymbol) { elf64SymbolTable.push_back(newSymbol); }
+std::vector<Elf64Symbol>     ElfFile::getElf64SymbolTable() const { return elf64SymbolTable; }
 
 /**
  * @brief ElfFile::getEncodings
@@ -269,3 +274,19 @@ std::vector<Encoding>        ElfFile::getDWARFEncodings()
  * @return
  */
 Encoding& ElfFile::getDWARFEncoding(int encoding) { return encodingsMap.at(encoding); }
+
+void      ElfFile::setElfClass(int newelfClass)
+{
+    switch (elfClass)
+    {
+        case ELFCLASS32:
+        case ELFCLASS64:
+            elfClass = newelfClass;
+            break;
+        default:
+            elfClass = newelfClass;
+            logger.logWarning("Invalid elf class set:%d", elfClass);
+    }
+}
+
+int ElfFile::getElfClass() { return elfClass; }

@@ -1042,9 +1042,9 @@ Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwar
                             if (elf.getInitializedSymbolData().find(outName) != elf.getInitializedSymbolData().end())
                             {
                                 std::vector<uint8_t> variableData = elf.getInitializedSymbolData().at(outName);
-
-                                elf.addVariable(newVariable);
                             }
+
+                            elf.addVariable(newVariable);
                         }
                     }
                 }
@@ -4447,42 +4447,344 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
 
     if (buffer[EI_CLASS] == ELFCLASS64)
     {
-        size_t elfSectionCount = -1;
-        int    res             = elf_getshdrnum(elf, &elfSectionCount);
-
-        for (size_t i = 0; i < elfSectionCount; i++)
+        elfFileObj->setElfClass(ELFCLASS64);
         {
-            Elf_Scn *section = elf_getscn(elf, i);
-            std::cout << "section" << section << std::endl;
-        }
-        std::cout << "res:" << res << std::endl;
-
-        if (elf != NULL)
-        {
-            elf_hdr_64   = elf64_getehdr(elf);
-
-            ident_buffer = elf_hdr_64->e_ident;
-            if (ident_buffer[EI_DATA] == ELFDATA2LSB)
+            if (elf != NULL)
             {
-                rc = JUICER_ENDIAN_LITTLE;
-            }
-            else if (ident_buffer[EI_DATA] == ELFDATA2MSB)
-            {
-                rc = JUICER_ENDIAN_BIG;
+                elf_hdr_64             = elf64_getehdr(elf);
+                size_t elfSectionCount = 0;
+                int    res             = elf_getshdrnum(elf, &elfSectionCount);
+
+                logger.logInfo("Found %d elf sections", elfSectionCount);
+
+                for (size_t i = 0; i < elfSectionCount; i++)
+                {
+                    Elf_Scn    *section       = elf_getscn(elf, i);
+
+                    Elf64_Shdr *sectionHeader = elf64_getshdr(section);
+
+                    elfFileObj->addElf64SectionHeader(*sectionHeader);
+
+                    Elf32_Word sectionSize           = sectionHeader->sh_size;
+                    Elf32_Word sectionTableEntrySize = sectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB*/
+
+                    switch (sectionHeader->sh_type)
+                    {
+                        case SHT_NULL:
+                        {
+                            logger.logWarning("Section  SHT_NULL(%d) not supported.", SHT_NULL);
+                            break;
+                        }
+                        case SHT_PROGBITS:
+                        {
+                            logger.logWarning("Section  SHT_PROGBITS(%d) not supported.", SHT_PROGBITS);
+                            break;
+                        }
+                        case SHT_SYMTAB:
+                        {
+                            logger.logInfo("Extracting  SHT_SYMTAB(%d) at index(%d).", SHT_SYMTAB, i);
+                            logger.logInfo("Section Size:%d", sectionSize);
+                            logger.logInfo("Section Table Entry Size:%d", sectionTableEntrySize);
+
+                            Elf64_Word sectionSize           = sectionHeader->sh_size;
+                            Elf64_Word sectionTableEntrySize = sectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB*/
+
+                            int        numberOfSymbols       = sectionSize / sectionTableEntrySize;
+
+                            logger.logInfo("Found %d symbols in Elf", numberOfSymbols);
+
+                            Elf_Data *elfData = nullptr;
+                            elfData           = elf_getdata(section, elfData);
+                            if (elfData != nullptr)
+                            {
+                                logger.logInfo("elfData Size:%d", elfData->d_size);
+
+                                Elf64_Sym *sectionTableData = (Elf64_Sym *)elfData->d_buf;
+
+                                size_t     strTableIndex    = sectionHeader->sh_link;
+                                logger.logInfo("String table index for symbols:%d", strTableIndex);
+                                for (int i = 0; i < numberOfSymbols; i++)
+                                {
+                                    Elf64_Sym *symbol                          = sectionTableData;
+
+                                    uint32_t   symbolSectionFileOffset         = 0;
+                                    uint32_t   symbolSectionStrTableFileOffset = 0;
+
+                                    if (symbol->st_size > 0)
+                                    {
+                                        if (symbol->st_shndx == SHN_COMMON)
+                                        {
+                                            logger.logWarning("Ignoring symbol since it has SHN_COMMON as its st_shndx");
+                                        }
+                                        else
+                                        {
+                                            Elf_Scn    *stringTableSection                  = elf_getscn(elf, strTableIndex);
+                                            Elf64_Shdr *stringTableSectionHeader            = elf64_getshdr(stringTableSection);
+
+                                            Elf64_Xword stringTableSectionHeaderSectionSize = stringTableSectionHeader->sh_size;
+
+                                            if (symbol->st_name > 0)
+                                            {
+                                                char *currentStrTblPtr = elf_strptr(elf, strTableIndex, symbol->st_name);
+
+                                                if (currentStrTblPtr != nullptr)
+                                                {
+                                                    int         stringTableCursor = 0;
+                                                    std::string name{};
+                                                    while (currentStrTblPtr[stringTableCursor] != '\0')
+                                                    {
+                                                        name.push_back(currentStrTblPtr[stringTableCursor]);
+                                                        stringTableCursor++;
+                                                    }
+
+                                                    logger.logInfo(
+                                                        "Found symbol %s with size: %d, st_value:%u, st_name:%u, st_info:%u, st_other:%u, st_shndx:%u\n",
+                                                        name.c_str(), symbol->st_size, symbol->st_value, symbol->st_name, symbol->st_info, symbol->st_other,
+                                                        symbol->st_shndx);
+
+                                                    std::cout << "stringTableSectionHeader file offset:" << stringTableSectionHeader->sh_offset << std::endl;
+
+                                                    symbolSectionStrTableFileOffset = stringTableSectionHeader->sh_offset;
+
+                                                    //                            TODO:Map it to DWARF here.
+                                                    Elf_Scn    *symbolSectionData   = elf_getscn(elf, symbol->st_shndx);
+
+                                                    Elf64_Shdr *symbolSectionHeader = elf64_getshdr(symbolSectionData);
+
+                                                    if (symbolSectionHeader != nullptr)
+                                                    {
+                                                        //                                                    std::cout << "symbol data section file offset-->"
+                                                        //                                                    << symbolSectionHeader->sh_offset << std::endl;
+                                                        symbolSectionFileOffset = symbolSectionHeader->sh_offset;
+                                                    }
+
+                                                    Elf_Data *symbolSectionDataContents = nullptr;
+
+                                                    symbolSectionDataContents           = elf_getdata(symbolSectionData, symbolSectionDataContents);
+
+                                                    if (symbolSectionDataContents->d_type == ELF_T_BYTE)
+                                                    {
+                                                        uint8_t             *symbolDataCursor = (uint8_t *)symbolSectionDataContents->d_buf;
+
+                                                        std::vector<uint8_t> symbolData       = std::vector<uint8_t>();
+                                                        std::cout << "ELF32_ST_TYPE:" << ELF32_ST_TYPE(symbol->st_info) << std::endl;
+                                                        std::cout << "ELF32_ST_BIND:" << ELF32_ST_BIND(symbol->st_info) << std::endl;
+
+                                                        if (symbolDataCursor != nullptr)
+                                                        {
+                                                            for (int i = symbol->st_value; i < symbol->st_size; i++)
+                                                            {
+                                                                symbolData.push_back(symbolDataCursor[i]);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            logger.logWarning("Did not find size for symbol \"%d\"", name);
+                                                        }
+
+                                                        symbolToData.insert({name, symbolData});
+                                                    }
+                                                    else
+                                                    {
+                                                        logger.logWarning("Symbol %s ignored since ELF_T_BYTE was NOT found. Found %d type instead.",
+                                                                          name.c_str(), symbolSectionDataContents->d_type);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    elfFileObj->addElf64SymbolTableSymbol(Elf64Symbol{*symbol, symbolSectionFileOffset, symbolSectionStrTableFileOffset});
+                                    sectionTableData++;
+                                }
+                            }
+
+                            break;
+                        }
+                        case SHT_STRTAB:
+                        {
+                            logger.logWarning("Extracting SHT_STRTAB(%d) from section #%d.", SHT_STRTAB, i);
+                            break;
+                        }
+                        case SHT_RELA:
+                        {
+                            logger.logWarning("Section  SHT_RELA(%d) not supported.", SHT_RELA);
+                            break;
+                        }
+                        case SHT_HASH:
+                        {
+                            logger.logWarning("Section  SHT_HASH(%d) not supported.", SHT_HASH);
+                            break;
+                        }
+                        case SHT_DYNAMIC:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_DYNAMIC);
+                            break;
+                        }
+                        case SHT_NOTE:
+                        {
+                            logger.logWarning("Section  SHT_NOTE(%d) not supported.", SHT_NOTE);
+                            break;
+                        }
+                        case SHT_NOBITS:
+                        {
+                            logger.logWarning("Section  SHT_NOBITS(%d) not supported.", SHT_NOBITS);
+                            break;
+                        }
+                        case SHT_REL:
+                        {
+                            logger.logWarning("Section  SHT_REL(%d) not supported.", SHT_REL);
+                            break;
+                        }
+                        case SHT_SHLIB:
+                        {
+                            logger.logWarning("Section  SHT_SHLIB(%d) not supported.", SHT_SHLIB);
+                            break;
+                        }
+                        case SHT_DYNSYM:
+                        {
+                            logger.logWarning("Section  SHT_DYNSYM(%d) not supported.", SHT_DYNSYM);
+                            break;
+                        }
+                        case SHT_INIT_ARRAY:
+                        {
+                            logger.logWarning("Section  SHT_INIT_ARRAY(%d) not supported.", SHT_INIT_ARRAY);
+                            break;
+                        }
+                        case SHT_FINI_ARRAY:
+                        {
+                            logger.logWarning("Section  SHT_FINI_ARRAY(%d) not supported.", SHT_FINI_ARRAY);
+                            break;
+                        }
+                        case SHT_PREINIT_ARRAY:
+                        {
+                            logger.logWarning("Section  SHT_PREINIT_ARRAY(%d) not supported.", SHT_PREINIT_ARRAY);
+                            break;
+                        }
+                        case SHT_GROUP:
+                        {
+                            logger.logWarning("Section  SHT_GROUP(%d) not supported.", SHT_GROUP);
+                            break;
+                        }
+                        case SHT_SYMTAB_SHNDX:
+                        {
+                            logger.logWarning("Section  SHT_SYMTAB_SHNDX(%d) not supported.", SHT_SYMTAB_SHNDX);
+                            break;
+                        }
+                        case SHT_NUM:
+                        {
+                            logger.logWarning("Section  SHT_NUM(%d) not supported.", SHT_NUM);
+                            break;
+                        }
+                        case SHT_LOOS:
+                        {
+                            logger.logWarning("Section  SHT_LOOS(%d) not supported.", SHT_LOOS);
+                            break;
+                        }
+                        case SHT_GNU_ATTRIBUTES:
+                        {
+                            logger.logWarning("Section  SHT_GNU_ATTRIBUTES(%d) not supported.", SHT_GNU_ATTRIBUTES);
+                            break;
+                        }
+                        case SHT_GNU_HASH:
+                        {
+                            logger.logWarning("Section  SHT_GNU_HASH(%d) not supported.", SHT_GNU_HASH);
+                            break;
+                        }
+                        case SHT_GNU_LIBLIST:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_GNU_LIBLIST);
+                            break;
+                        }
+                        case SHT_CHECKSUM:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_CHECKSUM);
+                            break;
+                        }
+                            //                case  SHT_LOSUNW: SHT_LOSUNW and SHT_SUNW_move are the same value, for some reason.
+                        case SHT_SUNW_move:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_SUNW_move);
+                            break;
+                        }
+                        case SHT_SUNW_COMDAT:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_SUNW_COMDAT);
+                            break;
+                        }
+                        case SHT_SUNW_syminfo:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_SUNW_syminfo);
+                            break;
+                        }
+                        case SHT_GNU_verdef:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_GNU_verdef);
+                            break;
+                        }
+                        case SHT_GNU_verneed:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_GNU_verneed);
+                            break;
+                        }
+
+                        //                case  SHT_HISUNW: SHT_GNU_versym and SHT_HISUNW are the same value, for some reason.
+                        case SHT_HIOS:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_HIOS);
+                            break;
+                        }
+                        case SHT_LOPROC:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_LOPROC);
+                            break;
+                        }
+                        case SHT_HIPROC:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_HIPROC);
+                            break;
+                        }
+                        case SHT_LOUSER:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_LOUSER);
+                            break;
+                        }
+                        case SHT_HIUSER:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_HIUSER);
+                            break;
+                        }
+                    }
+
+                    //                std::cout << "sh_type" << sectionHeader->sh_type << std::endl;
+                }
+                std::cout << "res:" << res << std::endl;
+
+                ident_buffer = elf_hdr_64->e_ident;
+
+                if (ident_buffer[EI_DATA] == ELFDATA2LSB)
+                {
+                    rc = JUICER_ENDIAN_LITTLE;
+                }
+                else if (ident_buffer[EI_DATA] == ELFDATA2MSB)
+                {
+                    rc = JUICER_ENDIAN_BIG;
+                }
+                else
+                {
+                    rc = JUICER_ENDIAN_UNKNOWN;
+                }
+                elf_end(elf);
             }
             else
             {
-                rc = JUICER_ENDIAN_UNKNOWN;
+                logger.logError("elf_begin failed.  errno=%d  %s", errno, strerror(errno));
             }
-            elf_end(elf);
-        }
-        else
-        {
-            logger.logError("elf_begin failed.  errno=%d  %s", errno, strerror(errno));
         }
     }
     else if (buffer[EI_CLASS] == ELFCLASS32)
     {
+        elfFileObj->setElfClass(ELFCLASS32);
         if (elf != NULL)
         {
             elf_hdr_32             = elf32_getehdr(elf);

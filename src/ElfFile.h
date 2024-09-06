@@ -16,6 +16,7 @@
 
 #include "DefineMacro.h"
 #include "Elf32Symbol.h"
+#include "Elf64Symbol.h"
 #include "Encoding.h"
 #include "Field.h"
 #include "Juicer.h"
@@ -79,12 +80,22 @@ class ElfFile
     void                                               addElf32SectionHeader(Elf32_Shdr newVariable);
     std::vector<Elf32_Shdr>                            getElf32Headers() const;
 
+    void                                               addElf64SectionHeader(Elf64_Shdr newVariable);
+    std::vector<Elf64_Shdr>                            getElf64Headers() const;
+
     void                                               addElf32SymbolTableSymbol(Elf32Symbol newSymbol);
     std::vector<Elf32Symbol>                           getElf32SymbolTable() const;
+
+    void                                               addElf64SymbolTableSymbol(Elf64Symbol newSymbol);
+    std::vector<Elf64Symbol>                           getElf64SymbolTable() const;
 
     std::vector<Encoding>                              getDWARFEncodings();
 
     Encoding                                          &getDWARFEncoding(int encoding);
+
+    int                                                getElfClass();
+
+    void                                               setElfClass(int newelfClass);
 
    private:
     std::string                                 md5;
@@ -118,6 +129,9 @@ class ElfFile
     std::vector<Elf32Symbol>                    elf32SymbolTable{};
     std::vector<Elf32_Sym>                      elf32StringsTable{};
 
+    std::vector<Elf64Symbol>                    elf64SymbolTable{};
+    std::vector<Elf64_Sym>                      elf64StringsTable{};
+
     /**
      * @note This list of encodings can be found in dwarf.h or
      *  in DWARF5 specification document section 5.1.1 titled "Base Type Encodings"
@@ -148,6 +162,15 @@ class ElfFile
     };
 
     Encoding &getDWARFEncoding();
+
+    /**
+     * @brief elfClass
+     * as per the libelf defines
+     * #define ELFCLASSNONE	0		 Invalid class
+     * #define ELFCLASS32	1		 32-bit objects
+     * #define ELFCLASS64	2		 64-bit objects
+     */
+    int       elfClass{ELFCLASSNONE};
 };
 
 #endif /* ElfFile_H_ */
