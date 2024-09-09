@@ -2857,3 +2857,23 @@ TEST_CASE("Write Elf File to database with verbosity set to SILENT", "[main_test
     delete idc;
     REQUIRE(remove("./test_db.sqlite") == 0);
 }
+
+TEST_CASE("Write Elf File to database with IDC set to IDC_TYPE_CCDD.", "[main_test#14]")
+{
+    IDataContainer* idc = 0;
+
+    idc                 = IDataContainer::Create(IDC_TYPE_CCDD, "./test_db.sqlite");
+    REQUIRE(idc == nullptr);
+
+    delete idc;
+}
+
+TEST_CASE("Write Elf File to database with IDC set to an invalid value.", "[main_test#14]")
+{
+    IDataContainer* idc = 0;
+
+    idc                 = IDataContainer::Create((IDataContainer_Type_t)100, "./test_db.sqlite");
+    REQUIRE(idc == nullptr);
+
+    delete idc;
+}
