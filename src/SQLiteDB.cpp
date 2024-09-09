@@ -1674,11 +1674,6 @@ int SQLiteDB::writeEncodingsToDatabase(ElfFile& inElf)
                     {
                         inElf.getDWARFEncoding(DW_ATE_unsigned_char).setId(lastRowId);
                     }
-
-                    else if (encoding.getName() == "DW_ATE_unsigned_char")
-                    {
-                        inElf.getDWARFEncoding(DW_ATE_unsigned_char).setId(lastRowId);
-                    }
                     else if (encoding.getName() == "DW_ATE_imaginary_float")
                     {
                         inElf.getDWARFEncoding(DW_ATE_imaginary_float).setId(lastRowId);
