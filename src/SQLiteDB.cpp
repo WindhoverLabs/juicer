@@ -1706,10 +1706,6 @@ int SQLiteDB::writeEncodingsToDatabase(ElfFile& inElf)
                     {
                         inElf.getDWARFEncoding(DW_ATE_UCS).setId(lastRowId);
                     }
-                    else if (encoding.getName() == "DW_ATE_address")
-                    {
-                        inElf.getDWARFEncoding(DW_ATE_address).setId(lastRowId);
-                    }
                     else if (encoding.getName() == "DW_ATE_ASCII")
                     {
                         inElf.getDWARFEncoding(DW_ATE_ASCII).setId(lastRowId);
@@ -1773,11 +1769,6 @@ int SQLiteDB::writeEncodingsToDatabase(ElfFile& inElf)
                 {
                     inElf.getDWARFEncoding(DW_ATE_unsigned_char).setId(lastRowId);
                 }
-
-                else if (encoding.getName() == "DW_ATE_unsigned_char")
-                {
-                    inElf.getDWARFEncoding(DW_ATE_unsigned_char).setId(lastRowId);
-                }
                 else if (encoding.getName() == "DW_ATE_imaginary_float")
                 {
                     inElf.getDWARFEncoding(DW_ATE_imaginary_float).setId(lastRowId);
@@ -1809,10 +1800,6 @@ int SQLiteDB::writeEncodingsToDatabase(ElfFile& inElf)
                 else if (encoding.getName() == "DW_ATE_UCS")
                 {
                     inElf.getDWARFEncoding(DW_ATE_UCS).setId(lastRowId);
-                }
-                else if (encoding.getName() == "DW_ATE_address")
-                {
-                    inElf.getDWARFEncoding(DW_ATE_address).setId(lastRowId);
                 }
                 else if (encoding.getName() == "DW_ATE_ASCII")
                 {

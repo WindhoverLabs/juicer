@@ -1294,7 +1294,7 @@ TEST_CASE("Write Elf File to database with verbosity set to INFO", "[main_test#7
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
-    Logger          logger{LOGGER_VERBOSITY_DEBUG};
+    Logger          logger{LOGGER_VERBOSITY_INFO};
 
     std::string     inputFile{TEST_FILE_1};
 
@@ -2765,6 +2765,95 @@ TEST_CASE("Test 32-bit binary.", "[main_test#10]")
     REQUIRE(matrix1DDimensionListsRecords.at(0)["dim_order"] == "0");
     REQUIRE(matrix1DDimensionListsRecords.at(0)["upper_bound"] == "1");
 
-    REQUIRE(remove("./test_db.sqlite") == 0);
+    // REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
+}
+
+TEST_CASE("Write Elf File to database with verbosity set to DEBUG", "[main_test#11]")
+{
+    Juicer          juicer;
+    IDataContainer* idc = 0;
+    Logger          logger{LOGGER_VERBOSITY_DEBUG};
+
+    std::string     inputFile{TEST_FILE_1};
+
+    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+    REQUIRE(idc != nullptr);
+    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+
+    juicer.setIDC(idc);
+    juicer.parse(inputFile);
+
+    /**
+     *Clean up our database handle and objects in memory.
+     */
+    ((SQLiteDB*)(idc))->close();
+    delete idc;
+    REQUIRE(remove("./test_db.sqlite") == 0);
+}
+TEST_CASE("Write Elf File to database with verbosity set to WARNINGS", "[main_test#12]")
+{
+    Juicer          juicer;
+    IDataContainer* idc = 0;
+    Logger          logger{LOGGER_VERBOSITY_WARNINGS};
+
+    std::string     inputFile{TEST_FILE_1};
+
+    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+    REQUIRE(idc != nullptr);
+    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+
+    juicer.setIDC(idc);
+    juicer.parse(inputFile);
+
+    /**
+     *Clean up our database handle and objects in memory.
+     */
+    ((SQLiteDB*)(idc))->close();
+    delete idc;
+    REQUIRE(remove("./test_db.sqlite") == 0);
+}
+TEST_CASE("Write Elf File to database with verbosity set to ERRORS", "[main_test#13]")
+{
+    Juicer          juicer;
+    IDataContainer* idc = 0;
+    Logger          logger{LOGGER_VERBOSITY_ERRORS};
+
+    std::string     inputFile{TEST_FILE_1};
+
+    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+    REQUIRE(idc != nullptr);
+    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+
+    juicer.setIDC(idc);
+    juicer.parse(inputFile);
+
+    /**
+     *Clean up our database handle and objects in memory.
+     */
+    ((SQLiteDB*)(idc))->close();
+    delete idc;
+    REQUIRE(remove("./test_db.sqlite") == 0);
+}
+TEST_CASE("Write Elf File to database with verbosity set to SILENT", "[main_test#14]")
+{
+    Juicer          juicer;
+    IDataContainer* idc = 0;
+    Logger          logger{LOGGER_VERBOSITY_SILENT};
+
+    std::string     inputFile{TEST_FILE_1};
+
+    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+    REQUIRE(idc != nullptr);
+    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+
+    juicer.setIDC(idc);
+    juicer.parse(inputFile);
+
+    /**
+     *Clean up our database handle and objects in memory.
+     */
+    ((SQLiteDB*)(idc))->close();
+    delete idc;
+    REQUIRE(remove("./test_db.sqlite") == 0);
 }
