@@ -171,6 +171,7 @@ typedef struct
     float    floating_stuff;
     float    matrix3D[2][4][4];
     float    matrix1D[2];
+    uint8_t  extra;
 } Square;
 
 enum ModeSlot_t

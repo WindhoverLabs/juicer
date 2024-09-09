@@ -24,7 +24,7 @@ RUN cd /home/docker/juicer && make docs
 
 RUN cd /home/docker/juicer && make
 RUN cd /home/docker/juicer && make clean
-RUN cd /home/docker/juicer && make build-tests
+RUN cd /home/docker/juicer && make all
 WORKDIR /home/docker/juicer/build
 RUN ./juicer-ut "[Enumeration]"
 RUN ./juicer-ut "[main_test#1]"
@@ -35,6 +35,8 @@ RUN ./juicer-ut "[main_test#5]"
 RUN ./juicer-ut "[main_test#6]"
 RUN ./juicer-ut "[main_test#7]"
 RUN ./juicer-ut "[main_test#8]"
+RUN ./juicer-ut "[main_test#9]"
+RUN ./juicer-ut "[main_test#10]"
 RUN ./juicer-ut "[Module]"
 RUN ./juicer-ut "[Symbol]"
 RUN cd /home/docker/juicer && make coverage
