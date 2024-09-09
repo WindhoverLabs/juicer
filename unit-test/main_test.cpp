@@ -25,6 +25,7 @@
  */
 #define TEST_FILE_1   "ut_obj/test_file1.o"
 #define TEST_FILE_2   "ut_obj/test_file2.o"
+#define TEST_FILE_3   "ut_obj_32/test_file1.o"
 
 // DO NOT rename this macro to something like SQLITE_NULL as that is a macro that exists in sqlite3
 #define TEST_NULL_STR "NULL"
@@ -2412,6 +2413,359 @@ TEST_CASE(
     REQUIRE(hkFieldsRecords.at(41)["bit_offset"] == "0");
     REQUIRE(hkFieldsRecords.at(41)["short_description"] == "");
     REQUIRE(hkFieldsRecords.at(41)["long_description"] == "");
+
+    REQUIRE(remove("./test_db.sqlite") == 0);
+    delete idc;
+}
+
+TEST_CASE("Test 32-bit binary.", "[main_test#10]")
+{
+    /**
+     * This assumes that the test_file was compiled on
+     * gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
+     *  little-endian machine.
+     */
+
+    Juicer          juicer;
+    IDataContainer* idc = 0;
+    Logger          logger;
+    int             rc            = 0;
+    char*           errorMessage  = nullptr;
+    std::string     little_endian = is_little_endian() ? "1" : "0";
+
+    logger.logWarning("This is just a test.");
+    std::string inputFile{TEST_FILE_3};
+
+    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+    REQUIRE(idc != nullptr);
+    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+
+    juicer.setIDC(idc);
+    juicer.setExtras(true);
+
+    rc = juicer.parse(inputFile);
+
+    REQUIRE(rc == JUICER_OK);
+
+    // std::string getSquareStructQuery{"SELECT * FROM symbols WHERE name = \"Square\"; "};
+
+    // /**
+    //  *Clean up our database handle and objects in memory.
+    //  */
+    // ((SQLiteDB*)(idc))->close();
+
+    // sqlite3* database;
+
+    // rc = sqlite3_open("./test_db.sqlite", &database);
+
+    // REQUIRE(rc == SQLITE_OK);
+
+    // std::string                                     getAllEncodings{"SELECT * FROM encodings"};
+
+    // std::vector<std::map<std::string, std::string>> encodingsRecords{};
+
+    // rc = sqlite3_exec(database, getAllEncodings.c_str(), selectCallbackUsingColNameAsKey, &encodingsRecords, &errorMessage);
+
+    // REQUIRE(rc == SQLITE_OK);
+
+    // REQUIRE(encodingsRecords.size() == 18);
+
+    // /**
+    //  * @brief encodingMap A map of row_id -> encoding.
+    //  * i.e {"1":"DW_ATE_address", "2":"DW_ATE_boolean", etc}. Useful for avoiding having to look up the encoding by foreign of a symbol
+    //  * every time.
+    //  */
+    // std::map<std::string, std::string> encodingMap{};
+
+    // for (auto encodingRecord : encodingsRecords)
+    // {
+    //     encodingMap[encodingRecord["id"]] = encodingRecord["encoding"];
+    // }
+
+    // std::vector<std::map<std::string, std::string>> squareRecords{};
+
+    // rc = sqlite3_exec(database, getSquareStructQuery.c_str(), selectCallbackUsingColNameAsKey, &squareRecords, &errorMessage);
+
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(squareRecords.size() == 1);
+
+    // uint32_t numberOfColumns = 0;
+
+    // for (auto pair : squareRecords.at(0))
+    // {
+    //     numberOfColumns++;
+    // }
+
+    // REQUIRE(numberOfColumns == 9);
+
+    // /**
+    //  * Check the correctness of Square struct.
+    //  */
+
+    // REQUIRE(squareRecords.at(0)["name"] == "Square");
+    // REQUIRE(squareRecords.at(0)["byte_size"] == std::to_string(sizeof(Square)));
+
+    // REQUIRE(squareRecords.at(0)["target_symbol"] == "NULL");
+    // REQUIRE(squareRecords.at(0).at("encoding") == "NULL");
+    // REQUIRE(squareRecords.at(0)["short_description"] == "");
+    // REQUIRE(squareRecords.at(0)["long_description"] == "");
+
+    // std::string square_id          = squareRecords.at(0)["id"];
+
+    // std::string square_artifact_id = squareRecords.at(0)["artifact"];
+
+    // REQUIRE(!square_artifact_id.empty());
+
+    // std::string getSquareArtifact{"SELECT * FROM artifacts WHERE id = "};
+
+    // getSquareArtifact += square_artifact_id;
+    // getSquareArtifact += ";";
+
+    // std::vector<std::map<std::string, std::string>> squareArtifactRecords{};
+
+    // rc = sqlite3_exec(database, getSquareArtifact.c_str(), selectCallbackUsingColNameAsKey, &squareArtifactRecords, &errorMessage);
+
+    // REQUIRE(squareArtifactRecords.size() == 1);
+
+    // std::string path{};
+    // char        resolvedPath[PATH_MAX];
+
+    // realpath("../unit-test/test_file1.h", resolvedPath);
+
+    // path.clear();
+    // path.insert(0, resolvedPath);
+
+    // REQUIRE(squareArtifactRecords.at(0)["path"] == path);
+
+    // std::string expectedMD5Str = getmd5sumFromSystem(resolvedPath);
+    // REQUIRE(expectedMD5Str == squareArtifactRecords.at(0)["md5"]);
+
+    // std::string getSquareFields{"SELECT * FROM fields WHERE symbol = "};
+
+    // getSquareFields += square_id;
+    // getSquareFields += ";";
+
+    // std::vector<std::map<std::string, std::string>> squareFieldsRecords{};
+
+    // rc = sqlite3_exec(database, getSquareFields.c_str(), selectCallbackUsingColNameAsKey, &squareFieldsRecords, &errorMessage);
+
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(squareFieldsRecords.size() == 9);
+
+    // // Enforce order of records by offset
+    // std::sort(squareFieldsRecords.begin(), squareFieldsRecords.end(), [](std::map<std::string, std::string> a, std::map<std::string, std::string> b)
+    //           { return std::stoi(a["byte_offset"]) < std::stoi(b["byte_offset"]); });
+
+    // std::string getWidthType{"SELECT * FROM symbols where id="};
+    // getWidthType += squareFieldsRecords.at(0)["type"];
+    // getWidthType += ";";
+
+    // std::vector<std::map<std::string, std::string>> widthTypeRecords{};
+
+    // rc = sqlite3_exec(database, getWidthType.c_str(), selectCallbackUsingColNameAsKey, &widthTypeRecords, &errorMessage);
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(widthTypeRecords.size() == 1);
+
+    // std::string widthType{widthTypeRecords.at(0)["id"]};
+
+    // REQUIRE(squareFieldsRecords.at(0)["symbol"] == squareRecords.at(0)["id"]);
+    // REQUIRE(squareFieldsRecords.at(0)["name"] == "width");
+    // REQUIRE(squareFieldsRecords.at(0)["byte_offset"] == std::to_string(offsetof(Square, width)));
+    // REQUIRE(squareFieldsRecords.at(0)["type"] == widthType);
+    // REQUIRE(squareFieldsRecords.at(0)["little_endian"] == little_endian);
+
+    // std::string getStuffType{"SELECT * FROM symbols where id="};
+    // getStuffType += squareFieldsRecords.at(1)["type"];
+    // getStuffType += ";";
+
+    // std::vector<std::map<std::string, std::string>> stuffTypeRecords{};
+
+    // rc = sqlite3_exec(database, getStuffType.c_str(), selectCallbackUsingColNameAsKey, &stuffTypeRecords, &errorMessage);
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(stuffTypeRecords.size() == 1);
+
+    // REQUIRE(stuffTypeRecords.at(0)["name"] == "uint16_t");
+    // REQUIRE(stuffTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint16_t)));
+
+    // REQUIRE(encodingMap.at(followTargetSymbol(database, stuffTypeRecords.at(0)["target_symbol"]).at("encoding")) == "DW_ATE_unsigned");
+    // REQUIRE(stuffTypeRecords.at(0)["short_description"] == "");
+    // REQUIRE(stuffTypeRecords.at(0)["long_description"] == "");
+
+    // std::string stuffType{stuffTypeRecords.at(0)["id"]};
+
+    // REQUIRE(squareFieldsRecords.at(1)["name"] == "stuff");
+    // REQUIRE(squareFieldsRecords.at(1)["byte_offset"] == std::to_string(offsetof(Square, stuff)));
+    // REQUIRE(squareFieldsRecords.at(1)["type"] == stuffType);
+    // REQUIRE(squareFieldsRecords.at(1)["little_endian"] == little_endian);
+
+    // std::string getPadding1Type{"SELECT * FROM symbols where id="};
+    // getPadding1Type += squareFieldsRecords.at(2)["type"];
+    // getPadding1Type += ";";
+
+    // std::vector<std::map<std::string, std::string>> padding1TypeRecords{};
+
+    // rc = sqlite3_exec(database, getPadding1Type.c_str(), selectCallbackUsingColNameAsKey, &padding1TypeRecords, &errorMessage);
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(padding1TypeRecords.size() == 1);
+
+    // REQUIRE(padding1TypeRecords.at(0)["name"] == "uint16_t");
+    // REQUIRE(padding1TypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint16_t)));
+
+    // REQUIRE(encodingMap.at(followTargetSymbol(database, padding1TypeRecords.at(0)["target_symbol"]).at("encoding")) == "DW_ATE_unsigned");
+    // REQUIRE(padding1TypeRecords.at(0)["short_description"] == "");
+    // REQUIRE(padding1TypeRecords.at(0)["long_description"] == "");
+
+    // std::string padding1Type{padding1TypeRecords.at(0)["id"]};
+
+    // REQUIRE(squareFieldsRecords.at(2)["name"] == "padding1");
+    // REQUIRE(squareFieldsRecords.at(2)["byte_offset"] == std::to_string(offsetof(Square, padding1)));
+    // REQUIRE(squareFieldsRecords.at(2)["type"] == padding1Type);
+    // REQUIRE(squareFieldsRecords.at(2)["little_endian"] == little_endian);
+
+    // std::string getLengthType{"SELECT * FROM symbols where id="};
+    // getLengthType += squareFieldsRecords.at(3)["type"];
+    // getLengthType += ";";
+
+    // std::vector<std::map<std::string, std::string>> lengthTypeRecords{};
+
+    // rc = sqlite3_exec(database, getLengthType.c_str(), selectCallbackUsingColNameAsKey, &lengthTypeRecords, &errorMessage);
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(lengthTypeRecords.size() == 1);
+
+    // REQUIRE(lengthTypeRecords.at(0)["name"] == "int32_t");
+    // REQUIRE(lengthTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(int32_t)));
+
+    // REQUIRE(encodingMap.at(followTargetSymbol(database, lengthTypeRecords.at(0)["target_symbol"]).at("encoding")) == "DW_ATE_signed");
+    // REQUIRE(lengthTypeRecords.at(0)["short_description"] == "");
+    // REQUIRE(lengthTypeRecords.at(0)["long_description"] == "");
+
+    // std::string lengthType{lengthTypeRecords.at(0)["id"]};
+
+    // REQUIRE(squareFieldsRecords.at(3)["name"] == "length");
+    // REQUIRE(squareFieldsRecords.at(3)["byte_offset"] == std::to_string(offsetof(Square, length)));
+    // REQUIRE(squareFieldsRecords.at(3)["type"] == lengthType);
+    // REQUIRE(squareFieldsRecords.at(3)["little_endian"] == little_endian);
+
+    // std::string getMoreStuffType{"SELECT * FROM symbols where id="};
+    // getMoreStuffType += squareFieldsRecords.at(4)["type"];
+    // getMoreStuffType += ";";
+
+    // std::vector<std::map<std::string, std::string>> moreStuffTypeRecords{};
+
+    // rc = sqlite3_exec(database, getMoreStuffType.c_str(), selectCallbackUsingColNameAsKey, &moreStuffTypeRecords, &errorMessage);
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(moreStuffTypeRecords.size() == 1);
+
+    // REQUIRE(moreStuffTypeRecords.at(0)["name"] == "uint16_t");
+    // REQUIRE(moreStuffTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint16_t)));
+
+    // REQUIRE(encodingMap.at(followTargetSymbol(database, moreStuffTypeRecords.at(0)["target_symbol"]).at("encoding")) == "DW_ATE_unsigned");
+    // REQUIRE(moreStuffTypeRecords.at(0)["short_description"] == "");
+    // REQUIRE(moreStuffTypeRecords.at(0)["long_description"] == "");
+
+    // std::string moreStuffType{moreStuffTypeRecords.at(0)["id"]};
+
+    // REQUIRE(squareFieldsRecords.at(4)["name"] == "more_stuff");
+    // REQUIRE(squareFieldsRecords.at(4)["byte_offset"] == std::to_string(offsetof(Square, more_stuff)));
+    // REQUIRE(squareFieldsRecords.at(4)["type"] == moreStuffType);
+    // REQUIRE(squareFieldsRecords.at(4)["little_endian"] == little_endian);
+
+    // std::string getPadding2Type{"SELECT * FROM symbols where id="};
+    // getPadding2Type += squareFieldsRecords.at(5)["type"];
+    // getPadding2Type += ";";
+
+    // std::vector<std::map<std::string, std::string>> padding2TypeRecords{};
+
+    // rc = sqlite3_exec(database, getPadding2Type.c_str(), selectCallbackUsingColNameAsKey, &padding2TypeRecords, &errorMessage);
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(padding2TypeRecords.size() == 1);
+
+    // REQUIRE(padding2TypeRecords.at(0)["name"] == "uint16_t");
+    // REQUIRE(padding2TypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint16_t)));
+
+    // REQUIRE(encodingMap.at(followTargetSymbol(database, padding2TypeRecords.at(0)["target_symbol"]).at("encoding")) == "DW_ATE_unsigned");
+    // REQUIRE(padding2TypeRecords.at(0)["short_description"] == "");
+    // REQUIRE(padding2TypeRecords.at(0)["long_description"] == "");
+
+    // std::string padding2Type{padding2TypeRecords.at(0)["id"]};
+
+    // REQUIRE(squareFieldsRecords.at(5)["name"] == "padding2");
+    // REQUIRE(squareFieldsRecords.at(5)["byte_offset"] == std::to_string(offsetof(Square, padding2)));
+    // REQUIRE(squareFieldsRecords.at(5)["type"] == padding2Type);
+    // REQUIRE(squareFieldsRecords.at(5)["little_endian"] == little_endian);
+
+    // std::string getFloatingStuffType{"SELECT * FROM symbols where id="};
+    // getFloatingStuffType += squareFieldsRecords.at(6)["type"];
+    // getFloatingStuffType += ";";
+
+    // std::vector<std::map<std::string, std::string>> floatingStuffTypeRecords{};
+
+    // rc = sqlite3_exec(database, getFloatingStuffType.c_str(), selectCallbackUsingColNameAsKey, &floatingStuffTypeRecords, &errorMessage);
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(floatingStuffTypeRecords.size() == 1);
+
+    // REQUIRE(floatingStuffTypeRecords.at(0)["name"] == "float");
+    // REQUIRE(floatingStuffTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(float)));
+    // REQUIRE(floatingStuffTypeRecords.at(0)["target_symbol"] == "NULL");
+
+    // REQUIRE(encodingMap.at(floatingStuffTypeRecords.at(0)["encoding"]) == "DW_ATE_float");
+    // REQUIRE(floatingStuffTypeRecords.at(0)["short_description"] == "");
+    // REQUIRE(floatingStuffTypeRecords.at(0)["long_description"] == "");
+
+    // std::string floatingStuffType{floatingStuffTypeRecords.at(0)["id"]};
+
+    // REQUIRE(squareFieldsRecords.at(6)["name"] == "floating_stuff");
+    // REQUIRE(squareFieldsRecords.at(6)["byte_offset"] == std::to_string(offsetof(Square, floating_stuff)));
+    // REQUIRE(squareFieldsRecords.at(6)["type"] == floatingStuffType);
+    // REQUIRE(squareFieldsRecords.at(6)["little_endian"] == little_endian);
+
+    // // Test matrix3D[2][4][4]
+    // std::string getMatrix3DDimensionLists{"SELECT * FROM dimension_lists WHERE field_id="};
+    // getMatrix3DDimensionLists += squareFieldsRecords.at(7)["id"];
+    // getMatrix3DDimensionLists += ";";
+
+    // std::vector<std::map<std::string, std::string>> matrix3DDimensionListsRecords{};
+
+    // rc = sqlite3_exec(database, getMatrix3DDimensionLists.c_str(), selectCallbackUsingColNameAsKey, &matrix3DDimensionListsRecords, &errorMessage);
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(matrix3DDimensionListsRecords.size() == 3);
+
+    // // Enforce order of records by dim_order
+    // std::sort(matrix3DDimensionListsRecords.begin(), matrix3DDimensionListsRecords.end(),
+    //           [](std::map<std::string, std::string> a, std::map<std::string, std::string> b) { return std::stoi(a["dim_order"]) < std::stoi(b["dim_order"]);
+    //           });
+
+    // REQUIRE(matrix3DDimensionListsRecords.at(0)["field_id"] == squareFieldsRecords.at(7)["id"]);
+    // REQUIRE(matrix3DDimensionListsRecords.at(0)["dim_order"] == "0");
+    // REQUIRE(matrix3DDimensionListsRecords.at(0)["upper_bound"] == "1");
+
+    // REQUIRE(matrix3DDimensionListsRecords.at(1)["field_id"] == squareFieldsRecords.at(7)["id"]);
+    // REQUIRE(matrix3DDimensionListsRecords.at(1)["dim_order"] == "1");
+    // REQUIRE(matrix3DDimensionListsRecords.at(1)["upper_bound"] == "3");
+
+    // REQUIRE(matrix3DDimensionListsRecords.at(2)["field_id"] == squareFieldsRecords.at(7)["id"]);
+    // REQUIRE(matrix3DDimensionListsRecords.at(2)["dim_order"] == "2");
+    // REQUIRE(matrix3DDimensionListsRecords.at(2)["upper_bound"] == "3");
+
+    // // Test matrix3D[2][4][4]
+    // std::string getMatrix1DDimensionLists{"SELECT * FROM dimension_lists WHERE field_id="};
+    // getMatrix1DDimensionLists += squareFieldsRecords.at(8)["id"];
+    // getMatrix1DDimensionLists += ";";
+
+    // std::vector<std::map<std::string, std::string>> matrix1DDimensionListsRecords{};
+
+    // rc = sqlite3_exec(database, getMatrix1DDimensionLists.c_str(), selectCallbackUsingColNameAsKey, &matrix1DDimensionListsRecords, &errorMessage);
+    // REQUIRE(rc == SQLITE_OK);
+    // REQUIRE(matrix1DDimensionListsRecords.size() == 1);
+
+    // // Enforce order of records by dim_order
+    // std::sort(matrix1DDimensionListsRecords.begin(), matrix1DDimensionListsRecords.end(),
+    //           [](std::map<std::string, std::string> a, std::map<std::string, std::string> b) { return std::stoi(a["dim_order"]) < std::stoi(b["dim_order"]);
+    //           });
+
+    // REQUIRE(matrix1DDimensionListsRecords.at(0)["field_id"] == squareFieldsRecords.at(8)["id"]);
+    // REQUIRE(matrix1DDimensionListsRecords.at(0)["dim_order"] == "0");
+    // REQUIRE(matrix1DDimensionListsRecords.at(0)["upper_bound"] == "1");
 
     REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
