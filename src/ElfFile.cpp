@@ -226,7 +226,7 @@ Encoding& ElfFile::getDWARFEncoding(int encoding) { return encodingsMap.at(encod
 
 void      ElfFile::setElfClass(int newelfClass)
 {
-    switch (elfClass)
+    switch (newelfClass)
     {
         case ELFCLASS32:
         case ELFCLASS64:

@@ -18,7 +18,7 @@ Field::Field(Symbol& inSymbol, Symbol& inType)
       short_description{""},
       long_description{""}
 {
-    logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset,
+    logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%s  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset,
                     type.getName().c_str(), dimensionList.toString(), little_endian ? "LE" : "BE");
 }
 
@@ -37,8 +37,8 @@ Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbo
       long_description{""}
 
 {
-    logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset,
-                    type.getName().c_str(), dimensionList, little_endian ? "LE" : "BE");
+    logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%s  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset,
+                    type.getName().c_str(), dimensionList.toString(), little_endian ? "LE" : "BE");
 }
 
 Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbol& inType, bool inLittleEndian, uint32_t inBitSize, uint32_t inBitOffset)
@@ -55,8 +55,8 @@ Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbo
       long_description{""}
 
 {
-    logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%d  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset,
-                    type.getName().c_str(), dimensionList, little_endian ? "LE" : "BE");
+    logger.logDebug("Field %s::%s  byte_offset=%u  type=%s  multiplicity=%s  endian=%s  created.", symbol.getName().c_str(), name.c_str(), byte_offset,
+                    type.getName().c_str(), dimensionList.toString(), little_endian ? "LE" : "BE");
 }
 Field::~Field() {}
 
