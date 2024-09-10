@@ -772,7 +772,7 @@ TEST_CASE(
 
     memset(&resolvedPath, '\0', PATH_MAX);
 
-    realpath("./ut_obj/test_file1.o", resolvedPath);
+    realpath(TEST_FILE_1, resolvedPath);
 
     path.clear();
     path.insert(0, resolvedPath);
