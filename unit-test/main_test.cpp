@@ -2765,7 +2765,7 @@ TEST_CASE("Test 32-bit binary.", "[main_test#10]")
     REQUIRE(matrix1DDimensionListsRecords.at(0)["dim_order"] == "0");
     REQUIRE(matrix1DDimensionListsRecords.at(0)["upper_bound"] == "1");
 
-    // REQUIRE(remove("./test_db.sqlite") == 0);
+    REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
 }
 
@@ -2858,7 +2858,7 @@ TEST_CASE("Write Elf File to database with verbosity set to SILENT", "[main_test
     REQUIRE(remove("./test_db.sqlite") == 0);
 }
 
-TEST_CASE("Write Elf File to database with IDC set to IDC_TYPE_CCDD.", "[main_test#14]")
+TEST_CASE("Write Elf File to database with IDC set to IDC_TYPE_CCDD.", "[main_test#15]")
 {
     IDataContainer* idc = 0;
 
@@ -2868,12 +2868,80 @@ TEST_CASE("Write Elf File to database with IDC set to IDC_TYPE_CCDD.", "[main_te
     delete idc;
 }
 
-TEST_CASE("Write Elf File to database with IDC set to an invalid value.", "[main_test#14]")
+TEST_CASE("Write Elf File to database with IDC set to an invalid value.", "[main_test#16]")
 {
     IDataContainer* idc = 0;
 
     idc                 = IDataContainer::Create((IDataContainer_Type_t)100, "./test_db.sqlite");
     REQUIRE(idc == nullptr);
 
+    delete idc;
+}
+
+TEST_CASE("Test the correctness of define macros.", "[main_test#17]")
+{
+    /**
+     * This assumes that the test_file was compiled on
+     * gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
+     *  little-endian machine.
+     */
+
+    Juicer          juicer;
+    IDataContainer* idc = 0;
+    Logger          logger;
+    int             rc            = 0;
+    char*           errorMessage  = nullptr;
+    std::string     little_endian = is_little_endian() ? "1" : "0";
+
+    logger.logWarning("This is just a test.");
+    std::string inputFile{TEST_FILE_1};
+
+    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+    REQUIRE(idc != nullptr);
+    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+
+    juicer.setIDC(idc);
+
+    rc = juicer.parse(inputFile);
+
+    REQUIRE(rc == JUICER_OK);
+
+    std::string getMacroQuery{"SELECT * FROM macros WHERE name = \"CFE_MISSION_ES_PERF_MAX_IDS\"; "};
+
+    /**
+     *Clean up our database handle and objects in memory.
+     */
+    ((SQLiteDB*)(idc))->close();
+
+    sqlite3* database;
+
+    rc = sqlite3_open("./test_db.sqlite", &database);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    std::vector<std::map<std::string, std::string>> macroRecords{};
+
+    rc = sqlite3_exec(database, getMacroQuery.c_str(), selectCallbackUsingColNameAsKey, &macroRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(macroRecords.size() == 1);
+
+    uint32_t numberOfColumns = 0;
+
+    for (auto pair : macroRecords.at(0))
+    {
+        numberOfColumns++;
+    }
+
+    REQUIRE(numberOfColumns == 7);
+
+    REQUIRE(macroRecords.at(0).at("name") == "CFE_MISSION_ES_PERF_MAX_IDS");
+    REQUIRE(macroRecords.at(0).at("value") == "128");
+
+    /**
+     * Check the correctness of macro.
+     */
+
+    REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
 }

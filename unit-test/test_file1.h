@@ -9,12 +9,8 @@
  *on our unit tests.
  */
 
-#ifndef TEST_FILE_H_
-#define TEST_FILE_H_
+#define CFE_MISSION_ES_PERF_MAX_IDS 128
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "stdint.h"
 
 union Oject
@@ -22,8 +18,6 @@ union Oject
     int32_t id;
     char    data[16];
 };
-
-#define CFE_MISSION_ES_PERF_MAX_IDS 128
 
 /*************************************************************************/
 
@@ -224,9 +218,3 @@ typedef struct
     char    TgtFilename[CFE_TBL_FILDEF_OS_FILE_LEN]; /**< \brief Default filename to be used for output of elf2cfetbl utility  */
     int32_t ObjectSize;                              /**< \brief Size, in bytes, of instantiated object */
 } CFE_TBL_FileDef_t;
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* TEST_FILE_H_ */
