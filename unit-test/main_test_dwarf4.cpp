@@ -23,9 +23,9 @@
  *These test file locations assumes that the tests are run
  * with "make run-tests".
  */
-#define TEST_FILE_1   "ut_obj/test_file1.o"
-#define TEST_FILE_2   "ut_obj/test_file2.o"
-#define TEST_FILE_3   "ut_obj_32/test_file1.o"
+#define TEST_FILE_1   "ut_obj_dwarf4/test_file1.o"
+#define TEST_FILE_2   "ut_obj_dwarf4/test_file2.o"
+#define TEST_FILE_3   "ut_obj_32_dwarf4/test_file1.o"
 
 // DO NOT rename this macro to something like SQLITE_NULL as that is a macro that exists in sqlite3
 #define TEST_NULL_STR "NULL"
@@ -34,7 +34,7 @@
  *Checks if the platform is little endian.
  *This is used as a source of truth for our unit tests.
  */
-static bool is_little_endian()
+bool is_little_endian()
 {
     int n = 1;
     return (*(char*)&n == 1);
@@ -161,7 +161,7 @@ static int selectCallbackUsingColNameAsKey(void* veryUsed, int argc, char** argv
     return 0;
 }
 
-static std::string getmd5sumFromSystem(char resolvedPath[PATH_MAX])
+std::string getmd5sumFromSystem(char resolvedPath[PATH_MAX])
 {
     //	TODO:Unfortunately the redirect is adding junk(a "\n" character at the end) at the end of the crc.
     std::string MD5CommandStr{"md5sum "};
@@ -179,7 +179,7 @@ static std::string getmd5sumFromSystem(char resolvedPath[PATH_MAX])
     return expectedMD5Str;
 }
 
-static std::map<std::string, std::string> followTargetSymbol(sqlite3* database, std::string symbolID)
+std::map<std::string, std::string> followTargetSymbol(sqlite3* database, std::string symbolID)
 {
     std::string symbolQuery{"SELECT * FROM symbols where id="};
     int         rc  = 0;
@@ -208,7 +208,7 @@ static std::map<std::string, std::string> followTargetSymbol(sqlite3* database, 
     return targetSymbolRecord;
 }
 
-TEST_CASE("Test Juicer at the highest level with SQLiteDB", "[main_test#1]")
+TEST_CASE("Test Juicer at the highest level with SQLiteDB for dwarf4", "[main_test_dwarf4#1]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -222,6 +222,8 @@ TEST_CASE("Test Juicer at the highest level with SQLiteDB", "[main_test#1]")
     REQUIRE(idc != nullptr);
     logger.logInfo("IDataContainer was constructed successfully for unit test.");
 
+    printf("[main_test_dwarf4#1\n");
+
     juicer.setIDC(idc);
 
     REQUIRE(juicer.parse(inputFile) == JUICER_OK);
@@ -234,7 +236,7 @@ TEST_CASE("Test Juicer at the highest level with SQLiteDB", "[main_test#1]")
     delete idc;
 }
 
-TEST_CASE("Test the correctness of the Circle struct after Juicer has processed it.", "[main_test#2]")
+TEST_CASE("Test the correctness of the Circle struct after Juicer has processed it for DWARF4.", "[main_test_dwarf4#2]")
 {
     /**
      * This assumes that the test_file was compiled on
@@ -628,8 +630,8 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
 TEST_CASE(
     "Test the correctness of the Circle struct after Juicer has processed it on two"
-    " different elf files.",
-    "[main_test#3]")
+    " different elf files for DWARF4.",
+    "[main_test_dwarf4#3]")
 {
     /**
      * This assumes that the test_file was compiled on
@@ -881,7 +883,7 @@ TEST_CASE(
     delete idc;
 }
 
-TEST_CASE("Test the correctness of the Square struct after Juicer has processed it.", "[main_test#4]")
+TEST_CASE("Test the correctness of the Square struct after Juicer has processed it for DWARF4.", "[main_test_dwarf4#4]")
 {
     /**
      * This assumes that the test_file was compiled on
@@ -1231,7 +1233,7 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     delete idc;
 }
 
-TEST_CASE("Write keys to database that already exist", "[main_test#5]")
+TEST_CASE("Write keys to database that already exist for DWARF4.", "[main_test_dwarf4#5]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -1261,7 +1263,7 @@ TEST_CASE("Write keys to database that already exist", "[main_test#5]")
     delete idc;
 }
 //
-TEST_CASE("Write Elf File to database with a log file", "[main_test#6]")
+TEST_CASE("Write Elf File to database with a log file for DWARF4.", "[main_test_dwarf4#6]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -1286,12 +1288,11 @@ TEST_CASE("Write Elf File to database with a log file", "[main_test#6]")
      */
     ((SQLiteDB*)(idc))->close();
     delete idc;
-    // Logger::instance->closeLogFile();
-    REQUIRE(remove("./logFile") == 0);
+    // REQUIRE(remove("./logFile") == 0);
     REQUIRE(remove("./test_db.sqlite") == 0);
 }
 
-TEST_CASE("Write Elf File to database with verbosity set to INFO", "[main_test#7]")
+TEST_CASE("Write Elf File to database with verbosity set to INFO for DWARF4.", "[main_test_dwarf4#7]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -1314,7 +1315,7 @@ TEST_CASE("Write Elf File to database with verbosity set to INFO", "[main_test#7
     REQUIRE(remove("./test_db.sqlite") == 0);
 }
 
-TEST_CASE("Write Elf File to database with invalid verbosity", "[main_test#8]")
+TEST_CASE("Write Elf File to database with invalid verbosity for DWARF4.", "[main_test_dwarf4#8]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -1341,8 +1342,8 @@ TEST_CASE("Write Elf File to database with invalid verbosity", "[main_test#8]")
 
 TEST_CASE(
     "Test the correctness of the CFE_ES_HousekeepingTlm_Payload_t struct after Juicer has processed it. "
-    "This also tests the \"extras\" features such as ELF image data.",
-    "[main_test#9]")
+    "This also tests the \"extras\" features such as ELF image data for DWARF4.",
+    "[main_test_dwarf4#9]")
 {
     /**
      * This assumes that the test_file was compiled on
@@ -2419,7 +2420,7 @@ TEST_CASE(
     delete idc;
 }
 
-TEST_CASE("Test 32-bit binary.", "[main_test#10]")
+TEST_CASE("Test 32-bit binary for DWARF4..", "[main_test_dwarf4#10]")
 {
     /**
      * This assumes that the test_file was compiled on
@@ -2770,7 +2771,7 @@ TEST_CASE("Test 32-bit binary.", "[main_test#10]")
     delete idc;
 }
 
-TEST_CASE("Write Elf File to database with verbosity set to DEBUG", "[main_test#11]")
+TEST_CASE("Write Elf File to database with verbosity set to DEBUG for DWARF4.", "[main_test_dwarf4#11]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -2792,7 +2793,7 @@ TEST_CASE("Write Elf File to database with verbosity set to DEBUG", "[main_test#
     delete idc;
     REQUIRE(remove("./test_db.sqlite") == 0);
 }
-TEST_CASE("Write Elf File to database with verbosity set to WARNINGS", "[main_test#12]")
+TEST_CASE("Write Elf File to database with verbosity set to WARNINGS for DWARF4.", "[main_test_dwarf4#12]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -2814,7 +2815,7 @@ TEST_CASE("Write Elf File to database with verbosity set to WARNINGS", "[main_te
     delete idc;
     REQUIRE(remove("./test_db.sqlite") == 0);
 }
-TEST_CASE("Write Elf File to database with verbosity set to ERRORS", "[main_test#13]")
+TEST_CASE("Write Elf File to database with verbosity set to ERRORS for DWARF4.", "[main_test_dwarf4#13]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -2836,7 +2837,7 @@ TEST_CASE("Write Elf File to database with verbosity set to ERRORS", "[main_test
     delete idc;
     REQUIRE(remove("./test_db.sqlite") == 0);
 }
-TEST_CASE("Write Elf File to database with verbosity set to SILENT", "[main_test#14]")
+TEST_CASE("Write Elf File to database with verbosity set to SILENT for DWARF4.", "[main_test_dwarf4#14]")
 {
     Juicer          juicer;
     IDataContainer* idc = 0;
@@ -2859,7 +2860,7 @@ TEST_CASE("Write Elf File to database with verbosity set to SILENT", "[main_test
     REQUIRE(remove("./test_db.sqlite") == 0);
 }
 
-TEST_CASE("Write Elf File to database with IDC set to IDC_TYPE_CCDD.", "[main_test#15]")
+TEST_CASE("Write Elf File to database with IDC set to IDC_TYPE_CCDD for DWARF4..", "[main_test_dwarf4#15]")
 {
     IDataContainer* idc = 0;
 
@@ -2869,7 +2870,7 @@ TEST_CASE("Write Elf File to database with IDC set to IDC_TYPE_CCDD.", "[main_te
     delete idc;
 }
 
-TEST_CASE("Write Elf File to database with IDC set to an invalid value.", "[main_test#16]")
+TEST_CASE("Write Elf File to database with IDC set to an invalid value for DWARF4.", "[main_test_dwarf4#16]")
 {
     IDataContainer* idc = 0;
 
@@ -2879,7 +2880,7 @@ TEST_CASE("Write Elf File to database with IDC set to an invalid value.", "[main
     delete idc;
 }
 
-TEST_CASE("Test the correctness of define macros.", "[main_test#17]")
+TEST_CASE("Test the correctness of define macros for DWARF4.", "[main_test_dwarf4#17]")
 {
     /**
      * This assumes that the test_file was compiled on
@@ -2938,8 +2939,6 @@ TEST_CASE("Test the correctness of define macros.", "[main_test#17]")
 
     REQUIRE(macroRecords.at(0).at("name") == "CFE_MISSION_ES_PERF_MAX_IDS");
     REQUIRE(macroRecords.at(0).at("value") == "128");
-
-    printf("[main_test#17]\n");
 
     /**
      * Check the correctness of macro.
