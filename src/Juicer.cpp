@@ -4934,8 +4934,6 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                         break;
                     }
                 }
-
-                //                std::cout << "sh_type" << sectionHeader->sh_type << std::endl;
             }
             ident_buffer = elf_hdr_32->e_ident;
 
