@@ -331,7 +331,7 @@ During testing we found that when the following pattern causes the macro being d
 #define CFE_MISSION_ES_PERF_MAX_IDS 160
 
 ```
-For more details on this issue:https://github.com/WindhoverLabs/juicer/issues/35
+For more details on this issue and other macro issues:https://github.com/WindhoverLabs/juicer/issues/35
 
 ## VxWorks Support <a name="vxWorks"></a>
 At the moment vxWorks support is a work in progress. Support is currently *not* tested, so at the moment it is on its own [branch]
