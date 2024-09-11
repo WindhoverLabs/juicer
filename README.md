@@ -102,20 +102,18 @@ This tells juicer to squeeze and extract as much as possible out of the binary a
 
 After juicer is done, you will find a database populated with data about our binary file at `build/new_db.sqlite`.  The database should have the following schemas:
 
+"*" = PRIMARY KEY  
+"+" = FOREIGN KEY
+
 ### elfs
-| id* | name  | checksum | date | little_endian |
-| --- | --- | --- | --- | --- |
-|INTEGER | TEXT | INTEGER | DATETIME | BOOLEAN |
+| id* | name  | md5     | date | little_endian | short_description | long_description |
+| --- | --- |---------| --- | --- | -- | -- |
+|INTEGER | TEXT | INTEGER | DATETIME | BOOLEAN | TEXT | TEXT |
 
 ###  enumerations
-| symbol* | value* | name |
-| --- | --- | --- |
-| INTEGER | INTEGER | TEXT |
-
-### bit_fields
-|field* | bit_size   | bit_offset |
-|---|---|---|
-| INTEGER | INTEGER | INTEGER |
+| symbol* | value* | name | short_description | long_description |
+| --- | --- | --- | -- | -- |
+| INTEGER | INTEGER | TEXT | TEXT | TEXT |
 
 ### fields
 | id* | name | symbol+ | byte_offset | type+ | little_endian | bit_size | bit_offset |
@@ -128,9 +126,9 @@ After juicer is done, you will find a database populated with data about our bin
 | INTEGER | INTEGER | TEXT | INTEGER 
 
 ### symbols
-| id* | elf+ | name | byte_size |
-| ---| --- | --- | --- |
-| INTEGER | INTEGER | TEXT | INTEGER |
+| id* | elf+ | name | byte_size | artifact* | target_symbol* | encoding* | short_description | long_descriptions |    
+| ---| --- | --- | --- |-----------|----------------|-----------|------|------|
+| INTEGER | INTEGER | TEXT | INTEGER | INTEGER | INTEGER | INTEGER | TEXT | TEXT |
 
 In our specific example, the **symbols** and **fields** tables are the ones we are interested in. 
 
