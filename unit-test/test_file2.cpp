@@ -1,6 +1,4 @@
 #include <fcntl.h>
-#include <libdwarf.h>
-#include <libelf.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
