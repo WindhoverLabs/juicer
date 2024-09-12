@@ -9,6 +9,7 @@
 #define SRC_ARTIFACT_H_
 
 #include <string>
+#include <cstdint>
 
 class ElfFile;
 
