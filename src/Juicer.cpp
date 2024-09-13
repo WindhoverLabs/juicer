@@ -698,7 +698,7 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
                 {
                     /* This branch represents a "void*" since there is no valid type.
                      * Read section 5.2 of DWARF4 for details on this.*/
-                    Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+                    Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                     std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                     newArtifact.setMD5(checkSum);
                     outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
@@ -779,7 +779,7 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
 
             if (pathIndex != 0)
             {
-                Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
                 outSymbol = elf.addSymbol(name, byteSize, newArtifact);
@@ -1081,7 +1081,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                         if (pathIndex != 0)
                         {
-                            Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
@@ -1245,7 +1245,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                         if (pathIndex != 0)
                         {
-                            Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
@@ -3203,7 +3203,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
 
                         if (pathIndex != 0)
                         {
-                            Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
@@ -3487,7 +3487,7 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
 
             if (pathIndex != 0)
             {
-                Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
@@ -3978,7 +3978,7 @@ bool Juicer::isDWARFVersionSupported(Dwarf_Die inDie)
 {
     bool       isSupported  = true;
 
-    Dwarf_Half dwarfVersion = 0;
+    dwarfVersion = 0;
 
     Dwarf_Half dwarfOffset  = 0;
 
@@ -4116,7 +4116,7 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
                             if (pathIndex != 0)
                             {
-                                Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex)};
+                                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                                 newArtifact.setMD5(checkSum);
                                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
@@ -5117,7 +5117,7 @@ int Juicer::parse(std::string &elfFilePath)
         if (JUICER_OK == return_value)
         {
             /* Initialize the Dwarf library.  This will open the file. */
-            dwarf_value = dwarf_init(elfFile, DW_DLC_READ, errhand, errarg, &dbg, &error);
+            dwarf_value = dwarf_init(elfFile, DW_DLC_READ, errhand, errarg, &dbg, &error);;
             if (dwarf_value != DW_DLV_OK)
             {
                 logger.logError("Failed to read the dwarf");
@@ -5420,4 +5420,43 @@ std::string Juicer::generateMD5SumForFile(std::string filePath)
 
     auto md5 = hex.str();
     return md5;
+}
+
+/**
+ * handles debug source files lookups for different DWARF versions.
+ * It is assumed the pathIndex is the value of DW_AT_decl_file attribute
+ */
+std::string& Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
+{ 
+    switch(dwarfVersion)
+    {
+        /**
+         * 
+         * TODO:I need to figure out this mess.
+         * Ubuntu20 and 22'ss gcc version producde different line numbers
+         * inside the DWARF for the same DWARF versions
+         **/
+        
+        // Ubuntu20:
+        case 4:
+        {
+            return dbgSourceFiles.at(pathIndex-1);        
+        }
+        case 5:
+        {
+        return dbgSourceFiles.at(pathIndex-1);    
+        }
+
+        // Ubuntu22:
+        // case 4:
+        // {
+        //     return dbgSourceFiles.at(pathIndex-1);        
+        // }
+        // case 5:
+        // {
+        // return dbgSourceFiles.at(pathIndex);    
+        // }
+        
+    }
+    return dbgSourceFiles.at(pathIndex);
 }
