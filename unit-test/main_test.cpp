@@ -27,6 +27,8 @@
 #define TEST_FILE_2   "ut_obj/test_file2.o"
 #define TEST_FILE_3   "ut_obj_32/test_file1.o"
 
+#define TEST_FILE_4   "ut_obj/macro_test.o"
+
 // DO NOT rename this macro to something like SQLITE_NULL as that is a macro that exists in sqlite3
 #define TEST_NULL_STR "NULL"
 
@@ -2939,7 +2941,96 @@ TEST_CASE("Test the correctness of define macros.", "[main_test#17]")
     REQUIRE(macroRecords.at(0).at("name") == "CFE_MISSION_ES_PERF_MAX_IDS");
     REQUIRE(macroRecords.at(0).at("value") == "128");
 
-    printf("[main_test#17]\n");
+    /**
+     * Check the correctness of macro.
+     */
+
+    REQUIRE(remove("./test_db.sqlite") == 0);
+    delete idc;
+}
+
+
+
+TEST_CASE("Test the correctness of define macros across multiple groups.", "[main_test#18]")
+{
+    /**
+     * This assumes that the test_file was compiled on
+     * gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
+     *  little-endian machine.
+     */
+
+    Juicer          juicer;
+    IDataContainer* idc = 0;
+    Logger          logger;
+    int             rc            = 0;
+    char*           errorMessage  = nullptr;
+    std::string     little_endian = is_little_endian() ? "1" : "0";
+
+    logger.logWarning("This is just a test.");
+    std::string inputFile{TEST_FILE_4};
+
+    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+    REQUIRE(idc != nullptr);
+    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+
+    juicer.setIDC(idc);
+
+    rc = juicer.parse(inputFile);
+
+    REQUIRE(rc == JUICER_OK);
+
+    // Group5 has macros "MAC4", "MAC5"
+    // Some more details about how this happens:https://lists.dwarfstd.org/pipermail/dwarf-discuss/2024-September/thread.html#2505
+    juicer.setGroupNumber(5);
+
+    rc = juicer.parse(inputFile);
+
+    REQUIRE(rc == JUICER_OK);
+
+    std::string getMacroQuery{"SELECT * FROM macros; "};
+
+    /**
+     *Clean up our database handle and objects in memory.
+     */
+    ((SQLiteDB*)(idc))->close();
+
+    sqlite3* database;
+
+    rc = sqlite3_open("./test_db.sqlite", &database);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    std::vector<std::map<std::string, std::string>> macroRecords{};
+
+    rc = sqlite3_exec(database, getMacroQuery.c_str(), selectCallbackUsingColNameAsKey, &macroRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(macroRecords.size() == 5);
+
+    uint32_t numberOfColumns = 0;
+
+    for (auto pair : macroRecords.at(0))
+    {
+        numberOfColumns++;
+    }
+
+    REQUIRE(numberOfColumns == 7);
+
+    REQUIRE(macroRecords.at(0).at("name") == "MAC1");
+    REQUIRE(macroRecords.at(0).at("value") == "2");
+    
+    REQUIRE(macroRecords.at(1).at("name") == "MAC2");
+    REQUIRE(macroRecords.at(1).at("value") == "3");
+    
+    REQUIRE(macroRecords.at(2).at("name") == "MAC3");
+    REQUIRE(macroRecords.at(2).at("value") == "4");
+    
+    REQUIRE(macroRecords.at(3).at("name") == "MAC4");
+    REQUIRE(macroRecords.at(3).at("value") == "");
+    
+    REQUIRE(macroRecords.at(4).at("name") == "MAC5");
+    REQUIRE(macroRecords.at(4).at("value") == "1");
+
 
     /**
      * Check the correctness of macro.
