@@ -56,7 +56,7 @@ static char doc[] =
 /* A description of the arguments we accept. */
 static char args_doc[] =
     "--input <FILE> --mode <MODE> (--output <FILE> | "
-    "(--address <ADDR> --port <PORT> --project <PROJ>)) -x";
+    "(--address <ADDR> --port <PORT> --project <PROJ>)) -x -gN";
 
 /* The options we understand. */
 static struct argp_option options[] = {{"input", 'i', "FILE", 0, "Input ELF file"},
@@ -74,6 +74,10 @@ static struct argp_option options[] = {{"input", 'i', "FILE", 0, "Input ELF file
                                        {"extras", 'x', NULL, 0,
                                         "Extra DWARF and ELF data such as variables. Enabling this"
                                         "will cause juicer to take longer."},
+                                        {"groupNumber", 'g', "group", 0,
+                                        "Group number to extract data forom inside of DWARF section."
+                                        "Useful for situations where debug sections (eg. debug_macros) are spreadout through different groups."
+                                        " An example of this is when macros are split in different groups by gcc for unlinked ELF object files."},
                                        {0}};
 
 /* Used by main to communicate with parse_opt. */
@@ -99,6 +103,7 @@ typedef struct
     char              *project;
     bool               project_set;
     bool               extras;
+    unsigned int       groupNumber;
 } arguments_t;
 
 /* Parse a single option. */
@@ -177,6 +182,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         case 'x':
         {
             arguments->extras = true;
+            break;
+        }
+
+        case 'g':
+        {
+            arguments->groupNumber = atoi(arg);
             break;
         }
 
@@ -320,6 +331,7 @@ int                main(int argc, char **argv)
     memset(&arguments, 0, sizeof(arguments));
     arguments.verbosity = 1;
     arguments.extras    = false;
+    arguments.groupNumber = 0;
 
     /* Parse our arguments; every option seen by parse_opt will
      be reflected in arguments. */
@@ -328,6 +340,7 @@ int                main(int argc, char **argv)
     {
         Juicer juicer;
         juicer.setExtras(arguments.extras);
+        juicer.setGroupNumber(arguments.groupNumber);
         IDataContainer *idc    = 0;
 
         Logger          logger = Logger(arguments.verbosity);

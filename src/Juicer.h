@@ -101,6 +101,8 @@ class Juicer
 
     void               setExtras(bool extras) { this->extras = extras; }
 
+    void               setGroupNumber(unsigned int groupNumber){this->groupNumber = groupNumber;};
+
    private:
     Dwarf_Debug              dbg = 0;
     int                      res = DW_DLV_ERROR;
@@ -145,6 +147,9 @@ class Juicer
     std::map<std::string, std::vector<uint8_t>> getObjDataFromElf(ElfFile* elfFileObj);
 
     bool                                        extras;
+
+    unsigned int                                groupNumber{0};
+
 };
 
 #endif /* JUICER_H_ */

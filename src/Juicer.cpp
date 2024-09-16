@@ -5098,9 +5098,7 @@ int Juicer::parse(std::string &elfFilePath)
         {
             /* Initialize the Dwarf library.  This will open the file. */
                         /* Initialize the Dwarf library.  This will open the file. */
-            // dwarf_value = dwarf_init(elfFile, DW_DLC_READ, errhand, errarg, &dbg, &error);
-            // TODO:Make groupnumber a CLI arg
-            dwarf_value = dwarf_init_b(elfFile, DW_DLC_READ, 0, errhand, errarg, &dbg, &error);
+            dwarf_value = dwarf_init_b(elfFile, DW_DLC_READ, groupNumber, errhand, errarg, &dbg, &error);
             if (dwarf_value != DW_DLV_OK)
             {
                 logger.logError("Failed to read the dwarf");
