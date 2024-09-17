@@ -123,9 +123,12 @@ clean:
 -include $(UT_OBJ:.o=.d)
 -include $(OBJ:.o=.d)
 
-docker-build:
-	@sudo docker build --no-cache -t juicer:latest -f Dockerfile .
+docker-ubuntu22-build:
+	@sudo docker build --no-cache -t juicer:latest -f Dockerfile.ubuntu22 .
 
+
+docker-ubuntu20-build:
+	@sudo docker build --no-cache -t juicer:latest -f Dockerfile.ubuntu20 .
 
 
 docker-build-dev:
