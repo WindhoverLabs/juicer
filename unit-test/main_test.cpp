@@ -228,6 +228,8 @@ TEST_CASE("Test Juicer at the highest level with SQLiteDB", "[main_test#1]")
 
     REQUIRE(juicer.parse(inputFile) == JUICER_OK);
 
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
+
     /**
      *Clean up our database handle and objects in memory.
      */
@@ -261,6 +263,8 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     juicer.setIDC(idc);
 
     rc = juicer.parse(inputFile);
+
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
 
     REQUIRE(rc == JUICER_OK);
 
@@ -656,12 +660,14 @@ TEST_CASE(
     juicer.setIDC(idc);
 
     rc = juicer.parse(inputFile);
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
 
     REQUIRE(rc == JUICER_OK);
 
     inputFile = TEST_FILE_2;
 
     rc        = juicer.parse(inputFile);
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
 
     REQUIRE(rc == JUICER_OK);
 
@@ -908,6 +914,8 @@ TEST_CASE("Test the correctness of the Square struct after Juicer has processed 
     juicer.setIDC(idc);
 
     rc = juicer.parse(inputFile);
+
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
 
     REQUIRE(rc == JUICER_OK);
 
@@ -1308,6 +1316,8 @@ TEST_CASE("Write Elf File to database with verbosity set to INFO", "[main_test#7
     juicer.setIDC(idc);
     juicer.parse(inputFile);
 
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
+
     /**
      *Clean up our database handle and objects in memory.
      */
@@ -1332,6 +1342,8 @@ TEST_CASE("Write Elf File to database with invalid verbosity", "[main_test#8]")
 
     juicer.setIDC(idc);
     juicer.parse(inputFile);
+
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
 
     /**
      *Clean up our database handle and objects in memory.
@@ -1370,6 +1382,8 @@ TEST_CASE(
     juicer.setExtras(true);
 
     rc = juicer.parse(inputFile);
+
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
 
     REQUIRE(rc == JUICER_OK);
 
@@ -2448,6 +2462,8 @@ TEST_CASE("Test 32-bit binary.", "[main_test#10]")
 
     rc = juicer.parse(inputFile);
 
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
+
     REQUIRE(rc == JUICER_OK);
 
     std::string getSquareStructQuery{"SELECT * FROM symbols WHERE name = \"Square\"; "};
@@ -2787,6 +2803,8 @@ TEST_CASE("Write Elf File to database with verbosity set to DEBUG", "[main_test#
     juicer.setIDC(idc);
     juicer.parse(inputFile);
 
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
+
     /**
      *Clean up our database handle and objects in memory.
      */
@@ -2808,6 +2826,8 @@ TEST_CASE("Write Elf File to database with verbosity set to WARNINGS", "[main_te
 
     juicer.setIDC(idc);
     juicer.parse(inputFile);
+
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
 
     /**
      *Clean up our database handle and objects in memory.
@@ -2831,6 +2851,8 @@ TEST_CASE("Write Elf File to database with verbosity set to ERRORS", "[main_test
     juicer.setIDC(idc);
     juicer.parse(inputFile);
 
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
+
     /**
      *Clean up our database handle and objects in memory.
      */
@@ -2852,6 +2874,8 @@ TEST_CASE("Write Elf File to database with verbosity set to SILENT", "[main_test
 
     juicer.setIDC(idc);
     juicer.parse(inputFile);
+
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
 
     /**
      *Clean up our database handle and objects in memory.
@@ -2906,6 +2930,8 @@ TEST_CASE("Test the correctness of define macros.", "[main_test#17]")
     juicer.setIDC(idc);
 
     rc = juicer.parse(inputFile);
+
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
 
     REQUIRE(rc == JUICER_OK);
 
@@ -2977,6 +3003,8 @@ TEST_CASE("Test the correctness of define macros across multiple groups.", "[mai
 
     rc = juicer.parse(inputFile);
 
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
+
     REQUIRE(rc == JUICER_OK);
 
     // Group5 has macros "MAC4", "MAC5"
@@ -2984,6 +3012,8 @@ TEST_CASE("Test the correctness of define macros across multiple groups.", "[mai
     juicer.setGroupNumber(5);
 
     rc = juicer.parse(inputFile);
+
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
 
     REQUIRE(rc == JUICER_OK);
 
