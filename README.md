@@ -62,12 +62,14 @@ make run-tests
 
 
 ## What is it? <a name="what_is_it"></a>
-juicer extracts structs, arrays, enumerations and intrinsic types(support for everything else is planned for the future, but it is not a priority at the moment) from executable elf files and stores them in a SQLite database.
+juicer extracts structs, arrays, enumerations, macros and intrinsic types(support for everything else is planned for the future, but it is not a priority at the moment) from executable elf files and stores them in a SQLite database.
 
 ### An Example
 Imagine we wrote some elf_file.cpp that looks like this.
 ```
 #include "stdint.h"
+
+#define ARRAY_1D_SIZE 2
 
 typedef struct
 {
@@ -78,8 +80,8 @@ typedef struct
     uint16_t more_stuff;
     uint16_t padding2;
     float       floating_stuff;
-    float       matrix3D[2][4][4];
-    float       matrix1D[2];
+    float       matrix3D[ARRAY_1D_SIZE][4][4];
+    float       matrix1D[ARRAY_1D_SIZE];
 }Square;
 
 Square sq = {};
@@ -90,6 +92,15 @@ Square sq = {};
 ```
 g++ -std=c++14  elf_file.cpp -g -c -o elf_file
 ```
+
+To include macros in the output, make sure to pass "-g3" when compiling:
+
+
+```
+g++ -std=c++14  elf_file.cpp -g -g3 -c -o elf_file
+```
+NOTE:Please beware that compiler switchess may have different names for different compilers. 
+Here we use gcc as an example since it is a compiler that is accessible to most teams.
 
 Assuming you've built juicer successfully, you can give this binary file to juicer:
 
@@ -167,7 +178,7 @@ Because of this we have tested `juicer`on the specified platforms in the table b
 |---|---|
 | `Ubuntu 16.04.7 LTS`  |     `gcc 5.4.0`, ` gcc 6.5.0 `  | 
 | `Ubuntu 18.04.5 LTS`  |  ` gcc 7.5.0`,  `gcc 8.4.0`  |
-| `Ubuntu 20.04.1 LTS`  | `gcc 7.5.0`,  `gcc  8.4.0`,  `gcc 9.3.0`    |
+| `Ubuntu 20.04.1 LTS`  | `gcc 7.5.0`,  `gcc  8.4.0`,  `gcc 9.3.0`, `9.4.0`    |
 
 
 # Padding <a name="padding"></a>
@@ -290,7 +301,7 @@ make coverage
 This will run all unit tests on juicer and generate a test coverage report for you. After `make` is done, the test coverage report can be found on `build/coverage/index.html`.
 
 ## Dwarf Support <a name="dwarf_support"></a>
-At the moment `juicer` follows the DWARF4 specification, which is the standard in all versions of gcc at the moment. If this changes, then this document will be updated accordingly.
+At the moment `juicer` follows the DWARF4 and DWARF5 specification, which is the standard in all versions of gcc at the moment. If this changes, then this document will be updated accordingly.
 
 As juicer evolves, dwarf support will grow and evolve as well. At the moment, we don't adhere to a particular DWARF version as we add support to the things that we need for our code base, which is airliner. In other words, we *mostly* support `C` code, or `C++` code without any cutting edge/modern features. For example, modern features such as `templates` or `namespaces` are not supported. If juicer finds these things in your elf files, it will simply ignore them. To have a more concrete idea of what we *do* support in the DWARF, take a look at the table below which records all DWARF tags we support.
 
@@ -310,7 +321,7 @@ For more details on the DWARF debugging format, go on [here](http://www.dwarfstd
 
 ### `void*`
 
-DWARF version 4 has this to say about void pointers:
+DWARF version 4 and 5 has this to say about void pointers:
 
 > The interpretation of this debugging information entry is intentionally left flexible to allow it to
 be interpreted appropriately in different languages. For example, in C and C++ the language
@@ -330,6 +341,7 @@ During testing we found that when the following pattern causes the macro being d
 
 ```
 For more details on this issue and other macro issues:https://github.com/WindhoverLabs/juicer/issues/35
+
 
 ## VxWorks Support <a name="vxWorks"></a>
 At the moment vxWorks support is a work in progress. Support is currently *not* tested, so at the moment it is on its own [branch]
