@@ -15,9 +15,7 @@ CATCH2_DIR := $(ROOT_DIR)/Catch2
 # Unit test directories
 UT_SRC_DIR := $(ROOT_DIR)/unit-test
 UT_OBJ_DIR := $(BUILD_DIR)/ut_obj
-UT_OBJ_DWARF4_DIR := $(BUILD_DIR)/ut_obj_dwarf4
 UT_OBJ_32BIT_DIR := $(BUILD_DIR)/ut_obj_32
-UT_OBJ_DWARF4_32BIT_DIR := $(BUILD_DIR)/ut_obj_32_dwarf4
 UT_BIN_DIR := $(BUILD_DIR)
 UT_INCLUDES := -I$(CATCH2_DIR)/single_include/catch2
 
@@ -29,44 +27,29 @@ OBJ        := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 
 # Unit test files
 UT_EXE              := $(UT_BIN_DIR)/juicer-ut
-UT_DWARF4_EXE       := $(UT_BIN_DIR)/juicer-ut-dwarf4
 
 UT_EXE_32BIT := $(UT_BIN_DIR)/juicer-ut-32
-UT_DWARF4_EXE_32BIT := $(UT_BIN_DIR)/juicer-ut-dwarf4-32
 UT_SRC       := $(wildcard $(UT_SRC_DIR)/*.cpp) $(filter-out $(SRC_DIR)/main.cpp, $(SRC))
 UT_OBJ       := $(UT_SRC:$(UT_SRC_DIR)/%.cpp=$(UT_OBJ_DIR)/%.o)
 UT_OBJ       := $(UT_OBJ:$(SRC_DIR)/%.cpp=$(UT_OBJ_DIR)/%.o)
 
-
-UT_SRC_DWARF4     := $(wildcard $(UT_SRC_DIR)/test_file*.cpp)
-UT_OBJ_DWARF4     := $(UT_SRC_DWARF4:$(UT_SRC_DIR)/test_file%.cpp=$(UT_OBJ_DWARF4_DIR)/test_file%.o)
-UT_OBJ_DWARF4     := $(UT_OBJ_DWARF4:$(UT_SRC_DIR)/test_file%.cpp=$(UT_OBJ_DWARF4_DIR)/test_file%.o)
 
 UT_SRC_32     := $(wildcard $(UT_SRC_DIR)/test_file*.cpp)
 UT_OBJ_32     := $(UT_SRC_32:$(UT_SRC_DIR)/test_file%.cpp=$(UT_OBJ_32BIT_DIR)/test_file%.o)
 UT_OBJ_32     := $(UT_OBJ_32:$(UT_SRC_DIR)/test_file%.cpp=$(UT_OBJ_32BIT_DIR)/test_file%.o)
 
 
-UT_SRC_DWARF4_32     := $(wildcard $(UT_SRC_DIR)/test_file*.cpp)
-UT_OBJ_DWARF4_32     := $(UT_SRC_DWARF4_32:$(UT_SRC_DIR)/test_file%.cpp=$(UT_OBJ_DWARF4_32BIT_DIR)/test_file%.o)
-UT_OBJ_DWARF4_32     := $(UT_OBJ_DWARF4_32:$(UT_SRC_DIR)/test_file%.cpp=$(UT_OBJ_DWARF4_32BIT_DIR)/test_file%.o)
-
-
 # Set target flags
 CPPFLAGS            := -MMD -MP -std=c++14 -fmessage-length=0 $(INCLUDES)
-CFLAGS              := -Wall -g3 -gdwarf-5
-CFLAGS_DWARF4       := -Wall -g3 -gdwarf-4
-CFLAGS_32BIT        := -Wall -g3 -m32 -gdwarf-5
-CFLAGS_DWARF4_32BIT := -Wall -g3 -m32 -gdwarf-4
+CFLAGS              := -Wall -g3 
+CFLAGS_32BIT        := -Wall -g3 -m32 
 LDFLAGS             := -Llib
 LDLIBS              := -lm -ldwarf -lsqlite3 -lelf -lcrypto
 
 # Set unit test flags
 UT_CPPFLAGS            := $(CPPFLAGS) $(UT_INCLUDES)
-UT_CFLAGS_DWARF4       := $(CFLAGS_DWARF4) --coverage
 UT_CFLAGS              := $(CFLAGS) --coverage
 UT_CFLAGS_32BIT        := $(CFLAGS_32BIT) --coverage
-UT_CFLAGS_DWARF4_32BIT := $(CFLAGS_DWARF4_32BIT) --coverage
 UT_LDFLAGS             := $(LDFLAGS)
 UT_LDLIBS              := $(LDLIBS) -lgcov
 
@@ -91,11 +74,9 @@ $(UT_EXE): $(UT_OBJ)
 	$(LD) $(UT_LDFLAGS) $^ $(UT_LDLIBS) -o $@
 
 
-$(UT_DWARF4_EXE): $(UT_OBJ_DWARF4)
 
 $(UT_EXE_32BIT): $(UT_OBJ_32)
 
-$(UT_DWARF4_EXE_32BIT): $(UT_OBJ_DWARF4_32)
 
 $(UT_OBJ_DIR)/%.o: $(UT_SRC_DIR)/%.cpp | $(UT_OBJ_DIR)
 	$(CC) $(UT_CPPFLAGS) $(UT_CFLAGS) -c $< -o $@
@@ -104,9 +85,6 @@ $(UT_OBJ_DIR)/%.o: $(UT_SRC_DIR)/%.cpp | $(UT_OBJ_DIR)
 $(UT_OBJ_DIR)/%.o: $(UT_SRC_DIR)/%.cpp | $(UT_OBJ_DIR)
 	$(CC) $(UT_CPPFLAGS) $(UT_CFLAGS) -c $< -o $@
 
-
-$(UT_OBJ_DWARF4_DIR)/test_file%.o: $(UT_SRC_DIR)/test_file%.cpp | $(UT_OBJ_DWARF4_DIR)
-	$(CC) $(UT_CPPFLAGS) $(UT_CFLAGS_DWARF4) -c $< -o $@
 
 
 $(UT_OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(UT_OBJ_DIR)
@@ -115,22 +93,12 @@ $(UT_OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(UT_OBJ_DIR)
 $(UT_OBJ_32BIT_DIR)/test_file%.o: $(UT_SRC_DIR)/test_file%.cpp | $(UT_OBJ_32BIT_DIR)
 	$(CC) $(UT_CPPFLAGS) $(UT_CFLAGS_32BIT) -c $< -o $@
 
-$(UT_OBJ_DWARF4_32BIT_DIR)/test_file%.o: $(UT_SRC_DIR)/test_file%.cpp | $(UT_OBJ_DWARF4_32BIT_DIR)
-	$(CC) $(UT_CPPFLAGS) $(UT_CFLAGS_32BIT) -c $< -o $@
-
 
 $(UT_OBJ_DIR):
 	mkdir -p $@
 
-$(UT_OBJ_DWARF4_DIR):
-	mkdir -p $@
-
 
 $(UT_OBJ_32BIT_DIR):
-	mkdir -p $@
-
-
-$(UT_OBJ_DWARF4_32BIT_DIR):
 	mkdir -p $@
 
 
@@ -147,7 +115,7 @@ $(COVERAGE_DIR)/index.html: | run-tests
 	(cd $(COVERAGE_DIR); gcovr $(ROOT_DIR) --root $(ROOT_DIR) --object-directory $(UT_OBJ_DIR) --filter $(ROOT_DIR)/src/ --html --html-details -o index.html)
 
 
-all: $(EXE) $(UT_EXE) $(UT_DWARF4_EXE) $(UT_EXE_32BIT) $(UT_DWARF4_EXE_32BIT)
+all: $(EXE) $(UT_EXE) $(UT_EXE_32BIT)
 
 clean:
 	@$(RM) -Rf $(BUILD_DIR)
@@ -157,6 +125,12 @@ clean:
 
 docker-build:
 	@sudo docker build --no-cache -t juicer:latest -f Dockerfile .
+
+
+
+docker-build-dev:
+	@sudo docker build --no-cache -t juicer-dev:latest -f Dockerfile.dev .
+	@sudo docker run -v .:/home/docker/juicer -it juicer-dev:latest bash
 
 
 check-format:
