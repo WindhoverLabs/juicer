@@ -32,7 +32,7 @@ jobs:
       #     tags: juicer:latest  # Local tag for the built image
 
       - name: Build Docker image
-        run: docker build --no-cache -t juicer:latest -f Dockerfile . 
+        run: docker build --no-cache -t juicer:latest -f Dockerfile.ubuntu22 . 
       - name: Copy coverage report to host
         run: docker image ls && img_id=$(docker create juicer:latest) && docker cp $img_id:/home/docker/juicer/coverage.gcov .
       - name: publish to coveralls.io
