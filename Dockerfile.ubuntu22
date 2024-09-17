@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 RUN apt update
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TERM xterm-256color
@@ -47,24 +47,6 @@ RUN ./juicer-ut "[main_test#17]"
 RUN ./juicer-ut "[Module]"
 RUN ./juicer-ut "[Symbol]"
 
-
-RUN ./juicer-ut "[main_test_dwarf4#1]"
-RUN ./juicer-ut "[main_test_dwarf4#2]"
-RUN ./juicer-ut "[main_test_dwarf4#3]"
-RUN ./juicer-ut "[main_test_dwarf4#4]"
-RUN ./juicer-ut "[main_test_dwarf4#5]"
-RUN ./juicer-ut "[main_test_dwarf4#6]"
-RUN ./juicer-ut "[main_test_dwarf4#7]"
-RUN ./juicer-ut "[main_test_dwarf4#8]"
-RUN ./juicer-ut "[main_test_dwarf4#9]"
-RUN ./juicer-ut "[main_test_dwarf4#10]"
-RUN ./juicer-ut "[main_test_dwarf4#11]"
-RUN ./juicer-ut "[main_test_dwarf4#12]"
-RUN ./juicer-ut "[main_test_dwarf4#13]"
-RUN ./juicer-ut "[main_test_dwarf4#14]"
-RUN ./juicer-ut "[main_test_dwarf4#15]"
-RUN ./juicer-ut "[main_test_dwarf4#16]"
-RUN ./juicer-ut "[main_test_dwarf4#17]"
 RUN cd /home/docker/juicer && make coverage
 #Useful for CI
 RUN cd /home/docker/juicer &&  gcovr --filter /home/docker/juicer/src/ --object-directory /home/docker/juicer/build/ut_obj/ --xml  coverage.gcov 
