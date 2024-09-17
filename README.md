@@ -334,12 +334,30 @@ juicer behaves accordingly. If a pointer does not have a type(meaning it does no
 
 
 ## Notes On #define Macros <a name="notes_on_macros"></a>
-During testing we found that when the following pattern causes the macro being defined to disappear from the DWARF section:
-```C
-#define CFE_MISSION_ES_PERF_MAX_IDS 128
-#define CFE_MISSION_ES_PERF_MAX_IDS 160
+During testing we found that some pattern causes the macro being defined to "disappear" from the DWARF section:
 
+When this happens, it is most likely a case of the macro being on a seperate group number inside of the DWARF.
+
+To ensure juicer queries all macros, users can pass the "group number" via the "-g" flag. 
+
+For example the command:
 ```
+./build/juicer -g 5 --input ./unit-test/elf_file --mode SQLITE --output build/new_db.sqlite -v4
+```
+
+tells juicer to get macros from group "5".
+
+This seems to happen on unlinked compiled ELF files that have the following define pattern:
+```C
+#define MAC1 2
+#define MAC2 3
+#include "macro_test.h"
+#define MAC3 4
+```
+
+This is rare(especially unlinked files), but it does happen. In any case "-g" flag can be used to query macros (or any other DWARF data)
+from as many groups(starting at 0) as the the ELF file has.
+
 For more details on this issue and other macro issues:https://github.com/WindhoverLabs/juicer/issues/35
 
 
