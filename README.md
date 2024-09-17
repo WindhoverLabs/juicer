@@ -12,7 +12,8 @@
 7. [Testing](#testing)
 8. [DWARF Support](#dwarf_support)
 9. [Notes on Macros](#notes_on_macros)
-10. [vxWorks Support](#vxWorks)
+10. [Extra Elf Features](#extra_elf_features)
+11. [vxWorks Support](#vxWorks)
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
@@ -359,6 +360,9 @@ This is rare(especially unlinked files), but it does happen. In any case "-g" fl
 from as many groups(starting at 0) as the the ELF file has.
 
 For more details on this issue and other macro issues:https://github.com/WindhoverLabs/juicer/issues/35
+
+
+## Extra ELF Features <a name="extra_elf_features"></a>
 
 
 ## VxWorks Support <a name="vxWorks"></a>
