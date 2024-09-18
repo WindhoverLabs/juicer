@@ -30,7 +30,7 @@ Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbo
       type{inType},  // @suppress("Symbol is not resolved")
       dimensionList{inDimensionList},
       little_endian{inLittleEndian},
-      bit_offset{inBitSize},
+      bit_offset{inBitOffset},
       bit_size{inBitSize},
       id{0},
       short_description{""},
@@ -48,7 +48,7 @@ Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbo
       type{inType},  // @suppress("Symbol is not resolved")
       dimensionList{},
       little_endian{inLittleEndian},
-      bit_offset{inBitSize},
+      bit_offset{inBitOffset},
       bit_size{inBitSize},
       id{0},
       short_description{""},

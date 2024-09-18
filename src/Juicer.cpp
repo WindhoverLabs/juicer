@@ -3972,13 +3972,6 @@ void Juicer::addBitFields(Dwarf_Die dataMemberDie, Field &dataMemberField)
     Dwarf_Unsigned  bit_size    = 0;
     Dwarf_Error     error       = 0;
 
-    res                         = dwarf_attr(dataMemberDie, DW_AT_data_bit_offset, &attr_struct, &error);
-
-    if (DW_DLV_OK == res)
-    {
-        res = dwarf_formudata(attr_struct, &bit_offset, &error);
-    }
-
     res = dwarf_attr(dataMemberDie, DW_AT_bit_size, &attr_struct, &error);
 
     if (DW_DLV_OK == res)
