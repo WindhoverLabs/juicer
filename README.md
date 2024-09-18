@@ -14,6 +14,7 @@
 9. [Notes on Macros](#notes_on_macros)
 10. [Extra Elf Features](#extra_elf_features)
 11. [vxWorks Support](#vxWorks)
+12. [Notes On Multiple DWARF Versions](#multiple_dwarf_versions)
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
@@ -302,7 +303,7 @@ make coverage
 This will run all unit tests on juicer and generate a test coverage report for you. After `make` is done, the test coverage report can be found on `build/coverage/index.html`.
 
 ## Dwarf Support <a name="dwarf_support"></a>
-At the moment `juicer` follows the DWARF4 and DWARF5 specification, which is the standard in all versions of gcc at the moment. If this changes, then this document will be updated accordingly.
+At the moment `juicer` follows the DWARF4 and DWARF5 specifications. If this changes, then this document will be updated accordingly.
 
 As juicer evolves, dwarf support will grow and evolve as well. At the moment, we don't adhere to a particular DWARF version as we add support to the things that we need for our code base, which is airliner. In other words, we *mostly* support `C` code, or `C++` code without any cutting edge/modern features. For example, modern features such as `templates` or `namespaces` are not supported. If juicer finds these things in your elf files, it will simply ignore them. To have a more concrete idea of what we *do* support in the DWARF, take a look at the table below which records all DWARF tags we support.
 
@@ -310,13 +311,15 @@ As juicer evolves, dwarf support will grow and evolve as well. At the moment, we
 | Name                  | Description |
 |-----------------------| --- |
 | DW_TAG_base_type      | This is the tag that represents intrinsic types such as `int` and `char`. |
-| DW_TAG_typedef        | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}`. At the moment, types such as `typedef int16 my_int` do *not* work. We will investigate this issue in the future, however, it is not a priority at the moment.|
+| DW_TAG_typedef        | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}` `typedef int16 my_int`. This is what the "target_symbol" column is for in the symbols table. |
 | DW_TAG_structure_type | This is the tag that represents structs such as  `struct Square{ int width; int length; };` |
 | DW_TAG_array_type     | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Noe that this does not include dynamic arrays such as those allocated by malloc or new calls.|
 | DW_TAG_pointer_type   | This is the tag that represents pointers in code such as `int* ptr = nullptr`|
 | DW_TAG_enumeration_type | This is the tag that represents enumerations such as `enum Color{RED,BLUE,YELLOW};` |
 | DW_TAG_const_type     | This is the tag that represents C/C++ const qualified type such as `sizetype`, which is used by containers(like std::vector) in the STL C++ library.  |
 |  DW_MACRO_define      | This tag represents define macros such as "#define CFE_MISSION_ES_PERF_MAX_IDS 128"|
+| DW_AT_decl_file       | This tag represents the file where a certain symbol is declared. Very useful for traceability of source code.|
+| DW_AT_encoding | | The encoding of base type. For example; "unsigned int" will have encoding "DW_ATE_unsigned". This is what the "encodings" table is for in the SQLITE db.|
 
 For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/DWARF4.pdf).
 
@@ -343,10 +346,10 @@ To ensure juicer queries all macros, users can pass the "group number" via the "
 
 For example the command:
 ```
-./build/juicer -g 5 --input ./unit-test/elf_file --mode SQLITE --output build/new_db.sqlite -v4
+./juicer -g 5 --input elf_file --mode SQLITE --output build/new_db.sqlite -v4
 ```
 
-tells juicer to get macros from group "5".
+tells juicer to get macros from group "5". The default is group "0", which is enough for most cases.
 
 This seems to happen on unlinked compiled ELF files that have the following define pattern where there is an #include between #define(s):
 ```C
@@ -364,6 +367,19 @@ For more details on this issue and other macro issues:https://github.com/Windhov
 
 ## Extra ELF Features <a name="extra_elf_features"></a>
 
+jucier's main focus is to extract DWARF, however, it can extract ELF sections too. To extract elf sections pass the extras "-x" flag:
+
+```
+./juicer -x --input elf_file --mode SQLITE --output build/new_db.sqlite -v4
+```
+
+This can be useful for extracting data from object files such as static variables that are assigned at build time and whose
+contents are stored in the elf symbols table. For an example of this see the "query_symbols.py"  script under the this repo.
+
+To learn more about the different ELF sections and how they're structured, there is a copy of the ELF standard under the docs directory on the repo.
+
+
+
 
 ## VxWorks Support <a name="vxWorks"></a>
 At the moment vxWorks support is a work in progress. Support is currently *not* tested, so at the moment it is on its own [branch]
@@ -376,5 +392,11 @@ At the moment vxWorks support is a work in progress. Support is currently *not* 
 catchsegv ./juicer-ut "[main_test#3]"
 addr2line -e ./juicer-ut 0x19646c
 ```
+
+
+## Notes On Multiple DWARF Versions <a name="multiple_dwarf_versions"></a>
+- At the time of writing, juicer has been tested on DWARF4 and DWARF5.
+- Do *not* use DWARF experimental support from your compiler. Use the *default* DWARF version, whether that is 5 or 4. When using a
+DWARF version that still is experimental for your compiler, it is not guaranteed juicer will parse the binary correctly.
 
 Documentation updated on September 29, 2021
