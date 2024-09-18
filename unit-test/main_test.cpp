@@ -3069,3 +3069,84 @@ TEST_CASE("Test the correctness of define macros across multiple groups.", "[mai
     REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
 }
+
+
+
+TEST_CASE("Test the correctness of artifacts.", "[main_test#19]")
+{
+    /**
+     * This assumes that the test_file was compiled on
+     * gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
+     *  little-endian machine.
+     */
+
+    Juicer          juicer;
+    IDataContainer* idc = 0;
+    Logger          logger;
+    int             rc            = 0;
+    char*           errorMessage  = nullptr;
+    std::string     little_endian = is_little_endian() ? "1" : "0";
+
+    logger.logWarning("This is just a test.");
+    std::string inputFile{TEST_FILE_1};
+
+    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+    REQUIRE(idc != nullptr);
+    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+
+    juicer.setIDC(idc);
+
+    rc = juicer.parse(inputFile);
+
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
+
+    REQUIRE(rc == JUICER_OK);
+
+    REQUIRE(rc == JUICER_OK);
+
+    std::string getArtifactQuery{"SELECT *  FROM artifacts where path= \"/usr/include/x86_64-linux-gnu/bits/types.h\" ; "};
+
+    /**
+     *Clean up our database handle and objects in memory.
+     */
+    ((SQLiteDB*)(idc))->close();
+
+    sqlite3* database;
+
+    rc = sqlite3_open("./test_db.sqlite", &database);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    std::vector<std::map<std::string, std::string>> artiffactRecords{};
+
+    rc = sqlite3_exec(database, getArtifactQuery.c_str(), selectCallbackUsingColNameAsKey, &artiffactRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(artiffactRecords.size() == 1);
+
+    uint32_t numberOfColumns = 0;
+
+    for (auto pair : artiffactRecords.at(0))
+    {
+        numberOfColumns++;
+    }
+
+    REQUIRE(numberOfColumns == 4);
+
+
+
+    REQUIRE(artiffactRecords.at(0).find("id") != artiffactRecords.at(0).end());
+    REQUIRE(artiffactRecords.at(0).find("elf") != artiffactRecords.at(0).end());
+    REQUIRE(artiffactRecords.at(0).find("path") != artiffactRecords.at(0).end());
+    REQUIRE(artiffactRecords.at(0).find("md5") != artiffactRecords.at(0).end());
+
+
+    REQUIRE(artiffactRecords.at(0).at("path") == "/usr/include/x86_64-linux-gnu/bits/types.h");
+
+    /**
+     * Check the correctness of macro.
+     */
+
+    REQUIRE(remove("./test_db.sqlite") == 0);
+    delete idc;
+}
