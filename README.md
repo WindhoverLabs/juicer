@@ -374,7 +374,7 @@ jucier's main focus is to extract DWARF, however, it can extract ELF sections to
 ```
 
 This can be useful for extracting data from object files such as static variables that are assigned at build time and whose
-contents are stored in the elf symbols table. For an example of this see the "query_symbols.py"  script under the this repo.
+contents are stored in the elf symbols table. For an example of this see the "query_symbols.py"  script under this repo.
 
 To learn more about the different ELF sections and how they're structured, there is a copy of the ELF standard under the docs directory on the repo.
 
