@@ -701,8 +701,6 @@ TEST_CASE(
         encodingMap[encodingRecord["id"]] = encodingRecord["encoding"];
     }
 
-    columnNameToRowMap circleDataMap{};
-    circleDataMap.colName = "name";
 
     std::vector<std::map<std::string, std::string>> circleRecords{};
 
