@@ -316,9 +316,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
     return 0;
 }
 
-TestStructA_t      testStructA2 = {};
-TestStructB_t      testStructB2 = {};
-
 /* Our argp parser. */
 static struct argp argp         = {options, parse_opt, args_doc, doc};
 
