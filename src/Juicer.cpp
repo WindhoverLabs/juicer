@@ -696,6 +696,15 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
 
                 if (pathIndex != 0)
                 {
+                /**
+                 * Why we are checking against 0 as per DWARF section 2.14:
+                 * 
+                 * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                 * information table for the compilation unit containing the debugging information entry and
+                 * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                 * indicates that no source file has been specified.
+                 * 
+                 */
                     /* This branch represents a "void*" since there is no valid type.
                      * Read section 5.2 of DWARF4 for details on this.*/
                     Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
@@ -753,9 +762,8 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
 
         if (res == DW_DLV_OK)
         {
-            unsigned long long pathIndex = 0;
-            res                          = dwarf_formudata(attr_struct, &pathIndex, &error);
-            //				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
+
+
             /**
              * According to 6.2 Line Number Information in DWARF 4:
              * Line number information generated for a compilation unit is represented in the .debug_line
@@ -775,22 +783,13 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
              * This is just a theory, however. In the future we may revisit this
              * to figure out the root cause of this.
              *
-             */
+             */                
 
-            if (pathIndex != 0)
-            {
-                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
-                std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
-                newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(name, byteSize, newArtifact);
-            }
-            else
-            {
-                Artifact    newArtifact{elf, "NOT_FOUND:" + name};
-                std::string checkSum{};
-                newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(name, byteSize, newArtifact);
-            }
+            // As per the DWARF; pointer types do not have any "DECL" attributes, aka declaration coords (line numbers, declaration files, etc).
+            Artifact    newArtifact{elf, "NOT_FOUND:" + name};
+            std::string checkSum{};
+            newArtifact.setMD5(checkSum);
+            outSymbol = elf.addSymbol(name, byteSize, newArtifact);
         }
     }
 
@@ -1081,6 +1080,15 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                         if (pathIndex != 0)
                         {
+                            /**
+                             * Why we are checking against 0 as per DWARF section 2.14:
+                             * 
+                             * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                             * information table for the compilation unit containing the debugging information entry and
+                             * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                             * indicates that no source file has been specified.
+                             * 
+                             */
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
@@ -1245,6 +1253,15 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                         if (pathIndex != 0)
                         {
+                            /**
+                             * Why we are checking against 0 as per DWARF section 2.14:
+                             * 
+                             * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                             * information table for the compilation unit containing the debugging information entry and
+                             * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                             * indicates that no source file has been specified.
+                             * 
+                             */
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
@@ -3203,6 +3220,15 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
 
                         if (pathIndex != 0)
                         {
+                            /**
+                             * Why we are checking against 0 as per DWARF section 2.14:
+                             * 
+                             * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                             * information table for the compilation unit containing the debugging information entry and
+                             * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                             * indicates that no source file has been specified.
+                             * 
+                             */
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
@@ -3487,6 +3513,15 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
 
             if (pathIndex != 0)
             {
+                /**
+                 * Why we are checking against 0 as per DWARF section 2.14:
+                 * 
+                 * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                 * information table for the compilation unit containing the debugging information entry and
+                 * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                 * indicates that no source file has been specified.
+                 * 
+                 */
                 Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
@@ -4116,6 +4151,15 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
                             if (pathIndex != 0)
                             {
+                                /**
+                                 * Why we are checking against 0 as per DWARF section 2.14:
+                                 * 
+                                 * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                                 * information table for the compilation unit containing the debugging information entry and
+                                 * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                                 * indicates that no source file has been specified.
+                                 * 
+                                 */
                                 Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                                 newArtifact.setMD5(checkSum);
