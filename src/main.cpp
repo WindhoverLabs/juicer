@@ -56,7 +56,7 @@ static char doc[] =
 /* A description of the arguments we accept. */
 static char args_doc[] =
     "--input <FILE> --mode <MODE> (--output <FILE> | "
-    "(--address <ADDR> --port <PORT> --project <PROJ>)) -x -gN";
+    "(--address <ADDR> --port <PORT> --project <PROJ>)) -x -g";
 
 /* The options we understand. */
 static struct argp_option options[] = {{"input", 'i', "FILE", 0, "Input ELF file"},
