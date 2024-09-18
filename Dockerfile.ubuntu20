@@ -44,6 +44,8 @@ RUN ./juicer-ut "[main_test#14]"
 RUN ./juicer-ut "[main_test#15]"
 RUN ./juicer-ut "[main_test#16]"
 RUN ./juicer-ut "[main_test#17]"
+RUN ./juicer-ut "[main_test#18]"
+RUN ./juicer-ut "[main_test#19]"
 RUN ./juicer-ut "[Module]"
 RUN ./juicer-ut "[Symbol]"
 
