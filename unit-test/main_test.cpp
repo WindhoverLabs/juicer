@@ -3134,7 +3134,6 @@ TEST_CASE("Test the correctness of artifacts.", "[main_test#19]")
     REQUIRE(numberOfColumns == 4);
 
 
-
     REQUIRE(artiffactRecords.at(0).find("id") != artiffactRecords.at(0).end());
     REQUIRE(artiffactRecords.at(0).find("elf") != artiffactRecords.at(0).end());
     REQUIRE(artiffactRecords.at(0).find("path") != artiffactRecords.at(0).end());
@@ -3143,9 +3142,6 @@ TEST_CASE("Test the correctness of artifacts.", "[main_test#19]")
 
     REQUIRE(artiffactRecords.at(0).at("path") == "/usr/include/x86_64-linux-gnu/bits/types.h");
 
-    /**
-     * Check the correctness of macro.
-     */
 
     REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
