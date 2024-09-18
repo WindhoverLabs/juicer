@@ -438,10 +438,10 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(fieldsRecords.at(2)["byte_offset"] == std::to_string(offsetof(Circle, points)));
     REQUIRE(fieldsRecords.at(2)["type"] == PointsType);
     REQUIRE(fieldsRecords.at(2)["little_endian"] == little_endian);
-    REQUIRE(fieldsRecords.at(1)["bit_size"] == "0");
-    REQUIRE(fieldsRecords.at(1)["bit_offset"] == "0");
-    REQUIRE(fieldsRecords.at(1)["short_description"] == "");
-    REQUIRE(fieldsRecords.at(1)["long_description"] == "");
+    REQUIRE(fieldsRecords.at(2)["bit_size"] == "0");
+    REQUIRE(fieldsRecords.at(2)["bit_offset"] == "0");
+    REQUIRE(fieldsRecords.at(2)["short_description"] == "");
+    REQUIRE(fieldsRecords.at(2)["long_description"] == "");
 
     /**
      *Check the correctness of the types
@@ -624,6 +624,43 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(modeEnumsRecords[6]["value"] == "5");
     REQUIRE(modeEnumsRecords[7]["name"] == "MODE_SLOT_MAX");
     REQUIRE(modeEnumsRecords[7]["value"] == "6");
+
+
+
+
+    REQUIRE(fieldsRecords.at(4)["name"] == "_spare_end");
+    /**
+     *Check the correctness of the fields
+     */
+
+    std::string getSpareEndType{"SELECT * FROM symbols where id="};
+
+    getSpareEndType += fieldsRecords.at(4)["type"];
+    getSpareEndType += ";";
+
+    std::vector<std::map<std::string, std::string>> spareEndSymbolRecords{};
+
+    rc = sqlite3_exec(database, getSpareEndType.c_str(), selectCallbackUsingColNameAsKey, &spareEndSymbolRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(spareEndSymbolRecords.size() == 1);
+
+    std::string spareEndType{spareEndSymbolRecords.at(0).at("id")};
+
+    // TODO:Add support for unions first before adding these tests.
+
+    // REQUIRE(fieldsRecords.at(4)["symbol"] == circleRecords.at(0)["id"]);
+    // REQUIRE(fieldsRecords.at(4)["name"] == "_spare_end");
+    // REQUIRE(fieldsRecords.at(4)["byte_offset"] == std::to_string( sizeof(float) + sizeof(float) + (sizeof(int) * 128) + sizeof(ModeSlot_t) ));
+    // REQUIRE(fieldsRecords.at(4)["type"] == spareEndType);
+    // REQUIRE(fieldsRecords.at(4)["little_endian"] == little_endian);
+    // REQUIRE(fieldsRecords.at(4)["bit_size"] == "0");
+    // REQUIRE(fieldsRecords.at(4)["bit_offset"] == "0");
+    // REQUIRE(fieldsRecords.at(4)["short_description"] == "");
+    // REQUIRE(fieldsRecords.at(4)["long_description"] == "");
+
+
 
     /**
      * *Clean up our database handle and objects in memory.

@@ -186,7 +186,7 @@ struct Circle
     float      radius;
     int        points[128];
     ModeSlot_t mode;
-    Oject      o;
+    Oject      union_object;
 };
 
 enum Color
