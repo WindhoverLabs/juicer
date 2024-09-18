@@ -348,7 +348,7 @@ For example the command:
 
 tells juicer to get macros from group "5".
 
-This seems to happen on unlinked compiled ELF files that have the following define pattern:
+This seems to happen on unlinked compiled ELF files that have the following define pattern where there is an #include between #define(s):
 ```C
 #define MAC1 2
 #define MAC2 3
