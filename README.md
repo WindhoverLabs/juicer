@@ -319,7 +319,7 @@ As juicer evolves, dwarf support will grow and evolve as well. At the moment, we
 | DW_TAG_const_type     | This is the tag that represents C/C++ const qualified type such as `sizetype`, which is used by containers(like std::vector) in the STL C++ library.  |
 |  DW_MACRO_define      | This tag represents define macros such as "#define CFE_MISSION_ES_PERF_MAX_IDS 128"|
 | DW_AT_decl_file       | This tag represents the file where a certain symbol is declared. Very useful for traceability of source code.|
-| DW_AT_encoding | | The encoding of base type. For example; "unsigned int" will have encoding "DW_ATE_unsigned". This is what the "encodings" table is for in the SQLITE db.|
+| DW_AT_encoding | The encoding of base type. For example; "unsigned int" will have encoding "DW_ATE_unsigned". This is what the "encodings" table is for in the SQLITE db.|
 
 For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/DWARF4.pdf).
 
