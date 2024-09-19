@@ -123,9 +123,13 @@ clean:
 -include $(UT_OBJ:.o=.d)
 -include $(OBJ:.o=.d)
 
+
+docker-ubuntu18-build:
+	@sudo docker build --no-cache -t juicer:ubuntu18 -f Dockerfile.ubuntu18 .
+
+
 docker-ubuntu22-build:
 	@sudo docker build --no-cache -t juicer:ubuntu22 -f Dockerfile.ubuntu22 .
-
 
 docker-ubuntu20-build:
 	@sudo docker build --no-cache -t juicer:ubuntu20 -f Dockerfile.ubuntu20 .
@@ -139,6 +143,10 @@ docker-ubuntu22-build-dev:
 docker-ubuntu20-build-dev:
 	@sudo docker build --no-cache -t juicer-dev:ubuntu20 -f Dockerfile.ubuntu20.dev .
 	@sudo docker run -v .:/home/docker/juicer -it juicer-dev:ubuntu20 bash
+
+docker-ubuntu18-build-dev:
+	@sudo docker build --no-cache -t juicer-dev:ubuntu18 -f Dockerfile.ubuntu18 .
+	@sudo docker run -v .:/home/docker/juicer -it juicer-dev:ubuntu18 bash
 
 check-format:
 	@python3 clang_format_all.py --config clang_format_all_config.yaml

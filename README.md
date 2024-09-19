@@ -174,13 +174,13 @@ This is how juicer stores data in the database.
 # GCC Compatibility <a name="compatibility"></a>
 
 Since`juicer` is reading ELF files, the compiler one uses or the specific linux version *can* affect the behavior of the libelf libraries.
-Because of this we have tested `juicer`on the specified platforms in the table below.
+Because of this we have tested `juicer` (and continuously test in CI)on the specified platforms in the table below.
 
-| Ubuntu Version| GCC Version(s)  |
-|---|---|
-| `Ubuntu 16.04.7 LTS`  |     `gcc 5.4.0`, ` gcc 6.5.0 `  | 
-| `Ubuntu 18.04.5 LTS`  |  ` gcc 7.5.0`,  `gcc 8.4.0`  |
-| `Ubuntu 20.04.1 LTS`  | `gcc 7.5.0`,  `gcc  8.4.0`,  `gcc 9.3.0`, `9.4.0`    |
+| Ubuntu Version | GCC Version(s)  | DWARF Version | 
+|---|---| ---|
+| `Ubuntu 18.04.1 LTS`  |   `7.5.0`     | 4 |
+| `Ubuntu 20.04.1 LTS`  |   `9.4.0`     | 4 |
+| `Ubuntu 22.04.5 LTS`  |   `11.4.0`    | 5 |
 
 
 # Padding <a name="padding"></a>
