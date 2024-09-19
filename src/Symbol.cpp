@@ -170,31 +170,6 @@ bool Symbol::isFieldUnique(std::string& name)
 
     return rc;
 }
-
-bool Symbol::hasFields(void)
-{
-    bool rc = false;
-
-    if (fields.size() > 0)
-    {
-        rc = true;
-    }
-
-    return rc;
-}
-
-bool Symbol::isEnumerated(void)
-{
-    bool rc = false;
-
-    if (enumerations.size() > 0)
-    {
-        rc = true;
-    }
-
-    return rc;
-}
-
 /**
  *@brief Checks if this symbol has any fields that are bitfields.
  *
@@ -217,3 +192,30 @@ bool Symbol::hasBitFields(void)
 }
 
 Artifact& Symbol::getArtifact() { return artifact; }
+
+/**
+ * @brief Symbol::setTargetSymbol
+ * @note Might make sense to use std:optional for targetSymbol, however need to upgrade to C++17 first.
+ * @param newTargetSymbol
+ */
+void      Symbol::setTargetSymbol(Symbol* newTargetSymbol) { targetSymbol = newTargetSymbol; }
+
+/**
+ * @brief Symbol::hasTargetSymbol
+ * If this function returns false, then
+ * that means this is the concrete symbol not a typdef'd(aliased) symbol.
+ */
+bool      Symbol::hasTargetSymbol() { return targetSymbol != nullptr; }
+
+Symbol*   Symbol::getTargetSymbol() { return targetSymbol; }
+
+/**
+ * @brief Symbol::setEncoding
+ * @param newEncoding an integer which is one of the values specified in
+ *  in dwarf.h or in DWARF5 specification document section 5.1.1 titled "Base Type Encodings"
+ */
+void      Symbol::setEncoding(int newEncoding) { encoding = newEncoding; }
+
+bool      Symbol::hasEncoding() { return encoding != -1; }
+
+int       Symbol::getEncoding() { return encoding; }

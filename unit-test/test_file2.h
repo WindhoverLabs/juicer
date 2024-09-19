@@ -8,8 +8,6 @@
 #ifndef UNIT_TEST_TEST_FILE2_H_
 #define UNIT_TEST_TEST_FILE2_H_
 
-
 #include "test_file1.h"
-
 
 #endif /* UNIT_TEST_TEST_FILE2_H_ */

@@ -1,5 +1,6 @@
 
 [![Run juicer tests](https://github.com/WindhoverLabs/juicer/actions/workflows/ci.yaml/badge.svg)](https://github.com/WindhoverLabs/juicer/actions/workflows/ci.yaml)
+[![Coverage Status](https://coveralls.io/repos/github/WindhoverLabs/juicer/badge.svg?branch=unit_test_updates)](https://coveralls.io/github/WindhoverLabs/juicer?branch=unit_test_updates)
 
 # Table of Contents
 1. [Dependencies](#dependencies)
@@ -10,7 +11,12 @@
 6. [Environment Setup](#environment-setup)
 7. [Testing](#testing)
 8. [DWARF Support](#dwarf_support)
-9. [vxWorks Support](#vxWorks)
+9. [Notes on Macros](#notes_on_macros)
+10. [Extra Elf Features](#extra_elf_features)
+11. [vxWorks Support](#vxWorks)
+12. [Notes On Multiple DWARF Versions](#multiple_dwarf_versions)
+13. [Bitfields](#Bitfields)
+14. [Docker Dev Environments](#docker_dev_env) 
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
@@ -60,12 +66,14 @@ make run-tests
 
 
 ## What is it? <a name="what_is_it"></a>
-juicer extracts structs, arrays, enumerations and intrinsic types(support for everything else is planned for the future, but it is not a priority at the moment) from executable elf files and stores them in a SQLite database.
+juicer extracts structs, arrays, enumerations, macros and intrinsic types(support for everything else is planned for the future, but it is not a priority at the moment) from executable elf files and stores them in a SQLite database.
 
 ### An Example
 Imagine we wrote some elf_file.cpp that looks like this.
 ```
 #include "stdint.h"
+
+#define ARRAY_1D_SIZE 2
 
 typedef struct
 {
@@ -76,8 +84,8 @@ typedef struct
     uint16_t more_stuff;
     uint16_t padding2;
     float       floating_stuff;
-    float       matrix3D[2][4][4];
-    float       matrix1D[2];
+    float       matrix3D[ARRAY_1D_SIZE][4][4];
+    float       matrix1D[ARRAY_1D_SIZE];
 }Square;
 
 Square sq = {};
@@ -88,6 +96,15 @@ Square sq = {};
 ```
 g++ -std=c++14  elf_file.cpp -g -c -o elf_file
 ```
+
+To include macros in the output, make sure to pass "-g3" when compiling:
+
+
+```
+g++ -std=c++14  elf_file.cpp -g -g3 -c -o elf_file
+```
+NOTE:Please beware that compiler switchess may have different names for different compilers. 
+Here we use gcc as an example since it is a compiler that is accessible to most teams.
 
 Assuming you've built juicer successfully, you can give this binary file to juicer:
 
@@ -100,20 +117,18 @@ This tells juicer to squeeze and extract as much as possible out of the binary a
 
 After juicer is done, you will find a database populated with data about our binary file at `build/new_db.sqlite`.  The database should have the following schemas:
 
+"*" = PRIMARY KEY  
+"+" = FOREIGN KEY
+
 ### elfs
-| id* | name  | checksum | date | little_endian |
-| --- | --- | --- | --- | --- |
-|INTEGER | TEXT | INTEGER | DATETIME | BOOLEAN |
+| id* | name  | md5     | date | little_endian | short_description | long_description |
+| --- | --- |---------| --- | --- | -- | -- |
+|INTEGER | TEXT | INTEGER | DATETIME | BOOLEAN | TEXT | TEXT |
 
 ###  enumerations
-| symbol* | value* | name |
-| --- | --- | --- |
-| INTEGER | INTEGER | TEXT |
-
-### bit_fields
-|field* | bit_size   | bit_offset |
-|---|---|---|
-| INTEGER | INTEGER | INTEGER |
+| symbol* | value* | name | short_description | long_description |
+| --- | --- | --- | -- | -- |
+| INTEGER | INTEGER | TEXT | TEXT | TEXT |
 
 ### fields
 | id* | name | symbol+ | byte_offset | type+ | little_endian | bit_size | bit_offset |
@@ -126,9 +141,9 @@ After juicer is done, you will find a database populated with data about our bin
 | INTEGER | INTEGER | TEXT | INTEGER 
 
 ### symbols
-| id* | elf+ | name | byte_size |
-| ---| --- | --- | --- |
-| INTEGER | INTEGER | TEXT | INTEGER |
+| id* | elf+ | name | byte_size | artifact* | target_symbol* | encoding* | short_description | long_descriptions |    
+| ---| --- | --- | --- |-----------|----------------|-----------|------|------|
+| INTEGER | INTEGER | TEXT | INTEGER | INTEGER | INTEGER | INTEGER | TEXT | TEXT |
 
 In our specific example, the **symbols** and **fields** tables are the ones we are interested in. 
 
@@ -161,13 +176,13 @@ This is how juicer stores data in the database.
 # GCC Compatibility <a name="compatibility"></a>
 
 Since`juicer` is reading ELF files, the compiler one uses or the specific linux version *can* affect the behavior of the libelf libraries.
-Because of this we have tested `juicer`on the specified platforms in the table below.
+Because of this we have tested `juicer` (and continuously test in CI)on the specified platforms in the table below.
 
-| Ubuntu Version| GCC Version(s)  |
-|---|---|
-| `Ubuntu 16.04.7 LTS`  |     `gcc 5.4.0`, ` gcc 6.5.0 `  | 
-| `Ubuntu 18.04.5 LTS`  |  ` gcc 7.5.0`,  `gcc 8.4.0`  |
-| `Ubuntu 20.04.1 LTS`  | `gcc 7.5.0`,  `gcc  8.4.0`,  `gcc 9.3.0`    |
+| Ubuntu Version | GCC Version(s)  | DWARF Version | 
+|---|---| ---|
+| `Ubuntu 18.04.1 LTS`  |   `7.5.0`     | 4 |
+| `Ubuntu 20.04.1 LTS`  |   `9.4.0`     | 4 |
+| `Ubuntu 22.04.5 LTS`  |   `11.4.0`    | 5 |
 
 
 # Padding <a name="padding"></a>
@@ -290,26 +305,29 @@ make coverage
 This will run all unit tests on juicer and generate a test coverage report for you. After `make` is done, the test coverage report can be found on `build/coverage/index.html`.
 
 ## Dwarf Support <a name="dwarf_support"></a>
-At the moment `juicer` follows the DWARF4 specification, which is the standard in all versions of gcc at the moment. If this changes, then this document will be updated accordingly.
+At the moment `juicer` follows the DWARF4 and DWARF5 specifications. If this changes, then this document will be updated accordingly.
 
 As juicer evolves, dwarf support will grow and evolve as well. At the moment, we don't adhere to a particular DWARF version as we add support to the things that we need for our code base, which is airliner. In other words, we *mostly* support `C` code, or `C++` code without any cutting edge/modern features. For example, modern features such as `templates` or `namespaces` are not supported. If juicer finds these things in your elf files, it will simply ignore them. To have a more concrete idea of what we *do* support in the DWARF, take a look at the table below which records all DWARF tags we support.
 
 ### Dwarf Tags
-| Name | Description |
-| ---| --- |
-| DW_TAG_base_type | This is the tag that represents intrinsic types such as `int` and `char`. |
-| DW_TAG_typedef | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}`. At the moment, types such as `typedef int16 my_int` do *not* work. We will investigate this issue in the future, however, it is not a priority at the moment.|
+| Name                  | Description |
+|-----------------------| --- |
+| DW_TAG_base_type      | This is the tag that represents intrinsic types such as `int` and `char`. |
+| DW_TAG_typedef        | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}` `typedef int16 my_int`. This is what the "target_symbol" column is for in the symbols table. |
 | DW_TAG_structure_type | This is the tag that represents structs such as  `struct Square{ int width; int length; };` |
-| DW_TAG_array_type | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Noe that this does not include dynamic arrays such as those allocated by malloc or new calls.|
-| DW_TAG_pointer_type | This is the tag that represents pointers in code such as `int* ptr = nullptr`|
+| DW_TAG_array_type     | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Note that this does not include dynamic arrays such as those allocated by malloc or new calls.|
+| DW_TAG_pointer_type   | This is the tag that represents pointers in code such as `int* ptr = nullptr`|
 | DW_TAG_enumeration_type | This is the tag that represents enumerations such as `enum Color{RED,BLUE,YELLOW};` |
-| DW_TAG_const_type | This is the tag that represents C/C++ const qualified type such as `sizetype`, which is used by containers(like std::vector) in the STL C++ library.  |
+| DW_TAG_const_type     | This is the tag that represents C/C++ const qualified type such as `sizetype`, which is used by containers(like std::vector) in the STL C++ library.  |
+|  DW_MACRO_define      | This tag represents define macros such as "#define CFE_MISSION_ES_PERF_MAX_IDS 128"|
+| DW_AT_decl_file       | This tag represents the file where a certain symbol is declared. Very useful for traceability of source code.|
+| DW_AT_encoding | The encoding of base type. For example; "unsigned int" will have encoding "DW_ATE_unsigned". This is what the "encodings" table is for in the SQLITE db.|
 
 For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/DWARF4.pdf).
 
 ### `void*`
 
-DWARF version 4 has this to say about void pointers:
+DWARF version 4 and 5 has this to say about void pointers:
 
 > The interpretation of this debugging information entry is intentionally left flexible to allow it to
 be interpreted appropriately in different languages. For example, in C and C++ the language
@@ -319,6 +337,50 @@ referenced by the type attribute of pointer types and typedef declarations for '
 > -- <cite>Section 5.2 of DWARF4 </cite>
 
 juicer behaves accordingly. If a pointer does not have a type(meaning it does not have a DW_AT_type attribute), then it is assumed that the pointer in question is of the `void*` type.
+
+
+## Notes On #define Macros <a name="notes_on_macros"></a>
+During testing we found that some pattern causes the macro being defined to "disappear" from the DWARF section:
+
+When this happens, it is most likely a case of the macro being on a seperate group number inside of the DWARF.
+
+To ensure juicer queries all macros, users can pass the "group number" via the "-g" flag. 
+
+For example the command:
+```
+./juicer -g 5 --input elf_file --mode SQLITE --output build/new_db.sqlite -v4
+```
+
+tells juicer to get macros from group "5". The default is group "0", which is enough for most cases.
+
+This seems to happen on unlinked compiled ELF files that have the following define pattern where there is an #include between #define(s):
+```C
+#define MAC1 2
+#define MAC2 3
+#include "macro_test.h"
+#define MAC3 4
+```
+
+This is rare(especially unlinked files), but it does happen. In any case "-g" flag can be used to query macros (or any other DWARF data)
+from as many groups(starting at 0) as the the ELF file has.
+
+For more details on this issue and other macro issues:https://github.com/WindhoverLabs/juicer/issues/35
+
+
+## Extra ELF Features <a name="extra_elf_features"></a>
+
+jucier's main focus is to extract DWARF, however, it can extract ELF sections too. To extract elf sections pass the extras "-x" flag:
+
+```
+./juicer -x --input elf_file --mode SQLITE --output build/new_db.sqlite -v4
+```
+
+This can be useful for extracting data from object files such as static variables that are assigned at build time and whose
+contents are stored in the elf symbols table. For an example of this see the "query_symbols.py"  script under this repo.
+
+To learn more about the different ELF sections and how they're structured, there is a copy of the ELF standard under the docs directory on the repo.
+
+
 
 
 ## VxWorks Support <a name="vxWorks"></a>
@@ -331,6 +393,45 @@ At the moment vxWorks support is a work in progress. Support is currently *not* 
 ```
 catchsegv ./juicer-ut "[main_test#3]"
 addr2line -e ./juicer-ut 0x19646c
+
 ```
 
-Documentation updated on September 29, 2021
+
+## Notes On Multiple DWARF Versions <a name="multiple_dwarf_versions"></a>
+- At the time of writing, juicer has been tested on DWARF4 and DWARF5.
+- Do *not* use DWARF experimental support from your compiler. Use the *default* DWARF version, whether that is 5 or 4. When using a
+DWARF version that still is experimental for your compiler, it is not guaranteed juicer will parse the binary correctly.
+
+
+# Bitfields <a name="bitfields"></a>
+
+For a bit-packed struct
+```
+struct S
+{
+    uint8_t before;
+    int     j : 5;
+    int     k : 6;
+    int     m : 5;
+    uint8_t p;
+    int     n : 8;
+    uint8_t after;
+};
+```
+
+The fields table looks like this:
+
+![bit_packed_fields](Images/bit_packed_struct.png "symbols-table")
+
+Notice for the bitpacked fields(j,k,m,n) the bit_offset and bit_size columns are nonzero.
+
+
+# Docker Dev Environment <a name="docker_dev_env"></a>
+
+It is often useful to use a virtualized environment for development. There are several recipes on this repo that make this easier.
+For example `make docker-ubuntu22-build-dev` will start a dev environment inside of Docker with Ubuntu22. 
+The repo is mounted as a volume under "/home/docker/juicer" so developers can make their changes on the host and build inside the container.
+
+
+
+Documentation updated on September 19, 2024
