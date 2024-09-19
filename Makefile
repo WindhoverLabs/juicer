@@ -124,21 +124,21 @@ clean:
 -include $(OBJ:.o=.d)
 
 docker-ubuntu22-build:
-	@sudo docker build --no-cache -t juicer:latest -f Dockerfile.ubuntu22 .
+	@sudo docker build --no-cache -t juicer:ubuntu22 -f Dockerfile.ubuntu22 .
 
 
 docker-ubuntu20-build:
-	@sudo docker build --no-cache -t juicer:latest -f Dockerfile.ubuntu20 .
+	@sudo docker build --no-cache -t juicer:ubuntu20 -f Dockerfile.ubuntu20 .
 
 
 docker-ubuntu22-build-dev:
-	@sudo docker build --no-cache -t juicer-dev:latest -f Dockerfile.ubuntu22.dev .
-	@sudo docker run -v .:/home/docker/juicer -it juicer-dev:latest bash
+	@sudo docker build --no-cache -t juicer-dev:ubuntu22 -f Dockerfile.ubuntu22.dev .
+	@sudo docker run -v .:/home/docker/juicer -it juicer-dev:ubuntu22 bash
 
 
 docker-ubuntu20-build-dev:
-	@sudo docker build --no-cache -t juicer-dev:latest -f Dockerfile.ubuntu20.dev .
-	@sudo docker run -v .:/home/docker/juicer -it juicer-dev:latest bash
+	@sudo docker build --no-cache -t juicer-dev:ubuntu20 -f Dockerfile.ubuntu20.dev .
+	@sudo docker run -v .:/home/docker/juicer -it juicer-dev:ubuntu20 bash
 
 check-format:
 	@python3 clang_format_all.py --config clang_format_all_config.yaml
