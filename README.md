@@ -429,7 +429,7 @@ Notice for the bitpacked fields(j,k,m,n) the bit_offset and bit_size columns are
 # Docker Dev Environment <a name="docker_dev_env"></a>
 
 It is often useful to use a virtualized environment for development. There are several recipes on this repo that make this easier.
-For example `docker-ubuntu22-build-dev` will start a dev environment inside of Docker with Ubuntu22. 
+For example `make docker-ubuntu22-build-dev` will start a dev environment inside of Docker with Ubuntu22. 
 The repo is mounted as a volume under "/home/docker/juicer" so developers can make their changes on the host and build inside the container.
 
 
