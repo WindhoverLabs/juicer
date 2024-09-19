@@ -315,7 +315,7 @@ As juicer evolves, dwarf support will grow and evolve as well. At the moment, we
 | DW_TAG_base_type      | This is the tag that represents intrinsic types such as `int` and `char`. |
 | DW_TAG_typedef        | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}` `typedef int16 my_int`. This is what the "target_symbol" column is for in the symbols table. |
 | DW_TAG_structure_type | This is the tag that represents structs such as  `struct Square{ int width; int length; };` |
-| DW_TAG_array_type     | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Noe that this does not include dynamic arrays such as those allocated by malloc or new calls.|
+| DW_TAG_array_type     | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Note that this does not include dynamic arrays such as those allocated by malloc or new calls.|
 | DW_TAG_pointer_type   | This is the tag that represents pointers in code such as `int* ptr = nullptr`|
 | DW_TAG_enumeration_type | This is the tag that represents enumerations such as `enum Color{RED,BLUE,YELLOW};` |
 | DW_TAG_const_type     | This is the tag that represents C/C++ const qualified type such as `sizetype`, which is used by containers(like std::vector) in the STL C++ library.  |
