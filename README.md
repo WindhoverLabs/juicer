@@ -15,6 +15,7 @@
 10. [Extra Elf Features](#extra_elf_features)
 11. [vxWorks Support](#vxWorks)
 12. [Notes On Multiple DWARF Versions](#multiple_dwarf_versions)
+13. [Bitfields](#Bitfields)
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
@@ -391,6 +392,7 @@ At the moment vxWorks support is a work in progress. Support is currently *not* 
 ```
 catchsegv ./juicer-ut "[main_test#3]"
 addr2line -e ./juicer-ut 0x19646c
+
 ```
 
 
@@ -398,5 +400,30 @@ addr2line -e ./juicer-ut 0x19646c
 - At the time of writing, juicer has been tested on DWARF4 and DWARF5.
 - Do *not* use DWARF experimental support from your compiler. Use the *default* DWARF version, whether that is 5 or 4. When using a
 DWARF version that still is experimental for your compiler, it is not guaranteed juicer will parse the binary correctly.
+
+
+# Bitfields <a name="bitfields"></a>
+
+For a bit-packed struct
+```
+struct S
+{
+    uint8_t before;
+    int     j : 5;
+    int     k : 6;
+    int     m : 5;
+    uint8_t p;
+    int     n : 8;
+    uint8_t after;
+};
+```
+
+The fields table looks like this:
+
+![bit_packed_fields](Images/bit_packed_struct.png "symbols-table")
+
+Notice for the bitpacked fields(j,k,m,n) the bit_offset and bit_size columns are nonzero.
+
+
 
 Documentation updated on September 29, 2021
