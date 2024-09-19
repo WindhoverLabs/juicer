@@ -103,7 +103,7 @@ typedef struct
     char              *project;
     bool               project_set;
     bool               extras;
-    unsigned int       groupNumber;
+    int                groupNumber;
 } arguments_t;
 
 /* Parse a single option. */
@@ -187,6 +187,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
         case 'g':
         {
+            for (int i = 0; i < strlen(arg); i++)
+            {
+                if (isdigit(arg[i]) == 0)
+                {
+                    printf("Error: group number MUST be a number");
+                    argp_usage(state);
+                    return ARGP_KEY_ERROR;
+                }
+            }
+
             arguments->groupNumber = atoi(arg);
             break;
         }
@@ -296,13 +306,13 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
                 }
             }
 
-            //            /* Verify Extras. */
-            //            if (arguments->extras)
-            //            {
-            //                //                printf("Error:  extras name must be set.\n");
-            //                //                argp_usage(state);
-            //                return ARGP_KEY_ERROR;
-            //            }
+            /* Verify group number. */
+            if (arguments->groupNumber < 0)
+            {
+                printf("Error:  Group number must be 0 or greater.\n");
+                argp_usage(state);
+                return ARGP_KEY_ERROR;
+            }
 
             break;
         }
