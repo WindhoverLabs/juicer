@@ -5463,14 +5463,13 @@ std::string &Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
 {
     switch (dwarfVersion)
     {
-        /**
-         *
-         * TODO:I need to figure out this mess.
-         * Ubuntu20 and 22'ss gcc version producde different line numbers
-         * inside the DWARF for the same DWARF versions
-         **/
+            /**
+             *
+             * As per section 1.4 (Changes from Version 4 to Version 5) of DWARF5
+             *
+             * The line number table header is substantially revised.
+             **/
 
-        // Ubuntu20:
         case 4:
         {
             return dbgSourceFiles.at(pathIndex - 1);
@@ -5479,16 +5478,6 @@ std::string &Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
         {
             return dbgSourceFiles.at(pathIndex);
         }
-
-            // Ubuntu22:
-            // case 4:
-            // {
-            //     return dbgSourceFiles.at(pathIndex-1);
-            // }
-            // case 5:
-            // {
-            // return dbgSourceFiles.at(pathIndex);
-            // }
     }
     return dbgSourceFiles.at(pathIndex);
 }
