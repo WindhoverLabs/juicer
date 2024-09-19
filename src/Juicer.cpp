@@ -696,15 +696,15 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
 
                 if (pathIndex != 0)
                 {
-                /**
-                 * Why we are checking against 0 as per DWARF section 2.14:
-                 * 
-                 * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
-                 * information table for the compilation unit containing the debugging information entry and
-                 * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
-                 * indicates that no source file has been specified.
-                 * 
-                 */
+                    /**
+                     * Why we are checking against 0 as per DWARF section 2.14:
+                     *
+                     * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                     * information table for the compilation unit containing the debugging information entry and
+                     * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                     * indicates that no source file has been specified.
+                     *
+                     */
                     /* This branch represents a "void*" since there is no valid type.
                      * Read section 5.2 of DWARF4 for details on this.*/
                     Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
@@ -762,8 +762,6 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
 
         if (res == DW_DLV_OK)
         {
-
-
             /**
              * According to 6.2 Line Number Information in DWARF 4:
              * Line number information generated for a compilation unit is represented in the .debug_line
@@ -783,7 +781,7 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
              * This is just a theory, however. In the future we may revisit this
              * to figure out the root cause of this.
              *
-             */                
+             */
 
             // As per the DWARF; pointer types do not have any "DECL" attributes, aka declaration coords (line numbers, declaration files, etc).
             Artifact    newArtifact{elf, "NOT_FOUND:" + name};
@@ -1082,12 +1080,12 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                         {
                             /**
                              * Why we are checking against 0 as per DWARF section 2.14:
-                             * 
+                             *
                              * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
                              * information table for the compilation unit containing the debugging information entry and
                              * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
                              * indicates that no source file has been specified.
-                             * 
+                             *
                              */
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
@@ -1255,12 +1253,12 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                         {
                             /**
                              * Why we are checking against 0 as per DWARF section 2.14:
-                             * 
+                             *
                              * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
                              * information table for the compilation unit containing the debugging information entry and
                              * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
                              * indicates that no source file has been specified.
-                             * 
+                             *
                              */
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
@@ -2271,7 +2269,8 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
     //                                     res = dwarf_formaddr(attribs[i], &addr, &error);
     //                                     if (res != DW_DLV_OK)
     //                                     {
-    //                                         logger.logError("Error in DW_FORM_addr.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+    //                                         logger.logError("Error in DW_FORM_addr.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                         dwarf_errmsg(error));
     //                                     }
     //                                     else
     //                                     {
@@ -2333,7 +2332,8 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
     //                                     res = dwarf_formudata(attribs[i], &udata, &error);
     //                                     if (res != DW_DLV_OK)
     //                                     {
-    //                                         logger.logError("Error in DW_FORM_data2.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+    //                                         logger.logError("Error in DW_FORM_data2.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                         dwarf_errmsg(error));
     //                                     }
     //                                     else
     //                                     {
@@ -3103,7 +3103,6 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
 
     //     logger.logDebug(output);
     // }
-
 }
 
 Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
@@ -3222,12 +3221,12 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                         {
                             /**
                              * Why we are checking against 0 as per DWARF section 2.14:
-                             * 
+                             *
                              * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
                              * information table for the compilation unit containing the debugging information entry and
                              * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
                              * indicates that no source file has been specified.
-                             * 
+                             *
                              */
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
@@ -3482,9 +3481,6 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
 
         res                  = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
 
-
-
-
         if (DW_DLV_OK == res)
         {
             unsigned long long pathIndex = 0;
@@ -3515,12 +3511,12 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
             {
                 /**
                  * Why we are checking against 0 as per DWARF section 2.14:
-                 * 
+                 *
                  * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
                  * information table for the compilation unit containing the debugging information entry and
                  * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
                  * indicates that no source file has been specified.
-                 * 
+                 *
                  */
                 Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
@@ -3972,7 +3968,7 @@ void Juicer::addBitFields(Dwarf_Die dataMemberDie, Field &dataMemberField)
     Dwarf_Unsigned  bit_size    = 0;
     Dwarf_Error     error       = 0;
 
-    res = dwarf_attr(dataMemberDie, DW_AT_bit_size, &attr_struct, &error);
+    res                         = dwarf_attr(dataMemberDie, DW_AT_bit_size, &attr_struct, &error);
 
     if (DW_DLV_OK == res)
     {
@@ -4004,13 +4000,13 @@ void Juicer::addBitFields(Dwarf_Die dataMemberDie, Field &dataMemberField)
  */
 bool Juicer::isDWARFVersionSupported(Dwarf_Die inDie)
 {
-    bool       isSupported  = true;
+    bool isSupported       = true;
 
-    dwarfVersion = 0;
+    dwarfVersion           = 0;
 
-    Dwarf_Half dwarfOffset  = 0;
+    Dwarf_Half dwarfOffset = 0;
 
-    int        rec          = dwarf_get_version_of_die(inDie, &dwarfVersion, &dwarfOffset);
+    int        rec         = dwarf_get_version_of_die(inDie, &dwarfVersion, &dwarfOffset);
 
     if (rec != DW_DLV_OK)
     {
@@ -4146,12 +4142,12 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                             {
                                 /**
                                  * Why we are checking against 0 as per DWARF section 2.14:
-                                 * 
+                                 *
                                  * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
                                  * information table for the compilation unit containing the debugging information entry and
                                  * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
                                  * indicates that no source file has been specified.
-                                 * 
+                                 *
                                  */
                                 Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
@@ -4173,7 +4169,6 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
                         }
-
 
                         process_DW_TAG_structure_type(elf, *outSymbol, dbg, cur_die);
                     }
@@ -5154,7 +5149,7 @@ int Juicer::parse(std::string &elfFilePath)
         if (JUICER_OK == return_value)
         {
             /* Initialize the Dwarf library.  This will open the file. */
-                        /* Initialize the Dwarf library.  This will open the file. */
+            /* Initialize the Dwarf library.  This will open the file. */
             dwarf_value = dwarf_init_b(elfFile, DW_DLC_READ, groupNumber, errhand, errarg, &dbg, &error);
             if (dwarf_value != DW_DLV_OK)
             {
@@ -5464,42 +5459,38 @@ std::string Juicer::generateMD5SumForFile(std::string filePath)
  * handles debug source files lookups for different DWARF versions.
  * It is assumed the pathIndex is the value of DW_AT_decl_file attribute
  */
-std::string& Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
-{ 
-    switch(dwarfVersion)
+std::string &Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
+{
+    switch (dwarfVersion)
     {
         /**
-         * 
+         *
          * TODO:I need to figure out this mess.
          * Ubuntu20 and 22'ss gcc version producde different line numbers
          * inside the DWARF for the same DWARF versions
          **/
-        
+
         // Ubuntu20:
         case 4:
         {
-            return dbgSourceFiles.at(pathIndex-1);        
+            return dbgSourceFiles.at(pathIndex - 1);
         }
         case 5:
         {
-        return dbgSourceFiles.at(pathIndex);    
+            return dbgSourceFiles.at(pathIndex);
         }
 
-        // Ubuntu22:
-        // case 4:
-        // {
-        //     return dbgSourceFiles.at(pathIndex-1);        
-        // }
-        // case 5:
-        // {
-        // return dbgSourceFiles.at(pathIndex);    
-        // }
-        
+            // Ubuntu22:
+            // case 4:
+            // {
+            //     return dbgSourceFiles.at(pathIndex-1);
+            // }
+            // case 5:
+            // {
+            // return dbgSourceFiles.at(pathIndex);
+            // }
     }
     return dbgSourceFiles.at(pathIndex);
 }
 
-unsigned int Juicer::getDwarfVersion()
-{
-    return dwarfVersion;
-}
+unsigned int Juicer::getDwarfVersion() { return dwarfVersion; }

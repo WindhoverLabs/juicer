@@ -625,9 +625,6 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(modeEnumsRecords[7]["name"] == "MODE_SLOT_MAX");
     REQUIRE(modeEnumsRecords[7]["value"] == "6");
 
-
-
-
     REQUIRE(fieldsRecords.at(4)["name"] == "_spare_end");
     /**
      *Check the correctness of the fields
@@ -659,8 +656,6 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     // REQUIRE(fieldsRecords.at(4)["bit_offset"] == "0");
     // REQUIRE(fieldsRecords.at(4)["short_description"] == "");
     // REQUIRE(fieldsRecords.at(4)["long_description"] == "");
-
-
 
     /**
      * *Clean up our database handle and objects in memory.
@@ -737,7 +732,6 @@ TEST_CASE(
     {
         encodingMap[encodingRecord["id"]] = encodingRecord["encoding"];
     }
-
 
     std::vector<std::map<std::string, std::string>> circleRecords{};
 
@@ -3010,8 +3004,6 @@ TEST_CASE("Test the correctness of define macros.", "[main_test#17]")
     delete idc;
 }
 
-
-
 TEST_CASE("Test the correctness of define macros across multiple groups.", "[main_test#18]")
 {
     /**
@@ -3083,19 +3075,18 @@ TEST_CASE("Test the correctness of define macros across multiple groups.", "[mai
 
     REQUIRE(macroRecords.at(0).at("name") == "MAC1");
     REQUIRE(macroRecords.at(0).at("value") == "2");
-    
+
     REQUIRE(macroRecords.at(1).at("name") == "MAC2");
     REQUIRE(macroRecords.at(1).at("value") == "3");
-    
+
     REQUIRE(macroRecords.at(2).at("name") == "MAC3");
     REQUIRE(macroRecords.at(2).at("value") == "4");
-    
+
     REQUIRE(macroRecords.at(3).at("name") == "MAC4");
     REQUIRE(macroRecords.at(3).at("value") == "");
-    
+
     REQUIRE(macroRecords.at(4).at("name") == "MAC5");
     REQUIRE(macroRecords.at(4).at("value") == "1");
-
 
     /**
      * Check the correctness of macro.
@@ -3104,8 +3095,6 @@ TEST_CASE("Test the correctness of define macros across multiple groups.", "[mai
     REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
 }
-
-
 
 TEST_CASE("Test the correctness of artifacts.", "[main_test#19]")
 {
@@ -3168,23 +3157,16 @@ TEST_CASE("Test the correctness of artifacts.", "[main_test#19]")
 
     REQUIRE(numberOfColumns == 4);
 
-
     REQUIRE(artiffactRecords.at(0).find("id") != artiffactRecords.at(0).end());
     REQUIRE(artiffactRecords.at(0).find("elf") != artiffactRecords.at(0).end());
     REQUIRE(artiffactRecords.at(0).find("path") != artiffactRecords.at(0).end());
     REQUIRE(artiffactRecords.at(0).find("md5") != artiffactRecords.at(0).end());
 
-
     REQUIRE(artiffactRecords.at(0).at("path") == "/usr/include/x86_64-linux-gnu/bits/types.h");
-
 
     REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
 }
-
-
-
-
 
 TEST_CASE("Test the correctness of bit fields.", "[main_test#20]")
 {
@@ -3247,12 +3229,9 @@ TEST_CASE("Test the correctness of bit fields.", "[main_test#20]")
 
     REQUIRE(numberOfColumns == 9);
 
-
     REQUIRE(symbolRecords.at(0).at("byte_size") == std::to_string(sizeof(S)));
 
-
-
-     /**
+    /**
      *Check the fields of the S struct.
      */
 
@@ -3268,7 +3247,7 @@ TEST_CASE("Test the correctness of bit fields.", "[main_test#20]")
     rc = sqlite3_exec(database, getSFields.c_str(), selectCallbackUsingColNameAsKey, &fieldsRecords, &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
-    
+
     // TODO:Incosistent across Ubuntu20 and Ubuntu22. Different compilers will have different padding schemes.
     REQUIRE(fieldsRecords.size() >= 5);
 
@@ -3355,11 +3334,6 @@ TEST_CASE("Test the correctness of bit fields.", "[main_test#20]")
     // REQUIRE(fieldsRecords.at(1)["bit_offset"] == "19");
     // REQUIRE(fieldsRecords.at(1)["short_description"] == "");
     // REQUIRE(fieldsRecords.at(1)["long_description"] == "");
-
-
-
-
-
 
     REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;

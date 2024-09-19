@@ -8,8 +8,8 @@
 #ifndef SRC_ARTIFACT_H_
 #define SRC_ARTIFACT_H_
 
-#include <string>
 #include <cstdint>
+#include <string>
 
 class ElfFile;
 

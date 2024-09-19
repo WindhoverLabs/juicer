@@ -101,9 +101,9 @@ class Juicer
 
     void               setExtras(bool extras) { this->extras = extras; }
 
-    void               setGroupNumber(unsigned int groupNumber){this->groupNumber = groupNumber;};
+    void               setGroupNumber(unsigned int groupNumber) { this->groupNumber = groupNumber; };
 
-    unsigned int getDwarfVersion();
+    unsigned int       getDwarfVersion();
 
    private:
     Dwarf_Debug              dbg = 0;
@@ -143,7 +143,7 @@ class Juicer
     std::vector<std::string> dbgSourceFiles{};
 
     std::string              generateMD5SumForFile(std::string filePath);
-    std::string&             getdbgSourceFile(ElfFile &elf, int pathIndex);
+    std::string&             getdbgSourceFile(ElfFile& elf, int pathIndex);
     DefineMacro              getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Context mac_context, int i, Dwarf_Unsigned line_number, Dwarf_Unsigned index,
                                             Dwarf_Unsigned offset, const char* macro_string, Dwarf_Half& forms_count, Dwarf_Error& error, Dwarf_Die cu_die, ElfFile& elf);
     DefineMacro              getDefineMacroFromString(std::string macro_string);
@@ -152,8 +152,7 @@ class Juicer
     bool                                        extras;
 
     unsigned int                                groupNumber{0};
-    Dwarf_Half dwarfVersion = 0;
-
+    Dwarf_Half                                  dwarfVersion = 0;
 };
 
 #endif /* JUICER_H_ */
