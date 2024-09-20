@@ -21,7 +21,6 @@ class Enumeration
     Enumeration(Symbol& symbol);
     Enumeration(Symbol& symbol, std::string& name, int64_t value);
     virtual ~Enumeration();
-    Enumeration(Enumeration& enumeration);
     std::string&       getName();
     void               setName(std::string& name);
     Symbol&            getSymbol();

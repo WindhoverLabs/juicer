@@ -69,148 +69,6 @@ struct macro_counts_s
     long mc_unknown;
 };
 
-static void print_one_macro_entry_detail(long i, char *type, struct Dwarf_Macro_Details_s *mdp)
-{
-    /* "DW_MACINFO_*: section-offset file-index [line] string\n" */
-    if (mdp->dmd_macro)
-    {
-        printf("%3ld %s: %6" DW_PR_DUu " %2" DW_PR_DSd " [%4" DW_PR_DSd "] \"%s\" \n", i, type, (Dwarf_Unsigned)mdp->dmd_offset, mdp->dmd_fileindex,
-               mdp->dmd_lineno, mdp->dmd_macro);
-    }
-    else
-    {
-        printf("%3ld %s: %6" DW_PR_DUu " %2" DW_PR_DSd " [%4" DW_PR_DSd "] 0\n", i, type, (Dwarf_Unsigned)mdp->dmd_offset, mdp->dmd_fileindex, mdp->dmd_lineno);
-    }
-}
-
-static void print_one_macro_entry(long i, struct Dwarf_Macro_Details_s *mdp, struct macro_counts_s *counts)
-{
-    switch (mdp->dmd_type)
-    {
-        case 0:
-            counts->mc_code_zero++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_type-code-0", mdp);
-            break;
-
-        case DW_MACINFO_start_file:
-            counts->mc_start_file++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_start_file", mdp);
-            break;
-
-        case DW_MACINFO_end_file:
-            counts->mc_end_file++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_end_file  ", mdp);
-            break;
-
-        case DW_MACINFO_vendor_ext:
-            counts->mc_extension++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_vendor_ext", mdp);
-            break;
-
-        case DW_MACINFO_define:
-            counts->mc_define++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_define    ", mdp);
-            break;
-
-        case DW_MACINFO_undef:
-            counts->mc_undef++;
-            print_one_macro_entry_detail(i, "DW_MACINFO_undef     ", mdp);
-            break;
-
-        default:
-        {
-            char create_type[50]; /* More than large enough. */
-
-            counts->mc_unknown++;
-            snprintf(create_type, sizeof(create_type), "DW_MACINFO_0x%x", mdp->dmd_type);
-            print_one_macro_entry_detail(i, create_type, mdp);
-        }
-        break;
-    }
-}
-
-/*  print data in .debug_macinfo */
-/*  FIXME: should print name of file whose index is in macro data
-    here  --  somewhere.  */
-/*ARGSUSED*/ extern void print_macinfo(Dwarf_Debug dbg, Dwarf_Error err)
-{
-    Dwarf_Off            offset         = 0;
-    Dwarf_Unsigned       max            = 10;
-    Dwarf_Signed         count          = 0;
-    long                 group          = 0;
-    Dwarf_Macro_Details *maclist        = NULL;
-    int                  lres           = 0;
-
-    bool                 do_print_dwarf = true;
-    if (!do_print_dwarf)
-    {
-        return;
-    }
-
-    printf("\n.debug_macinfo\n");
-
-    while ((lres = dwarf_get_macro_details(dbg, offset, max, &count, &maclist, &err)) == DW_DLV_OK)
-    {
-        printf("\n.debug_macinfo2\n");
-        long                  i = 0;
-        struct macro_counts_s counts;
-
-        memset(&counts, 0, sizeof(counts));
-
-        printf("\n");
-        printf("compilation-unit .debug_macinfo # %ld\n", group);
-        printf("num name section-offset file-index [line] \"string\"\n");
-        for (i = 0; i < count; i++)
-        {
-            struct Dwarf_Macro_Details_s *mdp = &maclist[i];
-
-            print_one_macro_entry(i, mdp, &counts);
-        }
-
-        if (counts.mc_start_file == 0)
-        {
-            printf("DW_MACINFO file count of zero is invalid DWARF2/3\n");
-        }
-        if (counts.mc_start_file != counts.mc_end_file)
-        {
-            printf(
-                "Counts of DW_MACINFO file (%ld) end_file (%ld) "
-                "do not match!.\n",
-                counts.mc_start_file, counts.mc_end_file);
-        }
-        if (counts.mc_code_zero < 1)
-        {
-            printf(
-                "Count of zeros in macro group should be non-zero "
-                "(1 preferred), count is %ld\n",
-                counts.mc_code_zero);
-        }
-        printf(
-            "Macro counts: start file %ld, "
-            "end file %ld, "
-            "define %ld, "
-            "undef %ld, "
-            "ext %ld, "
-            "code-zero %ld, "
-            "unknown %ld\n",
-            counts.mc_start_file, counts.mc_end_file, counts.mc_define, counts.mc_undef, counts.mc_extension, counts.mc_code_zero, counts.mc_unknown);
-
-        /* int type= maclist[count - 1].dmd_type; */
-        /* ASSERT: type is zero */
-
-        offset = maclist[count - 1].dmd_offset + 1;
-        dwarf_dealloc(dbg, maclist, DW_DLA_STRING);
-        ++group;
-    }
-    if (lres == DW_DLV_ERROR)
-    {
-        //        std::cout << "dwarf_get_macro_details error" << std::endl;
-        //        print_error(dbg, "dwarf_get_macro_details", lres, err);
-    }
-
-    printf("\n.debug_macinfo3:%d\n", lres);
-}
-
 Juicer::Juicer() {}
 
 DefineMacro Juicer::getDefineMacroFromString(std::string macro_string)
@@ -306,8 +164,6 @@ DefineMacro Juicer::getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Contex
         case DW_MACRO_import:
         {
             res = dwarf_get_macro_import(mac_context, i, &offset, &error);
-            printf("dwarf_get_macro_import res:%d\n", res);
-            printf("dwarf_get_macro_import offset:%d\n", offset);
 
             if (offset == 0)
             {
@@ -408,8 +264,6 @@ int Juicer::readCUList(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Error &error)
         ++cu_number;
 
         logger.logDebug("Reading CU %u.", cu_number);
-
-        print_macinfo(dbg, error);
 
         DisplayDie(cu_die, 0);
 
@@ -842,9 +696,18 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
 
                 if (pathIndex != 0)
                 {
+                    /**
+                     * Why we are checking against 0 as per DWARF section 2.14:
+                     *
+                     * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                     * information table for the compilation unit containing the debugging information entry and
+                     * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                     * indicates that no source file has been specified.
+                     *
+                     */
                     /* This branch represents a "void*" since there is no valid type.
                      * Read section 5.2 of DWARF4 for details on this.*/
-                    Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex - 1)};
+                    Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                     std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                     newArtifact.setMD5(checkSum);
                     outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
@@ -899,9 +762,6 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
 
         if (res == DW_DLV_OK)
         {
-            unsigned long long pathIndex = 0;
-            res                          = dwarf_formudata(attr_struct, &pathIndex, &error);
-            //				TODO: pathIndex will be extracted from the DWARF decl_file attribute.
             /**
              * According to 6.2 Line Number Information in DWARF 4:
              * Line number information generated for a compilation unit is represented in the .debug_line
@@ -923,20 +783,11 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
              *
              */
 
-            if (pathIndex != 0)
-            {
-                Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex - 1)};
-                std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
-                newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(name, byteSize, newArtifact);
-            }
-            else
-            {
-                Artifact    newArtifact{elf, "NOT_FOUND:" + name};
-                std::string checkSum{};
-                newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(name, byteSize, newArtifact);
-            }
+            // As per the DWARF; pointer types do not have any "DECL" attributes, aka declaration coords (line numbers, declaration files, etc).
+            Artifact    newArtifact{elf, "NOT_FOUND:" + name};
+            std::string checkSum{};
+            newArtifact.setMD5(checkSum);
+            outSymbol = elf.addSymbol(name, byteSize, newArtifact);
         }
     }
 
@@ -1041,10 +892,18 @@ Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwar
 
                             if (elf.getInitializedSymbolData().find(outName) != elf.getInitializedSymbolData().end())
                             {
+                                /**
+                                 * @todo variableData might be useful if we want to store the data
+                                 * inside the ELF inside of the db.
+                                 * CFS tables is an example of this.
+                                 * Though it should be noted that the data can be
+                                 * extracted by querying the SQL db; query_symbols.py is an example of this.
+                                 *
+                                 */
                                 std::vector<uint8_t> variableData = elf.getInitializedSymbolData().at(outName);
-
-                                elf.addVariable(newVariable);
                             }
+
+                            elf.addVariable(newVariable);
                         }
                     }
                 }
@@ -1219,7 +1078,16 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                         if (pathIndex != 0)
                         {
-                            Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex - 1)};
+                            /**
+                             * Why we are checking against 0 as per DWARF section 2.14:
+                             *
+                             * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                             * information table for the compilation unit containing the debugging information entry and
+                             * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                             * indicates that no source file has been specified.
+                             *
+                             */
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
@@ -1383,7 +1251,16 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                         if (pathIndex != 0)
                         {
-                            Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex - 1)};
+                            /**
+                             * Why we are checking against 0 as per DWARF section 2.14:
+                             *
+                             * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                             * information table for the compilation unit containing the debugging information entry and
+                             * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                             * indicates that no source file has been specified.
+                             *
+                             */
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
@@ -1395,6 +1272,14 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
                         }
+                    }
+
+                    else
+                    {
+                        Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
+                        std::string checkSum{};
+                        newArtifact.setMD5(checkSum);
+                        outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
                     }
 
                     process_DW_TAG_enumeration_type(elf, *outSymbol, dbg, typeDie);
@@ -1492,1730 +1377,1732 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
     char             line[255];
     Dwarf_Error      error = 0;
 
-    if (inDie != 0)
-    {
-        res = dwarf_tag(inDie, &tag, &error);
-        if (res == DW_DLV_OK)
-        {
-            switch (tag)
-            {
-                case DW_TAG_array_type:
-                    sprintf(tagName, "DW_TAG_array_type");
-                    break;
-
-                case DW_TAG_class_type:
-                    sprintf(tagName, "DW_TAG_class_type");
-                    break;
-
-                case DW_TAG_entry_point:
-                    sprintf(tagName, "DW_TAG_entry_point");
-                    break;
-
-                case DW_TAG_enumeration_type:
-                    sprintf(tagName, "DW_TAG_enumeration_type");
-                    break;
-
-                case DW_TAG_formal_parameter:
-                    sprintf(tagName, "DW_TAG_formal_parameter");
-                    break;
-
-                case DW_TAG_imported_declaration:
-                    sprintf(tagName, "DW_TAG_imported_declaration");
-                    break;
-
-                case DW_TAG_label:
-                    sprintf(tagName, "DW_TAG_label");
-                    break;
-
-                case DW_TAG_lexical_block:
-                    sprintf(tagName, "DW_TAG_lexical_block");
-                    break;
-
-                case DW_TAG_member:
-                    sprintf(tagName, "DW_TAG_member");
-                    break;
-
-                case DW_TAG_pointer_type:
-                    sprintf(tagName, "DW_TAG_pointer_type");
-                    break;
-
-                case DW_TAG_reference_type:
-                    sprintf(tagName, "DW_TAG_reference_type");
-                    break;
-
-                case DW_TAG_compile_unit:
-                    sprintf(tagName, "DW_TAG_compile_unit");
-                    break;
-
-                case DW_TAG_string_type:
-                    sprintf(tagName, "DW_TAG_string_type");
-                    break;
-
-                case DW_TAG_structure_type:
-                    sprintf(tagName, "DW_TAG_structure_type");
-                    break;
-
-                case DW_TAG_subroutine_type:
-                    sprintf(tagName, "DW_TAG_subroutine_type");
-                    break;
-
-                case DW_TAG_typedef:
-                    sprintf(tagName, "DW_TAG_typedef");
-                    break;
-
-                case DW_TAG_union_type:
-                    sprintf(tagName, "DW_TAG_union_type");
-                    break;
-
-                case DW_TAG_unspecified_parameters:
-                    sprintf(tagName, "DW_TAG_unspecified_parameters");
-                    break;
-
-                case DW_TAG_variant:
-                    sprintf(tagName, "DW_TAG_variant");
-                    break;
-
-                case DW_TAG_common_block:
-                    sprintf(tagName, "DW_TAG_common_block");
-                    break;
-
-                case DW_TAG_common_inclusion:
-                    sprintf(tagName, "DW_TAG_common_inclusion");
-                    break;
-
-                case DW_TAG_inheritance:
-                    sprintf(tagName, "DW_TAG_inheritance");
-                    break;
-
-                case DW_TAG_inlined_subroutine:
-                    sprintf(tagName, "DW_TAG_inlined_subroutine");
-                    break;
-
-                case DW_TAG_module:
-                    sprintf(tagName, "DW_TAG_module");
-                    break;
-
-                case DW_TAG_ptr_to_member_type:
-                    sprintf(tagName, "DW_TAG_ptr_to_member_type");
-                    break;
-
-                case DW_TAG_set_type:
-                    sprintf(tagName, "DW_TAG_set_type");
-                    break;
-
-                case DW_TAG_subrange_type:
-                    sprintf(tagName, "DW_TAG_subrange_type");
-                    break;
-
-                case DW_TAG_with_stmt:
-                    sprintf(tagName, "DW_TAG_with_stmt");
-                    break;
-
-                case DW_TAG_access_declaration:
-                    sprintf(tagName, "DW_TAG_access_declaration");
-                    break;
-
-                case DW_TAG_base_type:
-                    sprintf(tagName, "DW_TAG_base_type");
-                    break;
-
-                case DW_TAG_catch_block:
-                    sprintf(tagName, "DW_TAG_catch_block");
-                    break;
-
-                case DW_TAG_const_type:
-                    sprintf(tagName, "DW_TAG_const_type");
-                    break;
-
-                case DW_TAG_constant:
-                    sprintf(tagName, "DW_TAG_constant");
-                    break;
-
-                case DW_TAG_enumerator:
-                    sprintf(tagName, "DW_TAG_enumerator");
-                    break;
-
-                case DW_TAG_file_type:
-                    sprintf(tagName, "DW_TAG_file_type");
-                    break;
-
-                case DW_TAG_friend:
-                    sprintf(tagName, "DW_TAG_friend");
-                    break;
-
-                case DW_TAG_namelist:
-                    sprintf(tagName, "DW_TAG_namelist");
-                    break;
-
-                case DW_TAG_namelist_item:
-                    sprintf(tagName, "DW_TAG_namelist_item");
-                    break;
-
-                case DW_TAG_packed_type:
-                    sprintf(tagName, "DW_TAG_packed_type");
-                    break;
-
-                case DW_TAG_subprogram:
-                    sprintf(tagName, "DW_TAG_subprogram");
-                    break;
-
-                case DW_TAG_template_type_parameter:
-                    sprintf(tagName, "DW_TAG_template_type_parameter");
-                    break;
-
-                case DW_TAG_template_value_parameter:
-                    sprintf(tagName, "DW_TAG_template_value_parameter");
-                    break;
-
-                case DW_TAG_thrown_type:
-                    sprintf(tagName, "DW_TAG_thrown_type");
-                    break;
-
-                case DW_TAG_try_block:
-                    sprintf(tagName, "DW_TAG_try_block");
-                    break;
-
-                case DW_TAG_variant_part:
-                    sprintf(tagName, "DW_TAG_variant_part");
-                    break;
-
-                case DW_TAG_variable:
-                    sprintf(tagName, "DW_TAG_variable");
-                    break;
-
-                case DW_TAG_volatile_type:
-                    sprintf(tagName, "DW_TAG_volatile_type");
-                    break;
-
-                case DW_TAG_dwarf_procedure:
-                    sprintf(tagName, "DW_TAG_dwarf_procedure");
-                    break;
-
-                case DW_TAG_restrict_type:
-                    sprintf(tagName, "DW_TAG_restrict_type");
-                    break;
-
-                case DW_TAG_interface_type:
-                    sprintf(tagName, "DW_TAG_interface_type");
-                    break;
-
-                case DW_TAG_namespace:
-                    sprintf(tagName, "DW_TAG_namespace");
-                    break;
-
-                case DW_TAG_imported_module:
-                    sprintf(tagName, "DW_TAG_imported_module");
-                    break;
-
-                case DW_TAG_unspecified_type:
-                    sprintf(tagName, "DW_TAG_unspecified_type");
-                    break;
-
-                case DW_TAG_partial_unit:
-                    sprintf(tagName, "DW_TAG_partial_unit");
-                    break;
-
-                case DW_TAG_imported_unit:
-                    sprintf(tagName, "DW_TAG_imported_unit");
-                    break;
-
-                case DW_TAG_mutable_type:
-                    sprintf(tagName, "DW_TAG_mutable_type");
-                    break;
-
-                case DW_TAG_condition:
-                    sprintf(tagName, "DW_TAG_condition");
-                    break;
-
-                case DW_TAG_shared_type:
-                    sprintf(tagName, "DW_TAG_shared_type");
-                    break;
-
-                case DW_TAG_type_unit:
-                    sprintf(tagName, "DW_TAG_type_unit");
-                    break;
-
-                case DW_TAG_rvalue_reference_type:
-                    sprintf(tagName, "DW_TAG_rvalue_reference_type");
-                    break;
-
-                case DW_TAG_template_alias:
-                    sprintf(tagName, "DW_TAG_template_alias");
-                    break;
-
-                case DW_TAG_coarray_type:
-                    sprintf(tagName, "DW_TAG_coarray_type");
-                    break;
-
-                case DW_TAG_generic_subrange:
-                    sprintf(tagName, "DW_TAG_generic_subrange");
-                    break;
-
-                case DW_TAG_dynamic_type:
-                    sprintf(tagName, "DW_TAG_dynamic_type");
-                    break;
-
-                case DW_TAG_atomic_type:
-                    sprintf(tagName, "DW_TAG_dynamic_type");
-                    break;
-
-                case DW_TAG_call_site:
-                    sprintf(tagName, "DW_TAG_call_site");
-                    break;
-
-                case DW_TAG_call_site_parameter:
-                    sprintf(tagName, "DW_TAG_call_site_parameter");
-                    break;
-
-                case DW_TAG_skeleton_unit:
-                    sprintf(tagName, "DW_TAG_skeleton_unit");
-                    break;
-
-                case DW_TAG_immutable_type:
-                    sprintf(tagName, "DW_TAG_immutable_type");
-                    break;
-
-                default:
-                    sprintf(tagName, "UNKNOWN (0x%04x)", tag);
-                    break;
-            }
-        }
-        else
-        {
-            sprintf(tagName, "<< error >>");
-        }
-
-        res = dwarf_die_offsets(inDie, &globalOffset, &localOffset, &error);
-        if (res != DW_DLV_OK)
-        {
-            logger.logError("Error in dwarf_die_offsets.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-        }
-
-        abbrevCode = dwarf_die_abbrev_code(inDie);
-
-        res        = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
-        if (res != DW_DLV_OK)
-        {
-            logger.logError("Error in dwarf_die_abbrev_children_flag.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-        }
-        else
-        {
-            logger.logDebug("  Has children:        %s\n", hasChildrenFlag ? "True" : "False");
-        }
-
-        res = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
-        if (res != DW_DLV_OK)
-        {
-            logger.logError("Error in dwarf_die_abbrev_children_flag.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-        }
-        else
-        {
-            logger.logDebug("  Has children:        %s\n", hasChildrenFlag ? "True" : "False");
-        }
-
-        sprintf(line, "<%u><%x>: Abbrev Number: %u (%s)\n", level, globalOffset, abbrevCode, tagName);
-        strcpy(output, line);
-
-        res = dwarf_attrlist(inDie, &attribs, &attribCount, &error);
-        if (res != DW_DLV_OK)
-        {
-            if (res == DW_DLV_ERROR)
-            {
-                logger.logError("Error in dwarf_attrlist.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-            }
-            else if (res == DW_DLV_NO_ENTRY)
-            {
-                logger.logWarning("No Entry in dwarf_attrlist.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-            }
-        }
-        else
-        {
-            if (attribCount > 0)
-            {
-                for (uint32_t i = 0; i < attribCount; ++i)
-                {
-                    Dwarf_Half attrNum;
-                    char       attribName[255];
-                    char       formName[50];
-                    char       value[50];
-
-                    strcpy(value, "<< Form Not Supported >>");
-
-                    res = dwarf_whatattr(attribs[i], &attrNum, &error);
-                    if (res != DW_DLV_OK)
-                    {
-                        logger.logError("Error in dwarf_whatattr.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-                    }
-                    else
-                    {
-                        Dwarf_Half formID;
-
-                        switch (attrNum)
-                        {
-                            case DW_AT_sibling:
-                                strcpy(attribName, "DW_AT_sibling");
-                                break;
-
-                            case DW_AT_location:
-                                strcpy(attribName, "DW_AT_location");
-                                break;
-
-                            case DW_AT_name:
-                                strcpy(attribName, "DW_AT_name");
-                                break;
-
-                            case DW_AT_ordering:
-                                strcpy(attribName, "DW_AT_ordering");
-                                break;
-
-                            case DW_AT_subscr_data:
-                                strcpy(attribName, "DW_AT_subscr_data");
-                                break;
-
-                            case DW_AT_byte_size:
-                                strcpy(attribName, "DW_AT_byte_size");
-                                break;
-
-                            case DW_AT_bit_offset:
-                                strcpy(attribName, "DW_AT_bit_offset");
-                                break;
-
-                            case DW_AT_bit_size:
-                                strcpy(attribName, "DW_AT_bit_size");
-                                break;
-
-                            case DW_AT_element_list:
-                                strcpy(attribName, "DW_AT_element_list");
-                                break;
-
-                            case DW_AT_stmt_list:
-                                strcpy(attribName, "DW_AT_stmt_list");
-                                break;
-
-                            case DW_AT_low_pc:
-                                strcpy(attribName, "DW_AT_low_pc");
-                                break;
-
-                            case DW_AT_high_pc:
-                                strcpy(attribName, "DW_AT_high_pc");
-                                break;
-
-                            case DW_AT_language:
-                                strcpy(attribName, "DW_AT_language");
-                                break;
-
-                            case DW_AT_member:
-                                strcpy(attribName, "DW_AT_member");
-                                break;
-
-                            case DW_AT_discr:
-                                strcpy(attribName, "DW_AT_discr");
-                                break;
-
-                            case DW_AT_discr_value:
-                                strcpy(attribName, "DW_AT_discr_value");
-                                break;
-
-                            case DW_AT_visibility:
-                                strcpy(attribName, "DW_AT_visibility");
-                                break;
-
-                            case DW_AT_import:
-                                strcpy(attribName, "DW_AT_import");
-                                break;
-
-                            case DW_AT_string_length:
-                                strcpy(attribName, "DW_AT_string_length");
-                                break;
-
-                            case DW_AT_common_reference:
-                                strcpy(attribName, "DW_AT_common_reference");
-                                break;
-
-                            case DW_AT_comp_dir:
-                                strcpy(attribName, "DW_AT_comp_dir");
-                                break;
-
-                            case DW_AT_const_value:
-                                strcpy(attribName, "DW_AT_const_value");
-                                break;
-
-                            case DW_AT_containing_type:
-                                strcpy(attribName, "DW_AT_containing_type");
-                                break;
-
-                            case DW_AT_default_value:
-                                strcpy(attribName, "DW_AT_default_value");
-                                break;
-
-                            case DW_AT_inline:
-                                strcpy(attribName, "DW_AT_inline");
-                                break;
-
-                            case DW_AT_is_optional:
-                                strcpy(attribName, "DW_AT_is_optional");
-                                break;
-
-                            case DW_AT_lower_bound:
-                                strcpy(attribName, "DW_AT_lower_bound");
-                                break;
-
-                            case DW_AT_producer:
-                                strcpy(attribName, "DW_AT_producer");
-                                break;
-
-                            case DW_AT_prototyped:
-                                strcpy(attribName, "DW_AT_prototyped");
-                                break;
-
-                            case DW_AT_return_addr:
-                                strcpy(attribName, "DW_AT_return_addr");
-                                break;
-
-                            case DW_AT_start_scope:
-                                strcpy(attribName, "DW_AT_start_scope");
-                                break;
-
-                            case DW_AT_bit_stride:
-                                strcpy(attribName, "DW_AT_bit_stride");
-                                break;
-
-                            case DW_AT_upper_bound:
-                                strcpy(attribName, "DW_AT_upper_bound");
-                                break;
-
-                            case DW_AT_abstract_origin:
-                                strcpy(attribName, "DW_AT_abstract_origin");
-                                break;
-
-                            case DW_AT_accessibility:
-                                strcpy(attribName, "DW_AT_accessibility");
-                                break;
-
-                            case DW_AT_address_class:
-                                strcpy(attribName, "DW_AT_address_class");
-                                break;
-
-                            case DW_AT_artificial:
-                                strcpy(attribName, "DW_AT_artificial");
-                                break;
-
-                            case DW_AT_base_types:
-                                strcpy(attribName, "DW_AT_base_types");
-                                break;
-
-                            case DW_AT_calling_convention:
-                                strcpy(attribName, "DW_AT_calling_convention");
-                                break;
-
-                            case DW_AT_count:
-                                strcpy(attribName, "DW_AT_count");
-                                break;
-
-                            case DW_AT_data_member_location:
-                                strcpy(attribName, "DW_AT_data_member_location");
-                                break;
-
-                            case DW_AT_decl_column:
-                                strcpy(attribName, "DW_AT_decl_column");
-                                break;
-
-                            case DW_AT_decl_file:
-                                strcpy(attribName, "DW_AT_decl_file");
-                                break;
-
-                            case DW_AT_decl_line:
-                                strcpy(attribName, "DW_AT_decl_line");
-                                break;
-
-                            case DW_AT_declaration:
-                                strcpy(attribName, "DW_AT_declaration");
-                                break;
-
-                            case DW_AT_discr_list:
-                                strcpy(attribName, "DW_AT_discr_list");
-                                break;
-
-                            case DW_AT_encoding:
-                                strcpy(attribName, "DW_AT_encoding");
-                                break;
-
-                            case DW_AT_external:
-                                strcpy(attribName, "DW_AT_external");
-                                break;
-
-                            case DW_AT_frame_base:
-                                strcpy(attribName, "DW_AT_frame_base");
-                                break;
-
-                            case DW_AT_friend:
-                                strcpy(attribName, "DW_AT_friend");
-                                break;
-
-                            case DW_AT_identifier_case:
-                                strcpy(attribName, "DW_AT_identifier_case");
-                                break;
-
-                            case DW_AT_macro_info:
-                                strcpy(attribName, "DW_AT_macro_info");
-                                printf("DW_AT_macro_info************************\n");
-                                break;
-
-                            case DW_AT_namelist_item:
-                                strcpy(attribName, "DW_AT_namelist_item");
-                                break;
-
-                            case DW_AT_priority:
-                                strcpy(attribName, "DW_AT_priority");
-                                break;
-
-                            case DW_AT_segment:
-                                strcpy(attribName, "DW_AT_segment");
-                                break;
-
-                            case DW_AT_specification:
-                                strcpy(attribName, "DW_AT_specification");
-                                break;
-
-                            case DW_AT_static_link:
-                                strcpy(attribName, "DW_AT_static_link");
-                                break;
-
-                            case DW_AT_type:
-                                strcpy(attribName, "DW_AT_type");
-                                break;
-
-                            case DW_AT_use_location:
-                                strcpy(attribName, "DW_AT_use_location");
-                                break;
-
-                            case DW_AT_variable_parameter:
-                                strcpy(attribName, "DW_AT_variable_parameter");
-                                break;
-
-                            case DW_AT_virtuality:
-                                strcpy(attribName, "DW_AT_virtuality");
-                                break;
-
-                            case DW_AT_vtable_elem_location:
-                                strcpy(attribName, "DW_AT_vtable_elem_location");
-                                break;
-
-                            case DW_AT_allocated:
-                                strcpy(attribName, "DW_AT_allocated");
-                                break;
-
-                            case DW_AT_associated:
-                                strcpy(attribName, "DW_AT_associated");
-                                break;
-
-                            case DW_AT_data_location:
-                                strcpy(attribName, "DW_AT_data_location");
-                                break;
-
-                            case DW_AT_byte_stride:
-                                strcpy(attribName, "DW_AT_byte_stride");
-                                break;
-
-                            case DW_AT_entry_pc:
-                                strcpy(attribName, "DW_AT_entry_pc");
-                                break;
-
-                            case DW_AT_use_UTF8:
-                                strcpy(attribName, "DW_AT_use_UTF8");
-                                break;
-
-                            case DW_AT_extension:
-                                strcpy(attribName, "DW_AT_extension");
-                                break;
-
-                            case DW_AT_ranges:
-                                strcpy(attribName, "DW_AT_ranges");
-                                break;
-
-                            case DW_AT_trampoline:
-                                strcpy(attribName, "DW_AT_trampoline");
-                                break;
-
-                            case DW_AT_call_column:
-                                strcpy(attribName, "DW_AT_call_column");
-                                break;
-
-                            case DW_AT_call_file:
-                                strcpy(attribName, "DW_AT_call_file");
-                                break;
-
-                            case DW_AT_call_line:
-                                strcpy(attribName, "DW_AT_call_line");
-                                break;
-
-                            case DW_AT_description:
-                                strcpy(attribName, "DW_AT_description");
-                                break;
-
-                            case DW_AT_binary_scale:
-                                strcpy(attribName, "DW_AT_binary_scale");
-                                break;
-
-                            case DW_AT_decimal_scale:
-                                strcpy(attribName, "DW_AT_decimal_scale");
-                                break;
-
-                            case DW_AT_small:
-                                strcpy(attribName, "DW_AT_small");
-                                break;
-
-                            case DW_AT_decimal_sign:
-                                strcpy(attribName, "DW_AT_decimal_sign");
-                                break;
-
-                            case DW_AT_digit_count:
-                                strcpy(attribName, "DW_AT_digit_count");
-                                break;
-
-                            case DW_AT_picture_string:
-                                strcpy(attribName, "DW_AT_picture_string");
-                                break;
-
-                            case DW_AT_mutable:
-                                strcpy(attribName, "DW_AT_mutable");
-                                break;
-
-                            case DW_AT_threads_scaled:
-                                strcpy(attribName, "DW_AT_threads_scaled");
-                                break;
-
-                            case DW_AT_explicit:
-                                strcpy(attribName, "DW_AT_explicit");
-                                break;
-
-                            case DW_AT_object_pointer:
-                                strcpy(attribName, "DW_AT_object_pointer");
-                                break;
-
-                            case DW_AT_endianity:
-                                strcpy(attribName, "DW_AT_endianity");
-                                break;
-
-                            case DW_AT_elemental:
-                                strcpy(attribName, "DW_AT_elemental");
-                                break;
-
-                            case DW_AT_pure:
-                                strcpy(attribName, "DW_AT_pure");
-                                break;
-
-                            case DW_AT_recursive:
-                                strcpy(attribName, "DW_AT_recursive");
-                                break;
-
-                            case DW_AT_signature:
-                                strcpy(attribName, "DW_AT_signature");
-                                break;
-
-                            case DW_AT_main_subprogram:
-                                strcpy(attribName, "DW_AT_main_subprogram");
-                                break;
-
-                            case DW_AT_data_bit_offset:
-                                strcpy(attribName, "DW_AT_data_bit_offset");
-                                break;
-
-                            case DW_AT_const_expr:
-                                strcpy(attribName, "DW_AT_const_expr");
-                                break;
-
-                            case DW_AT_enum_class:
-                                strcpy(attribName, "DW_AT_enum_class");
-                                break;
-
-                            case DW_AT_linkage_name:
-                                strcpy(attribName, "DW_AT_linkage_name");
-                                break;
-
-                            case DW_AT_string_length_bit_size:
-                                strcpy(attribName, "DW_AT_string_length_bit_size");
-                                break;
-
-                            case DW_AT_string_length_byte_size:
-                                strcpy(attribName, "DW_AT_string_length_byte_size");
-                                break;
-
-                            case DW_AT_rank:
-                                strcpy(attribName, "DW_AT_rank");
-                                break;
-
-                            case DW_AT_str_offsets_base:
-                                strcpy(attribName, "DW_AT_str_offsets_base");
-                                break;
-
-                            case DW_AT_addr_base:
-                                strcpy(attribName, "DW_AT_addr_base");
-                                break;
-
-                            case DW_AT_rnglists_base:
-                                strcpy(attribName, "DW_AT_rnglists_base");
-                                break;
-
-                            case DW_AT_dwo_id:
-                                strcpy(attribName, "DW_AT_dwo_id");
-                                break;
-
-                            case DW_AT_dwo_name:
-                                strcpy(attribName, "DW_AT_dwo_name");
-                                break;
-
-                            case DW_AT_reference:
-                                strcpy(attribName, "DW_AT_reference");
-                                break;
-
-                            case DW_AT_rvalue_reference:
-                                strcpy(attribName, "DW_AT_rvalue_reference");
-                                break;
-
-                            case DW_AT_macros:
-                                strcpy(attribName, "DW_AT_macros");
-                                printf("DW_AT_macros\n");
-                                break;
-
-                            case DW_AT_call_all_calls:
-                                strcpy(attribName, "DW_AT_call_all_calls");
-                                break;
-
-                            case DW_AT_call_all_source_calls:
-                                strcpy(attribName, "DW_AT_call_all_source_calls");
-                                break;
-
-                            case DW_AT_call_all_tail_calls:
-                                strcpy(attribName, "DW_AT_call_all_tail_calls");
-                                break;
-
-                            case DW_AT_call_return_pc:
-                                strcpy(attribName, "DW_AT_call_return_pc");
-                                break;
-
-                            case DW_AT_call_value:
-                                strcpy(attribName, "DW_AT_call_value");
-                                break;
-
-                            case DW_AT_call_origin:
-                                strcpy(attribName, "DW_AT_call_origin");
-                                break;
-
-                            case DW_AT_call_parameter:
-                                strcpy(attribName, "DW_AT_call_parameter");
-                                break;
-
-                            case DW_AT_call_pc:
-                                strcpy(attribName, "DW_AT_call_pc");
-                                break;
-
-                            case DW_AT_call_tail_call:
-                                strcpy(attribName, "DW_AT_call_tail_call");
-                                break;
-
-                            case DW_AT_call_target:
-                                strcpy(attribName, "DW_AT_call_target");
-                                break;
-
-                            case DW_AT_call_target_clobbered:
-                                strcpy(attribName, "DW_AT_call_target_clobbered");
-                                break;
-
-                            case DW_AT_call_data_location:
-                                strcpy(attribName, "DW_AT_call_data_location");
-                                break;
-
-                            case DW_AT_call_data_value:
-                                strcpy(attribName, "DW_AT_call_data_value");
-                                break;
-
-                            case DW_AT_noreturn:
-                                strcpy(attribName, "DW_AT_noreturn");
-                                break;
-
-                            case DW_AT_alignment:
-                                strcpy(attribName, "DW_AT_alignment");
-                                break;
-
-                            case DW_AT_export_symbols:
-                                strcpy(attribName, "DW_AT_export_symbols");
-                                break;
-
-                            case DW_AT_deleted:
-                                strcpy(attribName, "DW_AT_deleted");
-                                break;
-
-                            case DW_AT_defaulted:
-                                strcpy(attribName, "DW_AT_defaulted");
-                                break;
-
-                            case DW_AT_loclists_base:
-                                strcpy(attribName, "DW_AT_loclists_base");
-                                break;
-
-                            default:
-                                sprintf(attribName, "UNKNOWN (%x)", attrNum);
-                                break;
-                        }
-
-                        res = dwarf_whatform(attribs[i], &attrNum, &error);
-                        if (res != DW_DLV_OK)
-                        {
-                            logger.logError("Error in dwarf_whatattr.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-                        }
-                        else
-                        {
-                            res = dwarf_whatform(attribs[i], &formID, &error);
-                            if (res != DW_DLV_OK)
-                            {
-                                logger.logError("Error in dwarf_whatform.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-                            }
-                            else
-                            {
-                                switch (formID)
-                                {
-                                    case DW_FORM_addr:
-                                    {
-                                        Dwarf_Addr addr = 0;
-
-                                        strcpy(formName, "DW_FORM_addr");
-
-                                        res = dwarf_formaddr(attribs[i], &addr, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in DW_FORM_addr.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            unsigned long long data = (unsigned int)addr;
-                                            sprintf(value, "0x%016x", data);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_block2:
-                                    {
-                                        Dwarf_Unsigned udata = 0;
-
-                                        strcpy(formName, "DW_FORM_block2");
-
-                                        res = dwarf_formudata(attribs[i], &udata, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            unsigned short data = (unsigned short)udata;
-                                            sprintf(value, "%d", data);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_block4:
-                                    {
-                                        Dwarf_Unsigned udata = 0;
-
-                                        strcpy(formName, "DW_FORM_block4");
-
-                                        res = dwarf_formudata(attribs[i], &udata, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in DW_FORM_block4.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            unsigned int data = (unsigned int)udata;
-                                            sprintf(value, "%d", data);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_data2:
-                                    {
-                                        Dwarf_Unsigned udata = 0;
-
-                                        strcpy(formName, "DW_FORM_data2");
-
-                                        res = dwarf_formudata(attribs[i], &udata, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in DW_FORM_data2.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            unsigned short int data = (unsigned short int)udata;
-                                            sprintf(value, "%d", data);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_data4:
-                                    {
-                                        Dwarf_Unsigned udata = 0;
-
-                                        strcpy(formName, "DW_FORM_data4");
-                                        res = dwarf_formudata(attribs[i], &udata, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            unsigned int data = (unsigned int)udata;
-                                            sprintf(value, "%d", data);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_data8:
-                                    {
-                                        Dwarf_Unsigned udata = 0;
-
-                                        strcpy(formName, "DW_FORM_data8");
-
-                                        res = dwarf_formudata(attribs[i], &udata, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            sprintf(value, "%d", udata);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_string:
-                                    {
-                                        char *str = 0;
-
-                                        strcpy(formName, "DW_FORM_string");
-
-                                        res = dwarf_formstring(attribs[i], &str, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            sprintf(value, "%s", str);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_block:
-                                        strcpy(formName, "DW_FORM_block");
-                                        break;
-
-                                    case DW_FORM_block1:
-                                    {
-                                        Dwarf_Block *bdata = 0;
-                                        strcpy(formName, "DW_FORM_block1");
-
-                                        res = dwarf_formblock(attribs[i], &bdata, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formblock.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            sprintf(value, "len: %d", bdata->bl_len);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_data1:
-                                    {
-                                        Dwarf_Unsigned udata = 0;
-                                        strcpy(formName, "DW_FORM_data1");
-
-                                        res = dwarf_formudata(attribs[i], &udata, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            uint8_t data = (uint8_t)udata;
-                                            sprintf(value, "%u", data);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_flag:
-                                    {
-                                        Dwarf_Bool dwarfBool = false;
-                                        strcpy(formName, "DW_FORM_flag");
-                                        char *strp = 0;
-
-                                        res        = dwarf_formflag(attribs[i], &dwarfBool, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in DW_FORM_flag.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            if (dwarfBool)
-                                            {
-                                                sprintf(value, "TRUE");
-                                            }
-                                            else
-                                            {
-                                                sprintf(value, "FALSE");
-                                            }
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_sdata:
-                                    {
-                                        Dwarf_Signed sdata = 0;
-
-                                        strcpy(formName, "DW_FORM_sdata");
-
-                                        res = dwarf_formsdata(attribs[i], &sdata, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            sprintf(value, "%lli", sdata);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_strp:
-                                    {
-                                        char *strp = 0;
-
-                                        strcpy(formName, "DW_FORM_strp");
-
-                                        res = dwarf_formstring(attribs[i], &strp, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            char *text = dwarfStringToChar(strp);
-                                            sprintf(value, "%s", text);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_udata:
-                                    {
-                                        Dwarf_Unsigned udata = 0;
-
-                                        strcpy(formName, "DW_FORM_udata");
-
-                                        res = dwarf_formudata(attribs[i], &udata, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            sprintf(value, "%llu", udata);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_ref_addr:
-                                        strcpy(formName, "DW_FORM_ref_addr");
-                                        break;
-
-                                    case DW_FORM_ref1:
-                                    {
-                                        Dwarf_Off ref = 0;
-
-                                        strcpy(formName, "DW_FORM_ref1");
-                                        res = dwarf_formref(attribs[i], &ref, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            uint8_t data = (uint8_t)ref;
-                                            sprintf(value, "%u", data);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_ref2:
-                                    {
-                                        Dwarf_Off ref = 0;
-
-                                        strcpy(formName, "DW_FORM_ref1");
-                                        res = dwarf_formref(attribs[i], &ref, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            unsigned short int data = (unsigned short int)ref;
-                                            sprintf(value, "%u", data);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_ref4:
-                                    {
-                                        Dwarf_Off ref = 0;
-
-                                        strcpy(formName, "DW_FORM_ref1");
-                                        res = dwarf_formref(attribs[i], &ref, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            unsigned int data = (unsigned int)ref;
-                                            sprintf(value, "%u", data);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_ref8:
-                                    {
-                                        Dwarf_Off ref = 0;
-
-                                        strcpy(formName, "DW_FORM_ref1");
-                                        res = dwarf_formref(attribs[i], &ref, &error);
-                                        if (res != DW_DLV_OK)
-                                        {
-                                            logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-                                                            dwarf_errmsg(error));
-                                        }
-                                        else
-                                        {
-                                            sprintf(value, "%llu", ref);
-                                        }
-
-                                        break;
-                                    }
-
-                                    case DW_FORM_ref_udata:
-                                        strcpy(formName, "DW_FORM_ref_udata");
-                                        break;
-
-                                    case DW_FORM_indirect:
-                                        strcpy(formName, "DW_FORM_indirect");
-                                        break;
-
-                                    case DW_FORM_sec_offset:
-                                        strcpy(formName, "DW_FORM_sec_offset");
-                                        break;
-
-                                    case DW_FORM_exprloc:
-                                        strcpy(formName, "DW_FORM_exprloc");
-                                        break;
-
-                                    case DW_FORM_flag_present:
-                                        strcpy(formName, "DW_FORM_flag_present");
-                                        break;
-
-                                    case DW_FORM_strx:
-                                        strcpy(formName, "DW_FORM_strx");
-                                        break;
-
-                                    case DW_FORM_addrx:
-                                        strcpy(formName, "DW_FORM_addrx");
-                                        break;
-
-                                    case DW_FORM_ref_sup4:
-                                        strcpy(formName, "DW_FORM_ref_sup4");
-                                        break;
-
-                                    case DW_FORM_strp_sup:
-                                        strcpy(formName, "DW_FORM_strp_sup");
-                                        break;
-
-                                    case DW_FORM_data16:
-                                        strcpy(formName, "DW_FORM_data16");
-                                        break;
-
-                                    case DW_FORM_line_strp:
-                                        strcpy(formName, "DW_FORM_line_strp");
-                                        break;
-
-                                    case DW_FORM_ref_sig8:
-                                        strcpy(formName, "DW_FORM_ref_sig8");
-                                        break;
-
-                                    case DW_FORM_implicit_const:
-                                        strcpy(formName, "DW_FORM_implicit_const");
-                                        break;
-
-                                    case DW_FORM_loclistx:
-                                        strcpy(formName, "DW_FORM_loclistx");
-                                        break;
-
-                                    case DW_FORM_rnglistx:
-                                        strcpy(formName, "DW_FORM_rnglistx");
-                                        break;
-
-                                    case DW_FORM_ref_sup8:
-                                        strcpy(formName, "DW_FORM_ref_sup8");
-                                        break;
-
-                                    case DW_FORM_strx1:
-                                        strcpy(formName, "DW_FORM_strx1");
-                                        break;
-
-                                    case DW_FORM_strx2:
-                                        strcpy(formName, "DW_FORM_strx2");
-                                        break;
-
-                                    case DW_FORM_strx3:
-                                        strcpy(formName, "DW_FORM_strx3");
-                                        break;
-
-                                    case DW_FORM_strx4:
-                                        strcpy(formName, "DW_FORM_strx4");
-                                        break;
-
-                                    case DW_FORM_addrx1:
-                                        strcpy(formName, "DW_FORM_addrx1");
-                                        break;
-
-                                    case DW_FORM_addrx2:
-                                        strcpy(formName, "DW_FORM_addrx2");
-                                        break;
-
-                                    case DW_FORM_addrx3:
-                                        strcpy(formName, "DW_FORM_addrx3");
-                                        break;
-
-                                    case DW_FORM_addrx4:
-                                        strcpy(formName, "DW_FORM_addrx4");
-                                        break;
-
-                                    case DW_FORM_GNU_addr_index:
-                                        strcpy(formName, "DW_FORM_GNU_addr_index");
-                                        break;
-
-                                    case DW_FORM_GNU_str_index:
-                                        strcpy(formName, "DW_FORM_GNU_str_index");
-                                        break;
-
-                                    case DW_FORM_GNU_ref_alt:
-                                        strcpy(formName, "DW_FORM_GNU_ref_alt");
-                                        break;
-
-                                    case DW_FORM_GNU_strp_alt:
-                                        strcpy(formName, "DW_FORM_GNU_strp_alt");
-                                        break;
-
-                                    default:
-                                        sprintf(formName, "UNKNOWN (%x)", formID);
-                                        break;
-                                }
-                            }
-                        }
-                    }
-
-                    sprintf(line, "                       %-20s : %-20s (%s)\n", attribName, value, formName);
-                    strcat(output, line);
-                }
-            }
-        }
-
-        //        res = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
-        //        if(res == DW_DLV_OK)
-        //        {
-        //            res = dwarf_formstring(attr_struct, &dieName, &error);
-        //            if(res != DW_DLV_OK)
-        //            {
-        //                logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
-        //                        dwarf_errmsg(error));
-        //            }
-        //            else
-        //            {
-        //                sprintf(line, "            DW_AT_name        : %s", dieName);
-        //                strcpy(output, line);
-        //            }
-        //        }
-        //
-        //        res = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
-        //        if(res != DW_DLV_OK)
-        //        {
-        //            logger.logError("Error in dwarf_die_abbrev_children_flag.  errno=%u %s", dwarf_errno(error),
-        //                    dwarf_errmsg(error));
-        //        }
-
-        //        else
-        //        {
-        //        	logger.logDebug("  Has children:        %s", hasChildrenFlag ? "True" : "False");
-        //        }
-        //
-        //        int dwarf_die_abbrev_children_flag(Dwarf_Die /*die*/,
-        //            Dwarf_Half * /*ab_has_child*/);
-        //
-        //        res = dwarf_attrlist(inDie, &attribs, &attribCount, &error);
-        //        if(res != DW_DLV_OK)
-        //        {
-        //            logger.logError("Error in dwarf_attrlist.  errno=%u %s", dwarf_errno(error),
-        //                    dwarf_errmsg(error));
-        //        }
-        //        else
-        //        {
-        //            if(attribCount > 0)
-        //            {
-        //            	logger.logDebug("  Attributes:");
-        //                for(uint32_t i = 0; i < attribCount; ++i)
-        //                {
-        //                    Dwarf_Half attrNum;
-        //                    res = dwarf_whatattr(attribs[i], &attrNum, &error);
-        //                    if(res != DW_DLV_OK)
-        //                    {
-        //                        logger.logError("Error in dwarf_whatattr.  errno=%u %s", dwarf_errno(error),
-        //                                dwarf_errmsg(error));
-        //                    }
-        //                    else
-        //                    {
-        //                        Dwarf_Half formID;
-        //
-        //                        switch(attrNum)
-        //                        {
-        //                            case DW_AT_sibling:
-        //                            	logger.logDebug("    DW_AT_sibling");
-        //                                break;
-        //
-        //                            case DW_AT_location:
-        //                            	logger.logDebug("    DW_AT_location");
-        //                                break;
-        //
-        //                            case DW_AT_name:
-        //                            	logger.logDebug("    DW_AT_name");
-        //                                break;
-        //
-        //                            case DW_AT_ordering:
-        //                            	logger.logDebug("    DW_AT_ordering");
-        //                                break;
-        //
-        //                            case DW_AT_subscr_data:
-        //                            	logger.logDebug("    DW_AT_subscr_data");
-        //                                break;
-        //
-        //                            case DW_AT_byte_size:
-        //                            	logger.logDebug("    DW_AT_byte_size");
-        //                                break;
-        //
-        //                            case DW_AT_decl_file:
-        //                            	logger.logDebug("    DW_AT_decl_file");
-        //                                break;
-        //
-        //                            case DW_AT_decl_line:
-        //                            	logger.logDebug("    DW_AT_decl_line");
-        //                                break;
-        //
-        //                            case DW_AT_type:
-        //                            	logger.logDebug("    DW_AT_type");
-        //                                break;
-        //
-        //                            default:
-        //                            	logger.logDebug("    0x%02x", attrNum);
-        //                                break;
-        //                        }
-        //
-        //                        res = dwarf_whatform(attribs[i], &attrNum, &error);
-        //                        if(res != DW_DLV_OK)
-        //                        {
-        //                            logger.logError("Error in dwarf_whatattr.  errno=%u %s", dwarf_errno(error),
-        //                                    dwarf_errmsg(error));
-        //                        }
-        //                        else
-        //                        {
-        //                            res = dwarf_whatform(attribs[i], &formID, &error);
-        //                            if(res != DW_DLV_OK)
-        //                            {
-        //                                logger.logError("Error in dwarf_whatform.  errno=%u %s", dwarf_errno(error),
-        //                                        dwarf_errmsg(error));
-        //                            }
-        //                            else
-        //                            {
-        //                                switch(formID)
-        //                                {
-        //                                    case DW_FORM_addr:
-        //                                    	logger.logDebug(":DW_FORM_addr");
-        //                                        break;
-        //
-        //                                    case DW_FORM_block2:
-        //                                    	logger.logDebug(":DW_FORM_block2");
-        //                                        break;
-        //
-        //                                    case DW_FORM_block4:
-        //                                    	logger.logDebug(":DW_FORM_block4");
-        //                                        break;
-        //
-        //                                    case DW_FORM_data1:
-        //                                    {
-        //                                        Dwarf_Unsigned udata = 0;
-        //                                        res = dwarf_formudata(attribs[i], &udata, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                            char data = (char) udata;
-        //                                            logger.logDebug(":DW_FORM_data1:%u", data);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_data2:
-        //                                    {
-        //                                        Dwarf_Unsigned udata = 0;
-        //                                        res = dwarf_formudata(attribs[i], &udata, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                            unsigned short data = (unsigned short) udata;
-        //                                            logger.logDebug(":DW_FORM_data2:%u", data);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_data4:
-        //                                    {
-        //                                        Dwarf_Unsigned udata = 0;
-        //                                        res = dwarf_formudata(attribs[i], &udata, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                            unsigned int data = (unsigned int) udata;
-        //                                            logger.logDebug(":DW_FORM_data4:%u", data);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_data8:
-        //                                    {
-        //                                        Dwarf_Unsigned udata = 0;
-        //                                        res = dwarf_formudata(attribs[i], &udata, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                        	logger.logDebug(":DW_FORM_data8:%llu", udata);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_string:
-        //                                    {
-        //                                        char *str = 0;
-        //                                        res = dwarf_formstring(attribs[i], &str, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                                            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                        	logger.logDebug(":DW_FORM_string:%s", str);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_block:
-        //                                    	logger.logDebug(":DW_FORM_block");
-        //                                        break;
-        //
-        //                                    case DW_FORM_sdata:
-        //                                    	logger.logDebug(":DW_FORM_sdata");
-        //                                        break;
-        //
-        //                                    case DW_FORM_strp:
-        //                                    {
-        //                                        char *strp = 0;
-        //                                        res = dwarf_formstring(attribs[i], &strp, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                                            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                            char *text = dwarfStringToChar(strp);
-        //                                            logger.logDebug(":DW_FORM_strp:%s", text);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_udata:
-        //                                    {
-        //                                        Dwarf_Unsigned udata = 0;
-        //                                        res = dwarf_formudata(attribs[i], &udata, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                        	logger.logDebug(":DW_FORM_udata:%llu", udata);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_ref_addr:
-        //                                    	logger.logDebug(":DW_FORM_ref_addr");
-        //                                        break;
-        //
-        //                                    case DW_FORM_ref1:
-        //                                    {
-        //                                        Dwarf_Off ref = 0;
-        //                                        res = dwarf_formref(attribs[i], &ref, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                            char data = (char) ref;
-        //                                            logger.logDebug(":DW_FORM_ref1:%u", data);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_ref2:
-        //                                    {
-        //                                        Dwarf_Off ref = 0;
-        //                                        res = dwarf_formref(attribs[i], &ref, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                                            logger.logError("Error in dwarf_formref.  errno=%u %s", dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                            unsigned short int data = (unsigned short int) ref;
-        //                                            logger.logDebug(":DW_FORM_ref2:%u", data);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_ref4:
-        //                                    {
-        //                                        Dwarf_Off ref = 0;
-        //                                        res = dwarf_formref(attribs[i], &ref, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                                            logger.logError("Error in dwarf_formref.  errno=%u %s", dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                            unsigned int data = (unsigned int) ref;
-        //                                            logger.logDebug(":DW_FORM_ref4:%u", data);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_ref8:
-        //                                    {
-        //                                        Dwarf_Off ref = 0;
-        //                                        res = dwarf_formref(attribs[i], &ref, &error);
-        //                                        if(res != DW_DLV_OK)
-        //                                        {
-        //                                            logger.logError("Error in dwarf_formref.  errno=%u %s", dwarf_errno(error),
-        //                                                    dwarf_errmsg(error));
-        //                                        }
-        //                                        else
-        //                                        {
-        //                                        	logger.logDebug(":DW_FORM_ref4:%llu", ref);
-        //                                        }
-        //                                        break;
-        //                                    }
-        //
-        //                                    case DW_FORM_ref_udata:
-        //                                    	logger.logDebug(":DW_FORM_ref_udata");
-        //                                        break;
-        //
-        //                                    case DW_FORM_indirect:
-        //                                    	logger.logDebug(":DW_FORM_indirect");
-        //                                        break;
-        //
-        //                                    case DW_FORM_sec_offset:
-        //                                    	logger.logDebug(":DW_FORM_sec_offset");
-        //                                        break;
-        //
-        //                                    case DW_FORM_exprloc:
-        //                                    	logger.logDebug(":DW_FORM_exprloc");
-        //                                        break;
-        //
-        //                                    case DW_FORM_flag_present:
-        //                                    	logger.logDebug(":DW_FORM_flag_present");
-        //                                        break;
-        //
-        //                                    case DW_FORM_ref_sig8:
-        //                                    	logger.logDebug(":DW_FORM_ref_sig8");
-        //                                        break;
-        //
-        //                                    default:
-        //                                    	logger.logDebug(":0x%02x", formID);
-        //                                        break;
-        //
-        //                                }
-        //                            }
-        //                        }
-        //                    }
-        //                }
-        //                logger.logDebug("\n");
-        //            }
-        //        }
-
-        logger.logDebug(output);
-    }
+    // if (inDie != 0)
+    // {
+    //     res = dwarf_tag(inDie, &tag, &error);
+    //     if (res == DW_DLV_OK)
+    //     {
+    //         switch (tag)
+    //         {
+    //             case DW_TAG_array_type:
+    //                 sprintf(tagName, "DW_TAG_array_type");
+    //                 break;
+
+    //             case DW_TAG_class_type:
+    //                 sprintf(tagName, "DW_TAG_class_type");
+    //                 break;
+
+    //             case DW_TAG_entry_point:
+    //                 sprintf(tagName, "DW_TAG_entry_point");
+    //                 break;
+
+    //             case DW_TAG_enumeration_type:
+    //                 sprintf(tagName, "DW_TAG_enumeration_type");
+    //                 break;
+
+    //             case DW_TAG_formal_parameter:
+    //                 sprintf(tagName, "DW_TAG_formal_parameter");
+    //                 break;
+
+    //             case DW_TAG_imported_declaration:
+    //                 sprintf(tagName, "DW_TAG_imported_declaration");
+    //                 break;
+
+    //             case DW_TAG_label:
+    //                 sprintf(tagName, "DW_TAG_label");
+    //                 break;
+
+    //             case DW_TAG_lexical_block:
+    //                 sprintf(tagName, "DW_TAG_lexical_block");
+    //                 break;
+
+    //             case DW_TAG_member:
+    //                 sprintf(tagName, "DW_TAG_member");
+    //                 break;
+
+    //             case DW_TAG_pointer_type:
+    //                 sprintf(tagName, "DW_TAG_pointer_type");
+    //                 break;
+
+    //             case DW_TAG_reference_type:
+    //                 sprintf(tagName, "DW_TAG_reference_type");
+    //                 break;
+
+    //             case DW_TAG_compile_unit:
+    //                 sprintf(tagName, "DW_TAG_compile_unit");
+    //                 break;
+
+    //             case DW_TAG_string_type:
+    //                 sprintf(tagName, "DW_TAG_string_type");
+    //                 break;
+
+    //             case DW_TAG_structure_type:
+    //                 sprintf(tagName, "DW_TAG_structure_type");
+    //                 break;
+
+    //             case DW_TAG_subroutine_type:
+    //                 sprintf(tagName, "DW_TAG_subroutine_type");
+    //                 break;
+
+    //             case DW_TAG_typedef:
+    //                 sprintf(tagName, "DW_TAG_typedef");
+    //                 break;
+
+    //             case DW_TAG_union_type:
+    //                 sprintf(tagName, "DW_TAG_union_type");
+    //                 break;
+
+    //             case DW_TAG_unspecified_parameters:
+    //                 sprintf(tagName, "DW_TAG_unspecified_parameters");
+    //                 break;
+
+    //             case DW_TAG_variant:
+    //                 sprintf(tagName, "DW_TAG_variant");
+    //                 break;
+
+    //             case DW_TAG_common_block:
+    //                 sprintf(tagName, "DW_TAG_common_block");
+    //                 break;
+
+    //             case DW_TAG_common_inclusion:
+    //                 sprintf(tagName, "DW_TAG_common_inclusion");
+    //                 break;
+
+    //             case DW_TAG_inheritance:
+    //                 sprintf(tagName, "DW_TAG_inheritance");
+    //                 break;
+
+    //             case DW_TAG_inlined_subroutine:
+    //                 sprintf(tagName, "DW_TAG_inlined_subroutine");
+    //                 break;
+
+    //             case DW_TAG_module:
+    //                 sprintf(tagName, "DW_TAG_module");
+    //                 break;
+
+    //             case DW_TAG_ptr_to_member_type:
+    //                 sprintf(tagName, "DW_TAG_ptr_to_member_type");
+    //                 break;
+
+    //             case DW_TAG_set_type:
+    //                 sprintf(tagName, "DW_TAG_set_type");
+    //                 break;
+
+    //             case DW_TAG_subrange_type:
+    //                 sprintf(tagName, "DW_TAG_subrange_type");
+    //                 break;
+
+    //             case DW_TAG_with_stmt:
+    //                 sprintf(tagName, "DW_TAG_with_stmt");
+    //                 break;
+
+    //             case DW_TAG_access_declaration:
+    //                 sprintf(tagName, "DW_TAG_access_declaration");
+    //                 break;
+
+    //             case DW_TAG_base_type:
+    //                 sprintf(tagName, "DW_TAG_base_type");
+    //                 break;
+
+    //             case DW_TAG_catch_block:
+    //                 sprintf(tagName, "DW_TAG_catch_block");
+    //                 break;
+
+    //             case DW_TAG_const_type:
+    //                 sprintf(tagName, "DW_TAG_const_type");
+    //                 break;
+
+    //             case DW_TAG_constant:
+    //                 sprintf(tagName, "DW_TAG_constant");
+    //                 break;
+
+    //             case DW_TAG_enumerator:
+    //                 sprintf(tagName, "DW_TAG_enumerator");
+    //                 break;
+
+    //             case DW_TAG_file_type:
+    //                 sprintf(tagName, "DW_TAG_file_type");
+    //                 break;
+
+    //             case DW_TAG_friend:
+    //                 sprintf(tagName, "DW_TAG_friend");
+    //                 break;
+
+    //             case DW_TAG_namelist:
+    //                 sprintf(tagName, "DW_TAG_namelist");
+    //                 break;
+
+    //             case DW_TAG_namelist_item:
+    //                 sprintf(tagName, "DW_TAG_namelist_item");
+    //                 break;
+
+    //             case DW_TAG_packed_type:
+    //                 sprintf(tagName, "DW_TAG_packed_type");
+    //                 break;
+
+    //             case DW_TAG_subprogram:
+    //                 sprintf(tagName, "DW_TAG_subprogram");
+    //                 break;
+
+    //             case DW_TAG_template_type_parameter:
+    //                 sprintf(tagName, "DW_TAG_template_type_parameter");
+    //                 break;
+
+    //             case DW_TAG_template_value_parameter:
+    //                 sprintf(tagName, "DW_TAG_template_value_parameter");
+    //                 break;
+
+    //             case DW_TAG_thrown_type:
+    //                 sprintf(tagName, "DW_TAG_thrown_type");
+    //                 break;
+
+    //             case DW_TAG_try_block:
+    //                 sprintf(tagName, "DW_TAG_try_block");
+    //                 break;
+
+    //             case DW_TAG_variant_part:
+    //                 sprintf(tagName, "DW_TAG_variant_part");
+    //                 break;
+
+    //             case DW_TAG_variable:
+    //                 sprintf(tagName, "DW_TAG_variable");
+    //                 break;
+
+    //             case DW_TAG_volatile_type:
+    //                 sprintf(tagName, "DW_TAG_volatile_type");
+    //                 break;
+
+    //             case DW_TAG_dwarf_procedure:
+    //                 sprintf(tagName, "DW_TAG_dwarf_procedure");
+    //                 break;
+
+    //             case DW_TAG_restrict_type:
+    //                 sprintf(tagName, "DW_TAG_restrict_type");
+    //                 break;
+
+    //             case DW_TAG_interface_type:
+    //                 sprintf(tagName, "DW_TAG_interface_type");
+    //                 break;
+
+    //             case DW_TAG_namespace:
+    //                 sprintf(tagName, "DW_TAG_namespace");
+    //                 break;
+
+    //             case DW_TAG_imported_module:
+    //                 sprintf(tagName, "DW_TAG_imported_module");
+    //                 break;
+
+    //             case DW_TAG_unspecified_type:
+    //                 sprintf(tagName, "DW_TAG_unspecified_type");
+    //                 break;
+
+    //             case DW_TAG_partial_unit:
+    //                 sprintf(tagName, "DW_TAG_partial_unit");
+    //                 break;
+
+    //             case DW_TAG_imported_unit:
+    //                 sprintf(tagName, "DW_TAG_imported_unit");
+    //                 break;
+
+    //             case DW_TAG_mutable_type:
+    //                 sprintf(tagName, "DW_TAG_mutable_type");
+    //                 break;
+
+    //             case DW_TAG_condition:
+    //                 sprintf(tagName, "DW_TAG_condition");
+    //                 break;
+
+    //             case DW_TAG_shared_type:
+    //                 sprintf(tagName, "DW_TAG_shared_type");
+    //                 break;
+
+    //             case DW_TAG_type_unit:
+    //                 sprintf(tagName, "DW_TAG_type_unit");
+    //                 break;
+
+    //             case DW_TAG_rvalue_reference_type:
+    //                 sprintf(tagName, "DW_TAG_rvalue_reference_type");
+    //                 break;
+
+    //             case DW_TAG_template_alias:
+    //                 sprintf(tagName, "DW_TAG_template_alias");
+    //                 break;
+
+    //             case DW_TAG_coarray_type:
+    //                 sprintf(tagName, "DW_TAG_coarray_type");
+    //                 break;
+
+    //             case DW_TAG_generic_subrange:
+    //                 sprintf(tagName, "DW_TAG_generic_subrange");
+    //                 break;
+
+    //             case DW_TAG_dynamic_type:
+    //                 sprintf(tagName, "DW_TAG_dynamic_type");
+    //                 break;
+
+    //             case DW_TAG_atomic_type:
+    //                 sprintf(tagName, "DW_TAG_dynamic_type");
+    //                 break;
+
+    //             case DW_TAG_call_site:
+    //                 sprintf(tagName, "DW_TAG_call_site");
+    //                 break;
+
+    //             case DW_TAG_call_site_parameter:
+    //                 sprintf(tagName, "DW_TAG_call_site_parameter");
+    //                 break;
+
+    //             case DW_TAG_skeleton_unit:
+    //                 sprintf(tagName, "DW_TAG_skeleton_unit");
+    //                 break;
+
+    //             case DW_TAG_immutable_type:
+    //                 sprintf(tagName, "DW_TAG_immutable_type");
+    //                 break;
+
+    //             default:
+    //                 sprintf(tagName, "UNKNOWN (0x%04x)", tag);
+    //                 break;
+    //         }
+    //     }
+    //     else
+    //     {
+    //         sprintf(tagName, "<< error >>");
+    //     }
+
+    //     res = dwarf_die_offsets(inDie, &globalOffset, &localOffset, &error);
+    //     if (res != DW_DLV_OK)
+    //     {
+    //         logger.logError("Error in dwarf_die_offsets.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //     }
+
+    //     abbrevCode = dwarf_die_abbrev_code(inDie);
+
+    //     res        = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
+    //     if (res != DW_DLV_OK)
+    //     {
+    //         logger.logError("Error in dwarf_die_abbrev_children_flag.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //     }
+    //     else
+    //     {
+    //         logger.logDebug("  Has children:        %s\n", hasChildrenFlag ? "True" : "False");
+    //     }
+
+    //     res = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
+    //     if (res != DW_DLV_OK)
+    //     {
+    //         logger.logError("Error in dwarf_die_abbrev_children_flag.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //     }
+    //     else
+    //     {
+    //         logger.logDebug("  Has children:        %s\n", hasChildrenFlag ? "True" : "False");
+    //     }
+
+    //     sprintf(line, "<%u><%x>: Abbrev Number: %u (%s)\n", level, globalOffset, abbrevCode, tagName);
+    //     strcpy(output, line);
+
+    //     res = dwarf_attrlist(inDie, &attribs, &attribCount, &error);
+    //     if (res != DW_DLV_OK)
+    //     {
+    //         if (res == DW_DLV_ERROR)
+    //         {
+    //             logger.logError("Error in dwarf_attrlist.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //         }
+    //         else if (res == DW_DLV_NO_ENTRY)
+    //         {
+    //             logger.logWarning("No Entry in dwarf_attrlist.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //         }
+    //     }
+    //     else
+    //     {
+    //         if (attribCount > 0)
+    //         {
+    //             for (uint32_t i = 0; i < attribCount; ++i)
+    //             {
+    //                 Dwarf_Half attrNum;
+    //                 char       attribName[255];
+    //                 char       formName[50];
+    //                 char       value[50];
+
+    //                 strcpy(value, "<< Form Not Supported >>");
+
+    //                 res = dwarf_whatattr(attribs[i], &attrNum, &error);
+    //                 if (res != DW_DLV_OK)
+    //                 {
+    //                     logger.logError("Error in dwarf_whatattr.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //                 }
+    //                 else
+    //                 {
+    //                     Dwarf_Half formID;
+
+    //                     switch (attrNum)
+    //                     {
+    //                         case DW_AT_sibling:
+    //                             strcpy(attribName, "DW_AT_sibling");
+    //                             break;
+
+    //                         case DW_AT_location:
+    //                             strcpy(attribName, "DW_AT_location");
+    //                             break;
+
+    //                         case DW_AT_name:
+    //                             strcpy(attribName, "DW_AT_name");
+    //                             break;
+
+    //                         case DW_AT_ordering:
+    //                             strcpy(attribName, "DW_AT_ordering");
+    //                             break;
+
+    //                         case DW_AT_subscr_data:
+    //                             strcpy(attribName, "DW_AT_subscr_data");
+    //                             break;
+
+    //                         case DW_AT_byte_size:
+    //                             strcpy(attribName, "DW_AT_byte_size");
+    //                             break;
+
+    //                         case DW_AT_bit_offset:
+    //                             strcpy(attribName, "DW_AT_bit_offset");
+    //                             break;
+
+    //                         case DW_AT_bit_size:
+    //                             strcpy(attribName, "DW_AT_bit_size");
+    //                             break;
+
+    //                         case DW_AT_element_list:
+    //                             strcpy(attribName, "DW_AT_element_list");
+    //                             break;
+
+    //                         case DW_AT_stmt_list:
+    //                             strcpy(attribName, "DW_AT_stmt_list");
+    //                             break;
+
+    //                         case DW_AT_low_pc:
+    //                             strcpy(attribName, "DW_AT_low_pc");
+    //                             break;
+
+    //                         case DW_AT_high_pc:
+    //                             strcpy(attribName, "DW_AT_high_pc");
+    //                             break;
+
+    //                         case DW_AT_language:
+    //                             strcpy(attribName, "DW_AT_language");
+    //                             break;
+
+    //                         case DW_AT_member:
+    //                             strcpy(attribName, "DW_AT_member");
+    //                             break;
+
+    //                         case DW_AT_discr:
+    //                             strcpy(attribName, "DW_AT_discr");
+    //                             break;
+
+    //                         case DW_AT_discr_value:
+    //                             strcpy(attribName, "DW_AT_discr_value");
+    //                             break;
+
+    //                         case DW_AT_visibility:
+    //                             strcpy(attribName, "DW_AT_visibility");
+    //                             break;
+
+    //                         case DW_AT_import:
+    //                             strcpy(attribName, "DW_AT_import");
+    //                             break;
+
+    //                         case DW_AT_string_length:
+    //                             strcpy(attribName, "DW_AT_string_length");
+    //                             break;
+
+    //                         case DW_AT_common_reference:
+    //                             strcpy(attribName, "DW_AT_common_reference");
+    //                             break;
+
+    //                         case DW_AT_comp_dir:
+    //                             strcpy(attribName, "DW_AT_comp_dir");
+    //                             break;
+
+    //                         case DW_AT_const_value:
+    //                             strcpy(attribName, "DW_AT_const_value");
+    //                             break;
+
+    //                         case DW_AT_containing_type:
+    //                             strcpy(attribName, "DW_AT_containing_type");
+    //                             break;
+
+    //                         case DW_AT_default_value:
+    //                             strcpy(attribName, "DW_AT_default_value");
+    //                             break;
+
+    //                         case DW_AT_inline:
+    //                             strcpy(attribName, "DW_AT_inline");
+    //                             break;
+
+    //                         case DW_AT_is_optional:
+    //                             strcpy(attribName, "DW_AT_is_optional");
+    //                             break;
+
+    //                         case DW_AT_lower_bound:
+    //                             strcpy(attribName, "DW_AT_lower_bound");
+    //                             break;
+
+    //                         case DW_AT_producer:
+    //                             strcpy(attribName, "DW_AT_producer");
+    //                             break;
+
+    //                         case DW_AT_prototyped:
+    //                             strcpy(attribName, "DW_AT_prototyped");
+    //                             break;
+
+    //                         case DW_AT_return_addr:
+    //                             strcpy(attribName, "DW_AT_return_addr");
+    //                             break;
+
+    //                         case DW_AT_start_scope:
+    //                             strcpy(attribName, "DW_AT_start_scope");
+    //                             break;
+
+    //                         case DW_AT_bit_stride:
+    //                             strcpy(attribName, "DW_AT_bit_stride");
+    //                             break;
+
+    //                         case DW_AT_upper_bound:
+    //                             strcpy(attribName, "DW_AT_upper_bound");
+    //                             break;
+
+    //                         case DW_AT_abstract_origin:
+    //                             strcpy(attribName, "DW_AT_abstract_origin");
+    //                             break;
+
+    //                         case DW_AT_accessibility:
+    //                             strcpy(attribName, "DW_AT_accessibility");
+    //                             break;
+
+    //                         case DW_AT_address_class:
+    //                             strcpy(attribName, "DW_AT_address_class");
+    //                             break;
+
+    //                         case DW_AT_artificial:
+    //                             strcpy(attribName, "DW_AT_artificial");
+    //                             break;
+
+    //                         case DW_AT_base_types:
+    //                             strcpy(attribName, "DW_AT_base_types");
+    //                             break;
+
+    //                         case DW_AT_calling_convention:
+    //                             strcpy(attribName, "DW_AT_calling_convention");
+    //                             break;
+
+    //                         case DW_AT_count:
+    //                             strcpy(attribName, "DW_AT_count");
+    //                             break;
+
+    //                         case DW_AT_data_member_location:
+    //                             strcpy(attribName, "DW_AT_data_member_location");
+    //                             break;
+
+    //                         case DW_AT_decl_column:
+    //                             strcpy(attribName, "DW_AT_decl_column");
+    //                             break;
+
+    //                         case DW_AT_decl_file:
+    //                             strcpy(attribName, "DW_AT_decl_file");
+    //                             break;
+
+    //                         case DW_AT_decl_line:
+    //                             strcpy(attribName, "DW_AT_decl_line");
+    //                             break;
+
+    //                         case DW_AT_declaration:
+    //                             strcpy(attribName, "DW_AT_declaration");
+    //                             break;
+
+    //                         case DW_AT_discr_list:
+    //                             strcpy(attribName, "DW_AT_discr_list");
+    //                             break;
+
+    //                         case DW_AT_encoding:
+    //                             strcpy(attribName, "DW_AT_encoding");
+    //                             break;
+
+    //                         case DW_AT_external:
+    //                             strcpy(attribName, "DW_AT_external");
+    //                             break;
+
+    //                         case DW_AT_frame_base:
+    //                             strcpy(attribName, "DW_AT_frame_base");
+    //                             break;
+
+    //                         case DW_AT_friend:
+    //                             strcpy(attribName, "DW_AT_friend");
+    //                             break;
+
+    //                         case DW_AT_identifier_case:
+    //                             strcpy(attribName, "DW_AT_identifier_case");
+    //                             break;
+
+    //                         case DW_AT_macro_info:
+    //                             strcpy(attribName, "DW_AT_macro_info");
+    //                             printf("DW_AT_macro_info************************\n");
+    //                             break;
+
+    //                         case DW_AT_namelist_item:
+    //                             strcpy(attribName, "DW_AT_namelist_item");
+    //                             break;
+
+    //                         case DW_AT_priority:
+    //                             strcpy(attribName, "DW_AT_priority");
+    //                             break;
+
+    //                         case DW_AT_segment:
+    //                             strcpy(attribName, "DW_AT_segment");
+    //                             break;
+
+    //                         case DW_AT_specification:
+    //                             strcpy(attribName, "DW_AT_specification");
+    //                             break;
+
+    //                         case DW_AT_static_link:
+    //                             strcpy(attribName, "DW_AT_static_link");
+    //                             break;
+
+    //                         case DW_AT_type:
+    //                             strcpy(attribName, "DW_AT_type");
+    //                             break;
+
+    //                         case DW_AT_use_location:
+    //                             strcpy(attribName, "DW_AT_use_location");
+    //                             break;
+
+    //                         case DW_AT_variable_parameter:
+    //                             strcpy(attribName, "DW_AT_variable_parameter");
+    //                             break;
+
+    //                         case DW_AT_virtuality:
+    //                             strcpy(attribName, "DW_AT_virtuality");
+    //                             break;
+
+    //                         case DW_AT_vtable_elem_location:
+    //                             strcpy(attribName, "DW_AT_vtable_elem_location");
+    //                             break;
+
+    //                         case DW_AT_allocated:
+    //                             strcpy(attribName, "DW_AT_allocated");
+    //                             break;
+
+    //                         case DW_AT_associated:
+    //                             strcpy(attribName, "DW_AT_associated");
+    //                             break;
+
+    //                         case DW_AT_data_location:
+    //                             strcpy(attribName, "DW_AT_data_location");
+    //                             break;
+
+    //                         case DW_AT_byte_stride:
+    //                             strcpy(attribName, "DW_AT_byte_stride");
+    //                             break;
+
+    //                         case DW_AT_entry_pc:
+    //                             strcpy(attribName, "DW_AT_entry_pc");
+    //                             break;
+
+    //                         case DW_AT_use_UTF8:
+    //                             strcpy(attribName, "DW_AT_use_UTF8");
+    //                             break;
+
+    //                         case DW_AT_extension:
+    //                             strcpy(attribName, "DW_AT_extension");
+    //                             break;
+
+    //                         case DW_AT_ranges:
+    //                             strcpy(attribName, "DW_AT_ranges");
+    //                             break;
+
+    //                         case DW_AT_trampoline:
+    //                             strcpy(attribName, "DW_AT_trampoline");
+    //                             break;
+
+    //                         case DW_AT_call_column:
+    //                             strcpy(attribName, "DW_AT_call_column");
+    //                             break;
+
+    //                         case DW_AT_call_file:
+    //                             strcpy(attribName, "DW_AT_call_file");
+    //                             break;
+
+    //                         case DW_AT_call_line:
+    //                             strcpy(attribName, "DW_AT_call_line");
+    //                             break;
+
+    //                         case DW_AT_description:
+    //                             strcpy(attribName, "DW_AT_description");
+    //                             break;
+
+    //                         case DW_AT_binary_scale:
+    //                             strcpy(attribName, "DW_AT_binary_scale");
+    //                             break;
+
+    //                         case DW_AT_decimal_scale:
+    //                             strcpy(attribName, "DW_AT_decimal_scale");
+    //                             break;
+
+    //                         case DW_AT_small:
+    //                             strcpy(attribName, "DW_AT_small");
+    //                             break;
+
+    //                         case DW_AT_decimal_sign:
+    //                             strcpy(attribName, "DW_AT_decimal_sign");
+    //                             break;
+
+    //                         case DW_AT_digit_count:
+    //                             strcpy(attribName, "DW_AT_digit_count");
+    //                             break;
+
+    //                         case DW_AT_picture_string:
+    //                             strcpy(attribName, "DW_AT_picture_string");
+    //                             break;
+
+    //                         case DW_AT_mutable:
+    //                             strcpy(attribName, "DW_AT_mutable");
+    //                             break;
+
+    //                         case DW_AT_threads_scaled:
+    //                             strcpy(attribName, "DW_AT_threads_scaled");
+    //                             break;
+
+    //                         case DW_AT_explicit:
+    //                             strcpy(attribName, "DW_AT_explicit");
+    //                             break;
+
+    //                         case DW_AT_object_pointer:
+    //                             strcpy(attribName, "DW_AT_object_pointer");
+    //                             break;
+
+    //                         case DW_AT_endianity:
+    //                             strcpy(attribName, "DW_AT_endianity");
+    //                             break;
+
+    //                         case DW_AT_elemental:
+    //                             strcpy(attribName, "DW_AT_elemental");
+    //                             break;
+
+    //                         case DW_AT_pure:
+    //                             strcpy(attribName, "DW_AT_pure");
+    //                             break;
+
+    //                         case DW_AT_recursive:
+    //                             strcpy(attribName, "DW_AT_recursive");
+    //                             break;
+
+    //                         case DW_AT_signature:
+    //                             strcpy(attribName, "DW_AT_signature");
+    //                             break;
+
+    //                         case DW_AT_main_subprogram:
+    //                             strcpy(attribName, "DW_AT_main_subprogram");
+    //                             break;
+
+    //                         case DW_AT_data_bit_offset:
+    //                             strcpy(attribName, "DW_AT_data_bit_offset");
+    //                             break;
+
+    //                         case DW_AT_const_expr:
+    //                             strcpy(attribName, "DW_AT_const_expr");
+    //                             break;
+
+    //                         case DW_AT_enum_class:
+    //                             strcpy(attribName, "DW_AT_enum_class");
+    //                             break;
+
+    //                         case DW_AT_linkage_name:
+    //                             strcpy(attribName, "DW_AT_linkage_name");
+    //                             break;
+
+    //                         case DW_AT_string_length_bit_size:
+    //                             strcpy(attribName, "DW_AT_string_length_bit_size");
+    //                             break;
+
+    //                         case DW_AT_string_length_byte_size:
+    //                             strcpy(attribName, "DW_AT_string_length_byte_size");
+    //                             break;
+
+    //                         case DW_AT_rank:
+    //                             strcpy(attribName, "DW_AT_rank");
+    //                             break;
+
+    //                         case DW_AT_str_offsets_base:
+    //                             strcpy(attribName, "DW_AT_str_offsets_base");
+    //                             break;
+
+    //                         case DW_AT_addr_base:
+    //                             strcpy(attribName, "DW_AT_addr_base");
+    //                             break;
+
+    //                         case DW_AT_rnglists_base:
+    //                             strcpy(attribName, "DW_AT_rnglists_base");
+    //                             break;
+
+    //                         case DW_AT_dwo_id:
+    //                             strcpy(attribName, "DW_AT_dwo_id");
+    //                             break;
+
+    //                         case DW_AT_dwo_name:
+    //                             strcpy(attribName, "DW_AT_dwo_name");
+    //                             break;
+
+    //                         case DW_AT_reference:
+    //                             strcpy(attribName, "DW_AT_reference");
+    //                             break;
+
+    //                         case DW_AT_rvalue_reference:
+    //                             strcpy(attribName, "DW_AT_rvalue_reference");
+    //                             break;
+
+    //                         case DW_AT_macros:
+    //                             strcpy(attribName, "DW_AT_macros");
+    //                             printf("DW_AT_macros\n");
+    //                             break;
+
+    //                         case DW_AT_call_all_calls:
+    //                             strcpy(attribName, "DW_AT_call_all_calls");
+    //                             break;
+
+    //                         case DW_AT_call_all_source_calls:
+    //                             strcpy(attribName, "DW_AT_call_all_source_calls");
+    //                             break;
+
+    //                         case DW_AT_call_all_tail_calls:
+    //                             strcpy(attribName, "DW_AT_call_all_tail_calls");
+    //                             break;
+
+    //                         case DW_AT_call_return_pc:
+    //                             strcpy(attribName, "DW_AT_call_return_pc");
+    //                             break;
+
+    //                         case DW_AT_call_value:
+    //                             strcpy(attribName, "DW_AT_call_value");
+    //                             break;
+
+    //                         case DW_AT_call_origin:
+    //                             strcpy(attribName, "DW_AT_call_origin");
+    //                             break;
+
+    //                         case DW_AT_call_parameter:
+    //                             strcpy(attribName, "DW_AT_call_parameter");
+    //                             break;
+
+    //                         case DW_AT_call_pc:
+    //                             strcpy(attribName, "DW_AT_call_pc");
+    //                             break;
+
+    //                         case DW_AT_call_tail_call:
+    //                             strcpy(attribName, "DW_AT_call_tail_call");
+    //                             break;
+
+    //                         case DW_AT_call_target:
+    //                             strcpy(attribName, "DW_AT_call_target");
+    //                             break;
+
+    //                         case DW_AT_call_target_clobbered:
+    //                             strcpy(attribName, "DW_AT_call_target_clobbered");
+    //                             break;
+
+    //                         case DW_AT_call_data_location:
+    //                             strcpy(attribName, "DW_AT_call_data_location");
+    //                             break;
+
+    //                         case DW_AT_call_data_value:
+    //                             strcpy(attribName, "DW_AT_call_data_value");
+    //                             break;
+
+    //                         case DW_AT_noreturn:
+    //                             strcpy(attribName, "DW_AT_noreturn");
+    //                             break;
+
+    //                         case DW_AT_alignment:
+    //                             strcpy(attribName, "DW_AT_alignment");
+    //                             break;
+
+    //                         case DW_AT_export_symbols:
+    //                             strcpy(attribName, "DW_AT_export_symbols");
+    //                             break;
+
+    //                         case DW_AT_deleted:
+    //                             strcpy(attribName, "DW_AT_deleted");
+    //                             break;
+
+    //                         case DW_AT_defaulted:
+    //                             strcpy(attribName, "DW_AT_defaulted");
+    //                             break;
+
+    //                         case DW_AT_loclists_base:
+    //                             strcpy(attribName, "DW_AT_loclists_base");
+    //                             break;
+
+    //                         default:
+    //                             sprintf(attribName, "UNKNOWN (%x)", attrNum);
+    //                             break;
+    //                     }
+
+    //                     res = dwarf_whatform(attribs[i], &attrNum, &error);
+    //                     if (res != DW_DLV_OK)
+    //                     {
+    //                         logger.logError("Error in dwarf_whatattr.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //                     }
+    //                     else
+    //                     {
+    //                         res = dwarf_whatform(attribs[i], &formID, &error);
+    //                         if (res != DW_DLV_OK)
+    //                         {
+    //                             logger.logError("Error in dwarf_whatform.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //                         }
+    //                         else
+    //                         {
+    //                             switch (formID)
+    //                             {
+    //                                 case DW_FORM_addr:
+    //                                 {
+    //                                     Dwarf_Addr addr = 0;
+
+    //                                     strcpy(formName, "DW_FORM_addr");
+
+    //                                     res = dwarf_formaddr(attribs[i], &addr, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in DW_FORM_addr.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         unsigned long long data = (unsigned int)addr;
+    //                                         sprintf(value, "0x%016x", data);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_block2:
+    //                                 {
+    //                                     Dwarf_Unsigned udata = 0;
+
+    //                                     strcpy(formName, "DW_FORM_block2");
+
+    //                                     res = dwarf_formudata(attribs[i], &udata, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         unsigned short data = (unsigned short)udata;
+    //                                         sprintf(value, "%d", data);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_block4:
+    //                                 {
+    //                                     Dwarf_Unsigned udata = 0;
+
+    //                                     strcpy(formName, "DW_FORM_block4");
+
+    //                                     res = dwarf_formudata(attribs[i], &udata, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in DW_FORM_block4.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         unsigned int data = (unsigned int)udata;
+    //                                         sprintf(value, "%d", data);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_data2:
+    //                                 {
+    //                                     Dwarf_Unsigned udata = 0;
+
+    //                                     strcpy(formName, "DW_FORM_data2");
+
+    //                                     res = dwarf_formudata(attribs[i], &udata, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in DW_FORM_data2.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         unsigned short int data = (unsigned short int)udata;
+    //                                         sprintf(value, "%d", data);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_data4:
+    //                                 {
+    //                                     Dwarf_Unsigned udata = 0;
+
+    //                                     strcpy(formName, "DW_FORM_data4");
+    //                                     res = dwarf_formudata(attribs[i], &udata, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         unsigned int data = (unsigned int)udata;
+    //                                         sprintf(value, "%d", data);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_data8:
+    //                                 {
+    //                                     Dwarf_Unsigned udata = 0;
+
+    //                                     strcpy(formName, "DW_FORM_data8");
+
+    //                                     res = dwarf_formudata(attribs[i], &udata, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         sprintf(value, "%d", udata);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_string:
+    //                                 {
+    //                                     char *str = 0;
+
+    //                                     strcpy(formName, "DW_FORM_string");
+
+    //                                     res = dwarf_formstring(attribs[i], &str, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         sprintf(value, "%s", str);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_block:
+    //                                     strcpy(formName, "DW_FORM_block");
+    //                                     break;
+
+    //                                 case DW_FORM_block1:
+    //                                 {
+    //                                     Dwarf_Block *bdata = 0;
+    //                                     strcpy(formName, "DW_FORM_block1");
+
+    //                                     res = dwarf_formblock(attribs[i], &bdata, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formblock.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         sprintf(value, "len: %d", bdata->bl_len);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_data1:
+    //                                 {
+    //                                     Dwarf_Unsigned udata = 0;
+    //                                     strcpy(formName, "DW_FORM_data1");
+
+    //                                     res = dwarf_formudata(attribs[i], &udata, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         uint8_t data = (uint8_t)udata;
+    //                                         sprintf(value, "%u", data);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_flag:
+    //                                 {
+    //                                     Dwarf_Bool dwarfBool = false;
+    //                                     strcpy(formName, "DW_FORM_flag");
+    //                                     char *strp = 0;
+
+    //                                     res        = dwarf_formflag(attribs[i], &dwarfBool, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in DW_FORM_flag.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         if (dwarfBool)
+    //                                         {
+    //                                             sprintf(value, "TRUE");
+    //                                         }
+    //                                         else
+    //                                         {
+    //                                             sprintf(value, "FALSE");
+    //                                         }
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_sdata:
+    //                                 {
+    //                                     Dwarf_Signed sdata = 0;
+
+    //                                     strcpy(formName, "DW_FORM_sdata");
+
+    //                                     res = dwarf_formsdata(attribs[i], &sdata, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         sprintf(value, "%lli", sdata);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_strp:
+    //                                 {
+    //                                     char *strp = 0;
+
+    //                                     strcpy(formName, "DW_FORM_strp");
+
+    //                                     res = dwarf_formstring(attribs[i], &strp, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         char *text = dwarfStringToChar(strp);
+    //                                         sprintf(value, "%s", text);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_udata:
+    //                                 {
+    //                                     Dwarf_Unsigned udata = 0;
+
+    //                                     strcpy(formName, "DW_FORM_udata");
+
+    //                                     res = dwarf_formudata(attribs[i], &udata, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         sprintf(value, "%llu", udata);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_ref_addr:
+    //                                     strcpy(formName, "DW_FORM_ref_addr");
+    //                                     break;
+
+    //                                 case DW_FORM_ref1:
+    //                                 {
+    //                                     Dwarf_Off ref = 0;
+
+    //                                     strcpy(formName, "DW_FORM_ref1");
+    //                                     res = dwarf_formref(attribs[i], &ref, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         uint8_t data = (uint8_t)ref;
+    //                                         sprintf(value, "%u", data);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_ref2:
+    //                                 {
+    //                                     Dwarf_Off ref = 0;
+
+    //                                     strcpy(formName, "DW_FORM_ref1");
+    //                                     res = dwarf_formref(attribs[i], &ref, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         unsigned short int data = (unsigned short int)ref;
+    //                                         sprintf(value, "%u", data);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_ref4:
+    //                                 {
+    //                                     Dwarf_Off ref = 0;
+
+    //                                     strcpy(formName, "DW_FORM_ref1");
+    //                                     res = dwarf_formref(attribs[i], &ref, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         unsigned int data = (unsigned int)ref;
+    //                                         sprintf(value, "%u", data);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_ref8:
+    //                                 {
+    //                                     Dwarf_Off ref = 0;
+
+    //                                     strcpy(formName, "DW_FORM_ref1");
+    //                                     res = dwarf_formref(attribs[i], &ref, &error);
+    //                                     if (res != DW_DLV_OK)
+    //                                     {
+    //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //                                                         dwarf_errmsg(error));
+    //                                     }
+    //                                     else
+    //                                     {
+    //                                         sprintf(value, "%llu", ref);
+    //                                     }
+
+    //                                     break;
+    //                                 }
+
+    //                                 case DW_FORM_ref_udata:
+    //                                     strcpy(formName, "DW_FORM_ref_udata");
+    //                                     break;
+
+    //                                 case DW_FORM_indirect:
+    //                                     strcpy(formName, "DW_FORM_indirect");
+    //                                     break;
+
+    //                                 case DW_FORM_sec_offset:
+    //                                     strcpy(formName, "DW_FORM_sec_offset");
+    //                                     break;
+
+    //                                 case DW_FORM_exprloc:
+    //                                     strcpy(formName, "DW_FORM_exprloc");
+    //                                     break;
+
+    //                                 case DW_FORM_flag_present:
+    //                                     strcpy(formName, "DW_FORM_flag_present");
+    //                                     break;
+
+    //                                 case DW_FORM_strx:
+    //                                     strcpy(formName, "DW_FORM_strx");
+    //                                     break;
+
+    //                                 case DW_FORM_addrx:
+    //                                     strcpy(formName, "DW_FORM_addrx");
+    //                                     break;
+
+    //                                 case DW_FORM_ref_sup4:
+    //                                     strcpy(formName, "DW_FORM_ref_sup4");
+    //                                     break;
+
+    //                                 case DW_FORM_strp_sup:
+    //                                     strcpy(formName, "DW_FORM_strp_sup");
+    //                                     break;
+
+    //                                 case DW_FORM_data16:
+    //                                     strcpy(formName, "DW_FORM_data16");
+    //                                     break;
+
+    //                                 case DW_FORM_line_strp:
+    //                                     strcpy(formName, "DW_FORM_line_strp");
+    //                                     break;
+
+    //                                 case DW_FORM_ref_sig8:
+    //                                     strcpy(formName, "DW_FORM_ref_sig8");
+    //                                     break;
+
+    //                                 case DW_FORM_implicit_const:
+    //                                     strcpy(formName, "DW_FORM_implicit_const");
+    //                                     break;
+
+    //                                 case DW_FORM_loclistx:
+    //                                     strcpy(formName, "DW_FORM_loclistx");
+    //                                     break;
+
+    //                                 case DW_FORM_rnglistx:
+    //                                     strcpy(formName, "DW_FORM_rnglistx");
+    //                                     break;
+
+    //                                 case DW_FORM_ref_sup8:
+    //                                     strcpy(formName, "DW_FORM_ref_sup8");
+    //                                     break;
+
+    //                                 case DW_FORM_strx1:
+    //                                     strcpy(formName, "DW_FORM_strx1");
+    //                                     break;
+
+    //                                 case DW_FORM_strx2:
+    //                                     strcpy(formName, "DW_FORM_strx2");
+    //                                     break;
+
+    //                                 case DW_FORM_strx3:
+    //                                     strcpy(formName, "DW_FORM_strx3");
+    //                                     break;
+
+    //                                 case DW_FORM_strx4:
+    //                                     strcpy(formName, "DW_FORM_strx4");
+    //                                     break;
+
+    //                                 case DW_FORM_addrx1:
+    //                                     strcpy(formName, "DW_FORM_addrx1");
+    //                                     break;
+
+    //                                 case DW_FORM_addrx2:
+    //                                     strcpy(formName, "DW_FORM_addrx2");
+    //                                     break;
+
+    //                                 case DW_FORM_addrx3:
+    //                                     strcpy(formName, "DW_FORM_addrx3");
+    //                                     break;
+
+    //                                 case DW_FORM_addrx4:
+    //                                     strcpy(formName, "DW_FORM_addrx4");
+    //                                     break;
+
+    //                                 case DW_FORM_GNU_addr_index:
+    //                                     strcpy(formName, "DW_FORM_GNU_addr_index");
+    //                                     break;
+
+    //                                 case DW_FORM_GNU_str_index:
+    //                                     strcpy(formName, "DW_FORM_GNU_str_index");
+    //                                     break;
+
+    //                                 case DW_FORM_GNU_ref_alt:
+    //                                     strcpy(formName, "DW_FORM_GNU_ref_alt");
+    //                                     break;
+
+    //                                 case DW_FORM_GNU_strp_alt:
+    //                                     strcpy(formName, "DW_FORM_GNU_strp_alt");
+    //                                     break;
+
+    //                                 default:
+    //                                     sprintf(formName, "UNKNOWN (%x)", formID);
+    //                                     break;
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+
+    //                 sprintf(line, "                       %-20s : %-20s (%s)\n", attribName, value, formName);
+    //                 strcat(output, line);
+    //             }
+    //         }
+    //     }
+
+    //     //        res = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
+    //     //        if(res == DW_DLV_OK)
+    //     //        {
+    //     //            res = dwarf_formstring(attr_struct, &dieName, &error);
+    //     //            if(res != DW_DLV_OK)
+    //     //            {
+    //     //                logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
+    //     //                        dwarf_errmsg(error));
+    //     //            }
+    //     //            else
+    //     //            {
+    //     //                sprintf(line, "            DW_AT_name        : %s", dieName);
+    //     //                strcpy(output, line);
+    //     //            }
+    //     //        }
+    //     //
+    //     //        res = dwarf_die_abbrev_children_flag(inDie, &hasChildrenFlag);
+    //     //        if(res != DW_DLV_OK)
+    //     //        {
+    //     //            logger.logError("Error in dwarf_die_abbrev_children_flag.  errno=%u %s", dwarf_errno(error),
+    //     //                    dwarf_errmsg(error));
+    //     //        }
+
+    //     //        else
+    //     //        {
+    //     //        	logger.logDebug("  Has children:        %s", hasChildrenFlag ? "True" : "False");
+    //     //        }
+    //     //
+    //     //        int dwarf_die_abbrev_children_flag(Dwarf_Die /*die*/,
+    //     //            Dwarf_Half * /*ab_has_child*/);
+    //     //
+    //     //        res = dwarf_attrlist(inDie, &attribs, &attribCount, &error);
+    //     //        if(res != DW_DLV_OK)
+    //     //        {
+    //     //            logger.logError("Error in dwarf_attrlist.  errno=%u %s", dwarf_errno(error),
+    //     //                    dwarf_errmsg(error));
+    //     //        }
+    //     //        else
+    //     //        {
+    //     //            if(attribCount > 0)
+    //     //            {
+    //     //            	logger.logDebug("  Attributes:");
+    //     //                for(uint32_t i = 0; i < attribCount; ++i)
+    //     //                {
+    //     //                    Dwarf_Half attrNum;
+    //     //                    res = dwarf_whatattr(attribs[i], &attrNum, &error);
+    //     //                    if(res != DW_DLV_OK)
+    //     //                    {
+    //     //                        logger.logError("Error in dwarf_whatattr.  errno=%u %s", dwarf_errno(error),
+    //     //                                dwarf_errmsg(error));
+    //     //                    }
+    //     //                    else
+    //     //                    {
+    //     //                        Dwarf_Half formID;
+    //     //
+    //     //                        switch(attrNum)
+    //     //                        {
+    //     //                            case DW_AT_sibling:
+    //     //                            	logger.logDebug("    DW_AT_sibling");
+    //     //                                break;
+    //     //
+    //     //                            case DW_AT_location:
+    //     //                            	logger.logDebug("    DW_AT_location");
+    //     //                                break;
+    //     //
+    //     //                            case DW_AT_name:
+    //     //                            	logger.logDebug("    DW_AT_name");
+    //     //                                break;
+    //     //
+    //     //                            case DW_AT_ordering:
+    //     //                            	logger.logDebug("    DW_AT_ordering");
+    //     //                                break;
+    //     //
+    //     //                            case DW_AT_subscr_data:
+    //     //                            	logger.logDebug("    DW_AT_subscr_data");
+    //     //                                break;
+    //     //
+    //     //                            case DW_AT_byte_size:
+    //     //                            	logger.logDebug("    DW_AT_byte_size");
+    //     //                                break;
+    //     //
+    //     //                            case DW_AT_decl_file:
+    //     //                            	logger.logDebug("    DW_AT_decl_file");
+    //     //                                break;
+    //     //
+    //     //                            case DW_AT_decl_line:
+    //     //                            	logger.logDebug("    DW_AT_decl_line");
+    //     //                                break;
+    //     //
+    //     //                            case DW_AT_type:
+    //     //                            	logger.logDebug("    DW_AT_type");
+    //     //                                break;
+    //     //
+    //     //                            default:
+    //     //                            	logger.logDebug("    0x%02x", attrNum);
+    //     //                                break;
+    //     //                        }
+    //     //
+    //     //                        res = dwarf_whatform(attribs[i], &attrNum, &error);
+    //     //                        if(res != DW_DLV_OK)
+    //     //                        {
+    //     //                            logger.logError("Error in dwarf_whatattr.  errno=%u %s", dwarf_errno(error),
+    //     //                                    dwarf_errmsg(error));
+    //     //                        }
+    //     //                        else
+    //     //                        {
+    //     //                            res = dwarf_whatform(attribs[i], &formID, &error);
+    //     //                            if(res != DW_DLV_OK)
+    //     //                            {
+    //     //                                logger.logError("Error in dwarf_whatform.  errno=%u %s", dwarf_errno(error),
+    //     //                                        dwarf_errmsg(error));
+    //     //                            }
+    //     //                            else
+    //     //                            {
+    //     //                                switch(formID)
+    //     //                                {
+    //     //                                    case DW_FORM_addr:
+    //     //                                    	logger.logDebug(":DW_FORM_addr");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_block2:
+    //     //                                    	logger.logDebug(":DW_FORM_block2");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_block4:
+    //     //                                    	logger.logDebug(":DW_FORM_block4");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_data1:
+    //     //                                    {
+    //     //                                        Dwarf_Unsigned udata = 0;
+    //     //                                        res = dwarf_formudata(attribs[i], &udata, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                            char data = (char) udata;
+    //     //                                            logger.logDebug(":DW_FORM_data1:%u", data);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_data2:
+    //     //                                    {
+    //     //                                        Dwarf_Unsigned udata = 0;
+    //     //                                        res = dwarf_formudata(attribs[i], &udata, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                            unsigned short data = (unsigned short) udata;
+    //     //                                            logger.logDebug(":DW_FORM_data2:%u", data);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_data4:
+    //     //                                    {
+    //     //                                        Dwarf_Unsigned udata = 0;
+    //     //                                        res = dwarf_formudata(attribs[i], &udata, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                            unsigned int data = (unsigned int) udata;
+    //     //                                            logger.logDebug(":DW_FORM_data4:%u", data);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_data8:
+    //     //                                    {
+    //     //                                        Dwarf_Unsigned udata = 0;
+    //     //                                        res = dwarf_formudata(attribs[i], &udata, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                        	logger.logDebug(":DW_FORM_data8:%llu", udata);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_string:
+    //     //                                    {
+    //     //                                        char *str = 0;
+    //     //                                        res = dwarf_formstring(attribs[i], &str, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                                            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                        	logger.logDebug(":DW_FORM_string:%s", str);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_block:
+    //     //                                    	logger.logDebug(":DW_FORM_block");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_sdata:
+    //     //                                    	logger.logDebug(":DW_FORM_sdata");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_strp:
+    //     //                                    {
+    //     //                                        char *strp = 0;
+    //     //                                        res = dwarf_formstring(attribs[i], &strp, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                                            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                            char *text = dwarfStringToChar(strp);
+    //     //                                            logger.logDebug(":DW_FORM_strp:%s", text);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_udata:
+    //     //                                    {
+    //     //                                        Dwarf_Unsigned udata = 0;
+    //     //                                        res = dwarf_formudata(attribs[i], &udata, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                        	logger.logDebug(":DW_FORM_udata:%llu", udata);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_ref_addr:
+    //     //                                    	logger.logDebug(":DW_FORM_ref_addr");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_ref1:
+    //     //                                    {
+    //     //                                        Dwarf_Off ref = 0;
+    //     //                                        res = dwarf_formref(attribs[i], &ref, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                            				logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                            char data = (char) ref;
+    //     //                                            logger.logDebug(":DW_FORM_ref1:%u", data);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_ref2:
+    //     //                                    {
+    //     //                                        Dwarf_Off ref = 0;
+    //     //                                        res = dwarf_formref(attribs[i], &ref, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                                            logger.logError("Error in dwarf_formref.  errno=%u %s", dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                            unsigned short int data = (unsigned short int) ref;
+    //     //                                            logger.logDebug(":DW_FORM_ref2:%u", data);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_ref4:
+    //     //                                    {
+    //     //                                        Dwarf_Off ref = 0;
+    //     //                                        res = dwarf_formref(attribs[i], &ref, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                                            logger.logError("Error in dwarf_formref.  errno=%u %s", dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                            unsigned int data = (unsigned int) ref;
+    //     //                                            logger.logDebug(":DW_FORM_ref4:%u", data);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_ref8:
+    //     //                                    {
+    //     //                                        Dwarf_Off ref = 0;
+    //     //                                        res = dwarf_formref(attribs[i], &ref, &error);
+    //     //                                        if(res != DW_DLV_OK)
+    //     //                                        {
+    //     //                                            logger.logError("Error in dwarf_formref.  errno=%u %s", dwarf_errno(error),
+    //     //                                                    dwarf_errmsg(error));
+    //     //                                        }
+    //     //                                        else
+    //     //                                        {
+    //     //                                        	logger.logDebug(":DW_FORM_ref4:%llu", ref);
+    //     //                                        }
+    //     //                                        break;
+    //     //                                    }
+    //     //
+    //     //                                    case DW_FORM_ref_udata:
+    //     //                                    	logger.logDebug(":DW_FORM_ref_udata");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_indirect:
+    //     //                                    	logger.logDebug(":DW_FORM_indirect");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_sec_offset:
+    //     //                                    	logger.logDebug(":DW_FORM_sec_offset");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_exprloc:
+    //     //                                    	logger.logDebug(":DW_FORM_exprloc");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_flag_present:
+    //     //                                    	logger.logDebug(":DW_FORM_flag_present");
+    //     //                                        break;
+    //     //
+    //     //                                    case DW_FORM_ref_sig8:
+    //     //                                    	logger.logDebug(":DW_FORM_ref_sig8");
+    //     //                                        break;
+    //     //
+    //     //                                    default:
+    //     //                                    	logger.logDebug(":0x%02x", formID);
+    //     //                                        break;
+    //     //
+    //     //                                }
+    //     //                            }
+    //     //                        }
+    //     //                    }
+    //     //                }
+    //     //                logger.logDebug("\n");
+    //     //            }
+    //     //        }
+
+    //     logger.logDebug(output);
+    // }
 }
 
 Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
@@ -3226,10 +3113,11 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
     Dwarf_Attribute attr_struct;
     Symbol         *outSymbol = nullptr;
     std::string     cName;
-    Dwarf_Error     error = 0;
+    Dwarf_Error     error         = 0;
+    Dwarf_Signed    encodingValue = -1;
 
     /* Get the name attribute of this Die. */
-    res                   = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
+    res                           = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
     if (res != DW_DLV_OK)
     {
         logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
@@ -3254,6 +3142,21 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
     else
     {
         cName = dieName;
+    }
+
+    res = dwarf_attr(inDie, DW_AT_encoding, &attr_struct, &error);
+    if (res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+    }
+
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_formsdata(attr_struct, &encodingValue, &error);
+        if (res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
     }
 
     outSymbol = elf.getSymbol(cName);
@@ -3316,7 +3219,16 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
 
                         if (pathIndex != 0)
                         {
-                            Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex - 1)};
+                            /**
+                             * Why we are checking against 0 as per DWARF section 2.14:
+                             *
+                             * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                             * information table for the compilation unit containing the debugging information entry and
+                             * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                             * indicates that no source file has been specified.
+                             *
+                             */
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
@@ -3342,6 +3254,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                     }
                 }
             }
+            outSymbol->setEncoding(encodingValue);
         }
     }
 
@@ -3355,6 +3268,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile &elf, Symbol &symbol, Dwarf
     Dwarf_Die       enumeratorDie = 0;
     Dwarf_Signed    encodingValue;
     Dwarf_Error     error = 0;
+    std::string     symbolEncoding{};
 
     /* Get the fields by getting the first child. */
     if (res == DW_DLV_OK)
@@ -3446,13 +3360,15 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile &elf, Symbol &symbol, Dwarf
             {
                 case DW_ATE_signed:
                 {
-                    res = dwarf_formsdata(attr_struct, &enumeratorValue, &error);
+                    res            = dwarf_formsdata(attr_struct, &enumeratorValue, &error);
+                    symbolEncoding = "DW_ATE_signed";
                     break;
                 }
 
                 case DW_ATE_unsigned:
                 {
-                    res = dwarf_formudata(attr_struct, (Dwarf_Unsigned *)&enumeratorValue, &error);
+                    res            = dwarf_formudata(attr_struct, (Dwarf_Unsigned *)&enumeratorValue, &error);
+                    symbolEncoding = "DW_ATE_unsigned";
                     break;
                 }
                 default:
@@ -3474,6 +3390,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile &elf, Symbol &symbol, Dwarf
             Dwarf_Die   siblingDie      = 0;
 
             symbol.addEnumeration(sEnumeratorName, enumeratorValue);
+            symbol.setEncoding(encodingValue);
 
             res = dwarf_siblingof(dbg, enumeratorDie, &siblingDie, &error);
             if (res == DW_DLV_ERROR)
@@ -3545,6 +3462,10 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
             /* Set the error code so we don't do anymore processing. */
             res = DW_DLV_ERROR;
         }
+        else
+        {
+            // FIXME:Handle else case
+        }
     }
 
     /* Get the size of this datatype. */
@@ -3588,17 +3509,26 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
 
             if (pathIndex != 0)
             {
-                Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex - 1)};
+                /**
+                 * Why we are checking against 0 as per DWARF section 2.14:
+                 *
+                 * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                 * information table for the compilation unit containing the debugging information entry and
+                 * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                 * indicates that no source file has been specified.
+                 *
+                 */
+                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
             }
             else
             {
                 Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
                 std::string checkSum{};
                 newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
             }
         }
     }
@@ -4038,14 +3968,7 @@ void Juicer::addBitFields(Dwarf_Die dataMemberDie, Field &dataMemberField)
     Dwarf_Unsigned  bit_size    = 0;
     Dwarf_Error     error       = 0;
 
-    res                         = dwarf_attr(dataMemberDie, DW_AT_data_bit_offset, &attr_struct, &error);
-
-    if (DW_DLV_OK == res)
-    {
-        res = dwarf_formudata(attr_struct, &bit_offset, &error);
-    }
-
-    res = dwarf_attr(dataMemberDie, DW_AT_bit_size, &attr_struct, &error);
+    res                         = dwarf_attr(dataMemberDie, DW_AT_bit_size, &attr_struct, &error);
 
     if (DW_DLV_OK == res)
     {
@@ -4077,13 +4000,13 @@ void Juicer::addBitFields(Dwarf_Die dataMemberDie, Field &dataMemberField)
  */
 bool Juicer::isDWARFVersionSupported(Dwarf_Die inDie)
 {
-    bool       isSupported  = true;
+    bool isSupported       = true;
 
-    Dwarf_Half dwarfVersion = 0;
+    dwarfVersion           = 0;
 
-    Dwarf_Half dwarfOffset  = 0;
+    Dwarf_Half dwarfOffset = 0;
 
-    int        rec          = dwarf_get_version_of_die(inDie, &dwarfVersion, &dwarfOffset);
+    int        rec         = dwarf_get_version_of_die(inDie, &dwarfVersion, &dwarfOffset);
 
     if (rec != DW_DLV_OK)
     {
@@ -4217,7 +4140,16 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
                             if (pathIndex != 0)
                             {
-                                Artifact    newArtifact{elf, dbgSourceFiles.at(pathIndex - 1)};
+                                /**
+                                 * Why we are checking against 0 as per DWARF section 2.14:
+                                 *
+                                 * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                                 * information table for the compilation unit containing the debugging information entry and
+                                 * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                                 * indicates that no source file has been specified.
+                                 *
+                                 */
+                                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                                 newArtifact.setMD5(checkSum);
                                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
@@ -4229,6 +4161,13 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                                 newArtifact.setMD5(checkSum);
                                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
                             }
+                        }
+                        else
+                        {
+                            Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
+                            std::string checkSum{};
+                            newArtifact.setMD5(checkSum);
+                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
                         }
 
                         process_DW_TAG_structure_type(elf, *outSymbol, dbg, cur_die);
@@ -4338,11 +4277,6 @@ int Juicer::printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level)
         /* Do nothing */
     }
 
-    if (strcmp(name, "CFE_SB_TlmHdr_t") == 0)
-    {
-        printf("hello\n");
-    }
-
     if (tag != DW_TAG_structure_type)
     {
         res = dwarf_tag(print_me, &tag, &error);
@@ -4422,42 +4356,337 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
 
     if (buffer[EI_CLASS] == ELFCLASS64)
     {
-        size_t elfSectionCount = -1;
-        int    res             = elf_getshdrnum(elf, &elfSectionCount);
-
-        for (size_t i = 0; i < elfSectionCount; i++)
+        elfFileObj->setElfClass(ELFCLASS64);
         {
-            Elf_Scn *section = elf_getscn(elf, i);
-            std::cout << "section" << section << std::endl;
-        }
-        std::cout << "res:" << res << std::endl;
-
-        if (elf != NULL)
-        {
-            elf_hdr_64   = elf64_getehdr(elf);
-
-            ident_buffer = elf_hdr_64->e_ident;
-            if (ident_buffer[EI_DATA] == ELFDATA2LSB)
+            if (elf != NULL)
             {
-                rc = JUICER_ENDIAN_LITTLE;
-            }
-            else if (ident_buffer[EI_DATA] == ELFDATA2MSB)
-            {
-                rc = JUICER_ENDIAN_BIG;
+                elf_hdr_64             = elf64_getehdr(elf);
+                size_t elfSectionCount = 0;
+                int    res             = elf_getshdrnum(elf, &elfSectionCount);
+
+                logger.logInfo("Found %d elf sections", elfSectionCount);
+
+                for (size_t i = 0; i < elfSectionCount; i++)
+                {
+                    Elf_Scn    *section       = elf_getscn(elf, i);
+
+                    Elf64_Shdr *sectionHeader = elf64_getshdr(section);
+
+                    elfFileObj->addElf64SectionHeader(*sectionHeader);
+
+                    Elf32_Word sectionSize           = sectionHeader->sh_size;
+                    Elf32_Word sectionTableEntrySize = sectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB*/
+
+                    switch (sectionHeader->sh_type)
+                    {
+                        case SHT_NULL:
+                        {
+                            logger.logWarning("Section  SHT_NULL(%d) not supported.", SHT_NULL);
+                            break;
+                        }
+                        case SHT_PROGBITS:
+                        {
+                            logger.logWarning("Section  SHT_PROGBITS(%d) not supported.", SHT_PROGBITS);
+                            break;
+                        }
+                        case SHT_SYMTAB:
+                        {
+                            logger.logInfo("Extracting  SHT_SYMTAB(%d) at index(%d).", SHT_SYMTAB, i);
+                            logger.logInfo("Section Size:%d", sectionSize);
+                            logger.logInfo("Section Table Entry Size:%d", sectionTableEntrySize);
+
+                            Elf64_Word sectionSize           = sectionHeader->sh_size;
+                            Elf64_Word sectionTableEntrySize = sectionHeader->sh_entsize; /*Only relevant for tables such as SHT_SYMTAB*/
+
+                            int        numberOfSymbols       = sectionSize / sectionTableEntrySize;
+
+                            logger.logInfo("Found %d symbols in Elf", numberOfSymbols);
+
+                            Elf_Data *elfData = nullptr;
+                            elfData           = elf_getdata(section, elfData);
+                            if (elfData != nullptr)
+                            {
+                                logger.logInfo("elfData Size:%d", elfData->d_size);
+
+                                Elf64_Sym *sectionTableData = (Elf64_Sym *)elfData->d_buf;
+
+                                size_t     strTableIndex    = sectionHeader->sh_link;
+                                logger.logInfo("String table index for symbols:%d", strTableIndex);
+                                for (int i = 0; i < numberOfSymbols; i++)
+                                {
+                                    Elf64_Sym *symbol                          = sectionTableData;
+
+                                    uint32_t   symbolSectionFileOffset         = 0;
+                                    uint32_t   symbolSectionStrTableFileOffset = 0;
+
+                                    if (symbol->st_size > 0)
+                                    {
+                                        if (symbol->st_shndx == SHN_COMMON)
+                                        {
+                                            logger.logWarning("Ignoring symbol since it has SHN_COMMON as its st_shndx");
+                                        }
+                                        else
+                                        {
+                                            Elf_Scn    *stringTableSection                  = elf_getscn(elf, strTableIndex);
+                                            Elf64_Shdr *stringTableSectionHeader            = elf64_getshdr(stringTableSection);
+
+                                            Elf64_Xword stringTableSectionHeaderSectionSize = stringTableSectionHeader->sh_size;
+
+                                            if (symbol->st_name > 0)
+                                            {
+                                                char *currentStrTblPtr = elf_strptr(elf, strTableIndex, symbol->st_name);
+
+                                                if (currentStrTblPtr != nullptr)
+                                                {
+                                                    int         stringTableCursor = 0;
+                                                    std::string name{};
+                                                    while (currentStrTblPtr[stringTableCursor] != '\0')
+                                                    {
+                                                        name.push_back(currentStrTblPtr[stringTableCursor]);
+                                                        stringTableCursor++;
+                                                    }
+
+                                                    logger.logInfo(
+                                                        "Found symbol %s with size: %d, st_value:%u, st_name:%u, st_info:%u, st_other:%u, st_shndx:%u\n",
+                                                        name.c_str(), symbol->st_size, symbol->st_value, symbol->st_name, symbol->st_info, symbol->st_other,
+                                                        symbol->st_shndx);
+
+                                                    symbolSectionStrTableFileOffset = stringTableSectionHeader->sh_offset;
+
+                                                    //                            TODO:Map it to DWARF here.
+                                                    Elf_Scn    *symbolSectionData   = elf_getscn(elf, symbol->st_shndx);
+
+                                                    Elf64_Shdr *symbolSectionHeader = elf64_getshdr(symbolSectionData);
+
+                                                    if (symbolSectionHeader != nullptr)
+                                                    {
+                                                        //                                                    std::cout << "symbol data section file offset-->"
+                                                        //                                                    << symbolSectionHeader->sh_offset << std::endl;
+                                                        symbolSectionFileOffset = symbolSectionHeader->sh_offset;
+                                                    }
+
+                                                    Elf_Data *symbolSectionDataContents = nullptr;
+
+                                                    symbolSectionDataContents           = elf_getdata(symbolSectionData, symbolSectionDataContents);
+
+                                                    if (symbolSectionDataContents->d_type == ELF_T_BYTE)
+                                                    {
+                                                        uint8_t             *symbolDataCursor = (uint8_t *)symbolSectionDataContents->d_buf;
+
+                                                        std::vector<uint8_t> symbolData       = std::vector<uint8_t>();
+
+                                                        if (symbolDataCursor != nullptr)
+                                                        {
+                                                            for (int i = symbol->st_value; i < symbol->st_size; i++)
+                                                            {
+                                                                symbolData.push_back(symbolDataCursor[i]);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            logger.logWarning("Did not find size for symbol \"%d\"", name);
+                                                        }
+
+                                                        symbolToData.insert({name, symbolData});
+                                                    }
+                                                    else
+                                                    {
+                                                        logger.logWarning("Symbol %s ignored since ELF_T_BYTE was NOT found. Found %d type instead.",
+                                                                          name.c_str(), symbolSectionDataContents->d_type);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    elfFileObj->addElf64SymbolTableSymbol(Elf64Symbol{*symbol, symbolSectionFileOffset, symbolSectionStrTableFileOffset});
+                                    sectionTableData++;
+                                }
+                            }
+
+                            break;
+                        }
+                        case SHT_STRTAB:
+                        {
+                            logger.logWarning("Extracting SHT_STRTAB(%d) from section #%d.", SHT_STRTAB, i);
+                            break;
+                        }
+                        case SHT_RELA:
+                        {
+                            logger.logWarning("Section  SHT_RELA(%d) not supported.", SHT_RELA);
+                            break;
+                        }
+                        case SHT_HASH:
+                        {
+                            logger.logWarning("Section  SHT_HASH(%d) not supported.", SHT_HASH);
+                            break;
+                        }
+                        case SHT_DYNAMIC:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_DYNAMIC);
+                            break;
+                        }
+                        case SHT_NOTE:
+                        {
+                            logger.logWarning("Section  SHT_NOTE(%d) not supported.", SHT_NOTE);
+                            break;
+                        }
+                        case SHT_NOBITS:
+                        {
+                            logger.logWarning("Section  SHT_NOBITS(%d) not supported.", SHT_NOBITS);
+                            break;
+                        }
+                        case SHT_REL:
+                        {
+                            logger.logWarning("Section  SHT_REL(%d) not supported.", SHT_REL);
+                            break;
+                        }
+                        case SHT_SHLIB:
+                        {
+                            logger.logWarning("Section  SHT_SHLIB(%d) not supported.", SHT_SHLIB);
+                            break;
+                        }
+                        case SHT_DYNSYM:
+                        {
+                            logger.logWarning("Section  SHT_DYNSYM(%d) not supported.", SHT_DYNSYM);
+                            break;
+                        }
+                        case SHT_INIT_ARRAY:
+                        {
+                            logger.logWarning("Section  SHT_INIT_ARRAY(%d) not supported.", SHT_INIT_ARRAY);
+                            break;
+                        }
+                        case SHT_FINI_ARRAY:
+                        {
+                            logger.logWarning("Section  SHT_FINI_ARRAY(%d) not supported.", SHT_FINI_ARRAY);
+                            break;
+                        }
+                        case SHT_PREINIT_ARRAY:
+                        {
+                            logger.logWarning("Section  SHT_PREINIT_ARRAY(%d) not supported.", SHT_PREINIT_ARRAY);
+                            break;
+                        }
+                        case SHT_GROUP:
+                        {
+                            logger.logWarning("Section  SHT_GROUP(%d) not supported.", SHT_GROUP);
+                            break;
+                        }
+                        case SHT_SYMTAB_SHNDX:
+                        {
+                            logger.logWarning("Section  SHT_SYMTAB_SHNDX(%d) not supported.", SHT_SYMTAB_SHNDX);
+                            break;
+                        }
+                        case SHT_NUM:
+                        {
+                            logger.logWarning("Section  SHT_NUM(%d) not supported.", SHT_NUM);
+                            break;
+                        }
+                        case SHT_LOOS:
+                        {
+                            logger.logWarning("Section  SHT_LOOS(%d) not supported.", SHT_LOOS);
+                            break;
+                        }
+                        case SHT_GNU_ATTRIBUTES:
+                        {
+                            logger.logWarning("Section  SHT_GNU_ATTRIBUTES(%d) not supported.", SHT_GNU_ATTRIBUTES);
+                            break;
+                        }
+                        case SHT_GNU_HASH:
+                        {
+                            logger.logWarning("Section  SHT_GNU_HASH(%d) not supported.", SHT_GNU_HASH);
+                            break;
+                        }
+                        case SHT_GNU_LIBLIST:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_GNU_LIBLIST);
+                            break;
+                        }
+                        case SHT_CHECKSUM:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_CHECKSUM);
+                            break;
+                        }
+                            //                case  SHT_LOSUNW: SHT_LOSUNW and SHT_SUNW_move are the same value, for some reason.
+                        case SHT_SUNW_move:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_SUNW_move);
+                            break;
+                        }
+                        case SHT_SUNW_COMDAT:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_SUNW_COMDAT);
+                            break;
+                        }
+                        case SHT_SUNW_syminfo:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_SUNW_syminfo);
+                            break;
+                        }
+                        case SHT_GNU_verdef:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_GNU_verdef);
+                            break;
+                        }
+                        case SHT_GNU_verneed:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_GNU_verneed);
+                            break;
+                        }
+
+                        //                case  SHT_HISUNW: SHT_GNU_versym and SHT_HISUNW are the same value, for some reason.
+                        case SHT_HIOS:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_HIOS);
+                            break;
+                        }
+                        case SHT_LOPROC:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_LOPROC);
+                            break;
+                        }
+                        case SHT_HIPROC:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_HIPROC);
+                            break;
+                        }
+                        case SHT_LOUSER:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_LOUSER);
+                            break;
+                        }
+                        case SHT_HIUSER:
+                        {
+                            logger.logWarning("Section  %d not supported.", SHT_HIUSER);
+                            break;
+                        }
+                    }
+                }
+
+                ident_buffer = elf_hdr_64->e_ident;
+
+                if (ident_buffer[EI_DATA] == ELFDATA2LSB)
+                {
+                    rc = JUICER_ENDIAN_LITTLE;
+                }
+                else if (ident_buffer[EI_DATA] == ELFDATA2MSB)
+                {
+                    rc = JUICER_ENDIAN_BIG;
+                }
+                else
+                {
+                    rc = JUICER_ENDIAN_UNKNOWN;
+                }
+                elf_end(elf);
             }
             else
             {
-                rc = JUICER_ENDIAN_UNKNOWN;
+                logger.logError("elf_begin failed.  errno=%d  %s", errno, strerror(errno));
             }
-            elf_end(elf);
-        }
-        else
-        {
-            logger.logError("elf_begin failed.  errno=%d  %s", errno, strerror(errno));
         }
     }
     else if (buffer[EI_CLASS] == ELFCLASS32)
     {
+        elfFileObj->setElfClass(ELFCLASS32);
         if (elf != NULL)
         {
             elf_hdr_32             = elf32_getehdr(elf);
@@ -4550,8 +4779,6 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                                                                name.c_str(), symbol->st_size, symbol->st_value, symbol->st_name, symbol->st_info,
                                                                symbol->st_other, symbol->st_shndx);
 
-                                                std::cout << "stringTableSectionHeader file offset:" << stringTableSectionHeader->sh_offset << std::endl;
-
                                                 symbolSectionStrTableFileOffset = stringTableSectionHeader->sh_offset;
 
                                                 //                            TODO:Map it to DWARF here.
@@ -4561,8 +4788,6 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
 
                                                 if (symbolSectionHeader != nullptr)
                                                 {
-                                                    //                                                    std::cout << "symbol data section file offset-->" <<
-                                                    //                                                    symbolSectionHeader->sh_offset << std::endl;
                                                     symbolSectionFileOffset = symbolSectionHeader->sh_offset;
                                                 }
 
@@ -4575,8 +4800,6 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                                                     uint8_t             *symbolDataCursor = (uint8_t *)symbolSectionDataContents->d_buf;
 
                                                     std::vector<uint8_t> symbolData       = std::vector<uint8_t>();
-                                                    std::cout << "ELF32_ST_TYPE:" << ELF32_ST_TYPE(symbol->st_info) << std::endl;
-                                                    std::cout << "ELF32_ST_BIND:" << ELF32_ST_BIND(symbol->st_info) << std::endl;
 
                                                     if (symbolDataCursor != nullptr)
                                                     {
@@ -4763,11 +4986,7 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                         break;
                     }
                 }
-
-                //                std::cout << "sh_type" << sectionHeader->sh_type << std::endl;
             }
-            std::cout << "res:" << res << std::endl;
-
             ident_buffer = elf_hdr_32->e_ident;
 
             if (ident_buffer[EI_DATA] == ELFDATA2LSB)
@@ -4930,7 +5149,8 @@ int Juicer::parse(std::string &elfFilePath)
         if (JUICER_OK == return_value)
         {
             /* Initialize the Dwarf library.  This will open the file. */
-            dwarf_value = dwarf_init(elfFile, DW_DLC_READ, errhand, errarg, &dbg, &error);
+            /* Initialize the Dwarf library.  This will open the file. */
+            dwarf_value = dwarf_init_b(elfFile, DW_DLC_READ, groupNumber, errhand, errarg, &dbg, &error);
             if (dwarf_value != DW_DLV_OK)
             {
                 logger.logError("Failed to read the dwarf");
@@ -5063,26 +5283,6 @@ uint32_t Juicer::calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die dieSubrang
 }
 
 /**
- *
- * @return The number of elements in the die array entry, including all dimensions. It is assumed that die is of type
- * DW_TAG_array_type.
- */
-int Juicer::calcArraySizeForAllDims(Dwarf_Debug dbg, Dwarf_Die die)
-{
-    int                    arraySize = 0;
-    std::vector<Dwarf_Die> children  = getChildrenVector(dbg, die);
-
-    for (auto child : children)
-    {
-        if (arraySize == 0) arraySize = 1;
-
-        arraySize = arraySize * calcArraySizeForDimension(dbg, child);
-    }
-
-    return arraySize;
-}
-
-/**
  * Assuming that die is a DW_TAG_array_type, iterate through each  DW_TAG_subrange_type and return
  * a std::vector with all them as Dimension objects
  */
@@ -5174,35 +5374,6 @@ int Juicer::getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die)
 
     return siblingCount;
 }
-
-std::vector<Dwarf_Die> Juicer::getSiblingsVector(Dwarf_Debug dbg, Dwarf_Die die)
-{
-    int                    res = DW_DLV_OK;
-    std::vector<Dwarf_Die> siblingList{};
-
-    Dwarf_Die              sibling_die;
-
-    Dwarf_Error            error        = 0;
-
-    int                    siblingCount = getNumberOfSiblingsForDie(dbg, die);
-
-    for (int sibling = 0; sibling < siblingCount; sibling++)
-    {
-        res = dwarf_siblingof(dbg, die, &sibling_die, &error);
-        if (res != DW_DLV_OK)
-        {
-            logger.logWarning("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-        }
-        else
-        {
-            siblingList.push_back(sibling_die);
-            die = sibling_die;
-        }
-    }
-
-    return siblingList;
-}
-
 /**
  *@brief Get all of the children of the die in a nice STL vector.
  */
@@ -5283,3 +5454,32 @@ std::string Juicer::generateMD5SumForFile(std::string filePath)
     auto md5 = hex.str();
     return md5;
 }
+
+/**
+ * handles debug source files lookups for different DWARF versions.
+ * It is assumed the pathIndex is the value of DW_AT_decl_file attribute
+ */
+std::string &Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
+{
+    switch (dwarfVersion)
+    {
+            /**
+             *
+             * As per section 1.4 (Changes from Version 4 to Version 5) of DWARF5
+             *
+             * The line number table header is substantially revised.
+             **/
+
+        case 4:
+        {
+            return dbgSourceFiles.at(pathIndex - 1);
+        }
+        case 5:
+        {
+            return dbgSourceFiles.at(pathIndex);
+        }
+    }
+    return dbgSourceFiles.at(pathIndex);
+}
+
+unsigned int Juicer::getDwarfVersion() { return dwarfVersion; }

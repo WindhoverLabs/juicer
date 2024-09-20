@@ -26,37 +26,15 @@ ElfFile::ElfFile(std::string& inName)
     logger.logDebug("Elf '%s' created.", getName().c_str());
 }
 
-ElfFile::ElfFile() : name{""}, id{0} { logger.logError("Cannot call Module default constructor."); }
-
-ElfFile::ElfFile(const ElfFile& elf)
-    : name{elf.name},  // @suppress("Symbol is not resolved")
-      id{0}
-{
-    logger.logError("Cannot call Module copy constructor.");
-}
-
 ElfFile::~ElfFile() {}
 
 std::string ElfFile::getName() const { return name; }
 
-/**
- *@brief
- *
- *@note Absolute paths are enforced.
- */
-void        ElfFile::setName(std::string& inName)
-{
-    logger.logDebug("Module %s renamed to %s.", name.c_str(), inName.c_str());
+uint32_t    ElfFile::getId(void) const { return id; }
 
-    this->name = inName;
-    normalizePath(name);
-}
+void        ElfFile::setId(uint32_t newId) { id = newId; }
 
-uint32_t ElfFile::getId(void) const { return id; }
-
-void     ElfFile::setId(uint32_t newId) { id = newId; }
-
-void     ElfFile::isLittleEndian(bool inLittleEndian)
+void        ElfFile::isLittleEndian(bool inLittleEndian)
 {
     logger.logDebug("ELF %s endian changed from %s to %s.", name.c_str(), little_endian ? "LE" : "BE", inLittleEndian ? "LE" : "BE");
 
@@ -107,32 +85,21 @@ Symbol*     ElfFile::getSymbol(std::string& name)
     return returnSymbol;
 }
 
-bool ElfFile::isSymbolUnique(std::string& name)
+Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact, Symbol* targetSymbol)
 {
-    bool    rc     = false;
-    Symbol* symbol = getSymbol(name);
+    Symbol* symbol = getSymbol(inName);
 
     if (symbol == nullptr)
     {
-        rc = true;
+        std::unique_ptr<Symbol> newSymbol = std::make_unique<Symbol>(*this, inName, inByteSize, newArtifact);
+        newSymbol->setTargetSymbol(targetSymbol);
+
+        symbols.push_back(std::move(newSymbol));
+
+        symbol = symbols.back().get();
     }
-    else
-    {
-        rc = false;
 
-        logger.logDebug("isSymbolUnique is false.");
-    }
-
-    return rc;
-}
-
-Symbol* ElfFile::addSymbol(std::unique_ptr<Symbol> inSymbol)
-{
-    logger.logDebug("Adding Symbol %s to Module %s.", inSymbol->getName().c_str(), name.c_str());
-
-    symbols.push_back(std::move(inSymbol));
-
-    return symbols.back().get();
+    return symbol;
 }
 
 Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact)
@@ -209,9 +176,8 @@ void ElfFile::normalizePath(std::string& path)
     path.insert(0, resolvedPath);
 }
 
-void                            ElfFile::addDefineMacro(std::string name, std::string value) { defineMacros.push_back(DefineMacro{name, value}); }
-void                            ElfFile::addDefineMacro(DefineMacro newMacro) { defineMacros.push_back(newMacro); }
-const std::vector<DefineMacro>& ElfFile::getDefineMacros() const { return defineMacros; }
+void                                               ElfFile::addDefineMacro(DefineMacro newMacro) { defineMacros.push_back(newMacro); }
+const std::vector<DefineMacro>&                    ElfFile::getDefineMacros() const { return defineMacros; }
 
 const std::map<std::string, std::vector<uint8_t>>& ElfFile::getInitializedSymbolData() const { return initializedSymbolData; }
 void                                               ElfFile::setInitializedSymbolData(const std::map<std::string, std::vector<uint8_t>>& initializedSymbolData)
@@ -224,8 +190,52 @@ void                         ElfFile::addVariable(Variable newVariable) { variab
 const std::vector<Variable>& ElfFile::getVariables() const { return variables; }
 
 void                         ElfFile::addElf32SectionHeader(Elf32_Shdr newSectionHeader) { elf32Headers.push_back(newSectionHeader); }
+void                         ElfFile::addElf64SectionHeader(Elf64_Shdr newSectionHeader) { elf64Headers.push_back(newSectionHeader); }
 
 std::vector<Elf32_Shdr>      ElfFile::getElf32Headers() const { return elf32Headers; }
+std::vector<Elf64_Shdr>      ElfFile::getElf64Headers() const { return elf64Headers; }
 
 void                         ElfFile::addElf32SymbolTableSymbol(Elf32Symbol newSymbol) { elf32SymbolTable.push_back(newSymbol); }
 std::vector<Elf32Symbol>     ElfFile::getElf32SymbolTable() const { return elf32SymbolTable; }
+
+void                         ElfFile::addElf64SymbolTableSymbol(Elf64Symbol newSymbol) { elf64SymbolTable.push_back(newSymbol); }
+std::vector<Elf64Symbol>     ElfFile::getElf64SymbolTable() const { return elf64SymbolTable; }
+
+/**
+ * @brief ElfFile::getEncodings
+ * @return a list of encodings as per DWARF5 specification document section 5.1.1 titled "Base Type Encodings"
+ */
+std::vector<Encoding>        ElfFile::getDWARFEncodings()
+{
+    std::vector<Encoding> encodings{};
+
+    for (std::pair<int, Encoding> e : encodingsMap)
+    {
+        encodings.push_back(e.second);
+    }
+    return encodings;
+}
+
+/**
+ * @brief ElfFile::getDWARFEncoding
+ * @param encoding
+ * @todo add error-checking since we know the valid values
+ * @return
+ */
+Encoding& ElfFile::getDWARFEncoding(int encoding) { return encodingsMap.at(encoding); }
+
+void      ElfFile::setElfClass(int newelfClass)
+{
+    switch (newelfClass)
+    {
+        case ELFCLASS32:
+        case ELFCLASS64:
+            elfClass = newelfClass;
+            break;
+        default:
+            elfClass = newelfClass;
+            logger.logWarning("Invalid elf class set:%d", elfClass);
+    }
+}
+
+int ElfFile::getElfClass() { return elfClass; }

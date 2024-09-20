@@ -90,12 +90,9 @@ class DimensionList
 
     std::string                                  toString();
     void                                         addDimension(uint32_t inUpperBound);
-    uint32_t                                     getId() const;
-    void                                         setId(uint32_t id);
     const std::vector<DimensionList::Dimension>& getDimensions() const;
 
    private:
-    uint32_t                              id{};
     std::vector<DimensionList::Dimension> dimensions{};
 };
 

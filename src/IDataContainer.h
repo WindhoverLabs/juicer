@@ -38,8 +38,7 @@ class IDataContainer
     virtual int initialize(std::string& initString) = 0;
 
    private:
-    static Logger      logger;
-    static std::string vstring(const char* format, ...);
+    static Logger logger;
 };
 
 #endif /* IDATACONTAINER_H_ */

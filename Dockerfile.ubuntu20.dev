@@ -1,0 +1,29 @@
+FROM ubuntu:20.04
+RUN apt update
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TERM xterm-256color
+RUN apt-get update && \
+      apt-get -y install sudo
+
+RUN apt-get install -y gcc-multilib
+RUN apt-get install -y g++-multilib
+RUN apt-get install -y libdwarf-dev
+RUN apt-get install -y make
+RUN apt-get install -y libelf-dev
+RUN apt-get install -y libsqlite3-dev
+RUN apt-get install -y libssl-dev
+RUN apt-get install -y doxygen
+RUN apt-get install -y gdb
+RUN apt-get install -y gcovr
+RUN apt-get install -y gnupg2
+RUN apt-get install -y software-properties-common
+RUN apt-get install -y python3-pip
+RUN pip3 install PyYAML
+
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys  15CF4D18AF4F7421
+RUN add-apt-repository 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal main'
+RUN apt-get install -y clang-format
+
+RUN mkdir /home/docker
+RUN mkdir /home/docker/juicer
+WORKDIR /home/docker/juicer
