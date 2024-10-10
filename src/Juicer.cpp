@@ -1380,66 +1380,67 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                     }
                 }
 
-                // if (res == DW_DLV_OK)
-                // {
-                //     std::string cName = dieName;
-                //     res               = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
+                if (res == DW_DLV_OK)
+                {
+                    std::string cName = dieName;
+                    res               = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
 
-                //     if (DW_DLV_OK == res)
-                //     {
-                //         unsigned long long pathIndex = 0;
-                //         res                          = dwarf_formudata(attr_struct, &pathIndex, &error);
+                    if (DW_DLV_OK == res)
+                    {
+                        unsigned long long pathIndex = 0;
+                        res                          = dwarf_formudata(attr_struct, &pathIndex, &error);
 
-                //         /**
-                //          * According to 6.2 Line Number Information in DWARF 4:
-                //          * Line number information generated for a compilation unit is represented in the .debug_line
-                //          * section of an object file and is referenced by a corresponding compilation unit debugging
-                //          * information entry (see Section 3.1.1) in the .debug_info section.
-                //          * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
-                //          * the is_info to true.
-                //          *
-                //          * We are using a new Dwarf_Die because if we use cur_die, we segfault.
-                //          *
-                //          * My theory on this is that even though when we initially call dwarf_siblingof on
-                //          * cur_die and as we read different kinds of tags/attributes(in particular type-related),
-                //          * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
-                //          *
-                //          * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
-                //          *
-                //          * This is just a theory, however. In the future we may revisit this
-                //          * to figure out the root cause of this.
-                //          *
-                //          */
+                        /**
+                         * According to 6.2 Line Number Information in DWARF 4:
+                         * Line number information generated for a compilation unit is represented in the .debug_line
+                         * section of an object file and is referenced by a corresponding compilation unit debugging
+                         * information entry (see Section 3.1.1) in the .debug_info section.
+                         * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
+                         * the is_info to true.
+                         *
+                         * We are using a new Dwarf_Die because if we use cur_die, we segfault.
+                         *
+                         * My theory on this is that even though when we initially call dwarf_siblingof on
+                         * cur_die and as we read different kinds of tags/attributes(in particular type-related),
+                         * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
+                         *
+                         * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                         *
+                         * This is just a theory, however. In the future we may revisit this
+                         * to figure out the root cause of this.
+                         *
+                         */
 
-                //         if (pathIndex != 0)
-                //         {
-                //             /**
-                //              * Why we are checking against 0 as per DWARF section 2.14:
-                //              * 
-                //              * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
-                //              * information table for the compilation unit containing the debugging information entry and
-                //              * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
-                //              * indicates that no source file has been specified.
-                //              * 
-                //              */
-                //             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
-                //             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
-                //             newArtifact.setMD5(checkSum);
-                //             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
-                //         }
-                //         else
-                //         {
-                //             Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
-                //             std::string checkSum{};
-                //             newArtifact.setMD5(checkSum);
-                //             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
-                //         }
-                //     }
+                        if (pathIndex != 0)
+                        {
+                            /**
+                             * Why we are checking against 0 as per DWARF section 2.14:
+                             * 
+                             * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                             * information table for the compilation unit containing the debugging information entry and
+                             * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                             * indicates that no source file has been specified.
+                             * 
+                             */
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                            std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
+                            newArtifact.setMD5(checkSum);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                        }
+                        else
+                        {
+                            Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
+                            std::string checkSum{};
+                            newArtifact.setMD5(checkSum);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                        }
+                    }
 
-                //     if (nullptr != outSymbol)
-                //     {
-                //         // process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
-                //     }
+                    if (nullptr != outSymbol)
+                    {
+                        // process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
+                    }
+            }
 
 
 
