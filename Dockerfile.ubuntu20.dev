@@ -27,3 +27,6 @@ RUN apt-get install -y clang-format
 RUN mkdir /home/docker
 RUN mkdir /home/docker/juicer
 WORKDIR /home/docker/juicer
+
+RUN useradd -ms /bin/bash juicer-dev
+USER juicer-dev
