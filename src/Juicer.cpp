@@ -781,7 +781,7 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
              * This is just a theory, however. In the future we may revisit this
              * to figure out the root cause of this.
              *
-             */                
+             */
 
             // As per the DWARF; pointer types do not have any "DECL" attributes, aka declaration coords (line numbers, declaration files, etc).
             Artifact    newArtifact{elf, "NOT_FOUND:" + name};
@@ -1326,9 +1326,8 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
             }
 
             case DW_TAG_union_type:
-            
-            {
 
+            {
                 Dwarf_Bool     structHasName = false;
                 Dwarf_Bool     parentHasName = false;
                 Dwarf_Unsigned byteSize      = 0;
@@ -1365,10 +1364,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                     }
                 }
 
-
-
-
-                  if (res == DW_DLV_OK)
+                if (res == DW_DLV_OK)
                 {
                     res = dwarf_bytesize(typeDie, &byteSize, &error);
                     if (res != DW_DLV_OK)
@@ -1413,12 +1409,12 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                         {
                             /**
                              * Why we are checking against 0 as per DWARF section 2.14:
-                             * 
+                             *
                              * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
                              * information table for the compilation unit containing the debugging information entry and
                              * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
                              * indicates that no source file has been specified.
-                             * 
+                             *
                              */
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
@@ -1438,9 +1434,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                     {
                         // process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
                     }
-            }
-
-
+                }
 
                 /* TODO */
                 // outSymbol = process_DW_TAG_base_type(elf, dbg, typeDie);
@@ -3595,9 +3589,6 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
         std::string sDieName = dieName;
 
         res                  = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
-
-
-
 
         if (DW_DLV_OK == res)
         {

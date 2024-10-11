@@ -10,7 +10,6 @@
 
 #include <cstdint>
 #include <string>
-#include <cstdint>
 
 class ElfFile;
 
