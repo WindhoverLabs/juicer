@@ -13,9 +13,10 @@
 
 #include "stdint.h"
 
-union Oject
+union Object
 {
     int32_t id;
+    int32_t bit_field : 10;
     uint8_t data[32];
 };
 
@@ -186,7 +187,7 @@ struct Circle
     float      radius;
     int        points[128];
     ModeSlot_t mode;
-    Oject      union_object;
+    Object     union_object;
 };
 
 enum Color

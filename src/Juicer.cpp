@@ -1432,7 +1432,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                     if (nullptr != outSymbol)
                     {
-                        // process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
+                        process_DW_TAG_union_type(elf, *outSymbol, dbg, typeDie);
                     }
                 }
 
@@ -3947,311 +3947,312 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
     }
 }
 
-// /**
-//  * @brief Inspects the union and adds each member as a field with
-//  * @param in_die the die entry that has the dwarf data.
-//  * @param in_level The current level on the dbg structure.
-//  * @return 0 if the die, its children and siblings are scanned successfully.
-//  * 1 if there is a problem with dies or any of its children.
-//  */
-// void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
-// {
-//     int             res         = DW_DLV_OK;
-//     Dwarf_Attribute attr_struct = nullptr;
-//     Dwarf_Die       memberDie   = 0;
+/**
+ * @brief Inspects the union and adds each member as a field with byte_offset of zero.
+ * @param in_die the die entry that has the dwarf data.
+ * @param in_level The current level on the dbg structure.
+ * @return 0 if the die, its children and siblings are scanned successfully.
+ * 1 if there is a problem with dies or any of its children.
+ */
+void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+{
+    int             res         = DW_DLV_OK;
+    Dwarf_Attribute attr_struct = nullptr;
+    Dwarf_Die       memberDie   = 0;
 
-//     Dwarf_Unsigned  udata       = 0;
-//     Dwarf_Error     error       = 0;
+    Dwarf_Unsigned  udata       = 0;
+    Dwarf_Error     error       = 0;
 
-//     /* Get the fields by getting the first child. */
-//     if (res == DW_DLV_OK)
-//     {
-//         res = dwarf_child(inDie, &memberDie, &error);
-//         if (res == DW_DLV_ERROR)
-//         {
-//             logger.logError("Error in dwarf_child. errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-//         }
-//     }
+    /* Get the fields by getting the first child. */
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_child(inDie, &memberDie, &error);
+        if (res == DW_DLV_ERROR)
+        {
+            logger.logError("Error in dwarf_child. errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
+    }
 
-//     /* Start processing the fields. */
-//     for (;;)
-//     {
-//         char          *memberName           = nullptr;
-//         Symbol        *memberBaseTypeSymbol = nullptr;
-//         uint32_t       memberLocation       = 0;
+    /* Start processing the fields. */
+    for (;;)
+    {
+        char          *memberName           = nullptr;
+        Symbol        *memberBaseTypeSymbol = nullptr;
+        uint32_t       memberLocation       = 0;
 
-//         Dwarf_Unsigned udata                = 0;
+        Dwarf_Unsigned udata                = 0;
 
-//         if (res == DW_DLV_OK)
-//         {
-//             Dwarf_Half tag;
-//             Dwarf_Die  siblingDie = 0;
+        if (res == DW_DLV_OK)
+        {
+            Dwarf_Half tag;
+            Dwarf_Die  siblingDie = 0;
 
-//             res                   = dwarf_tag(memberDie, &tag, &error);
-//             if (res == DW_DLV_ERROR)
-//             {
-//                 logger.logError("Error in dwarf_tag. errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-//             }
-//             else
-//             {
-//                 switch (tag)
-//                 {
-//                     case DW_TAG_union_type:
-//                     {
-//                         logger.logWarning("TODO:  Union members are not yet supported.");
-//                         break;
-//                     }
+            res                   = dwarf_tag(memberDie, &tag, &error);
+            if (res == DW_DLV_ERROR)
+            {
+                logger.logError("Error in dwarf_tag. errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+            }
+            else
+            {
+                switch (tag)
+                {
+                    case DW_TAG_union_type:
+                    {
+                        logger.logWarning("TODO:  Union members are not yet supported.");
+                        break;
+                    }
 
-//                     case DW_TAG_inheritance:
-//                     {
-//                         logger.logWarning("TODO:  Inherited members not yet supported.");
-//                         break;
-//                     }
+                    case DW_TAG_inheritance:
+                    {
+                        logger.logWarning("TODO:  Inherited members not yet supported.");
+                        break;
+                    }
 
-//                     case DW_TAG_typedef:
-//                     {
-//                         logger.logWarning("TODO:  Typedef member attributes not yet supported.");
-//                         break;
-//                     }
+                    case DW_TAG_typedef:
+                    {
+                        logger.logWarning("TODO:  Typedef member attributes not yet supported.");
+                        break;
+                    }
 
-//                     case DW_TAG_member:
-//                     {
-//                         DimensionList dimensionList{};
+                    case DW_TAG_member:
+                    {
+                        DimensionList dimensionList{};
 
-//                         /* Get the name attribute of this Die. */
+                        /* Get the name attribute of this Die. */
 
-//                         if (res == DW_DLV_OK)
-//                         {
-//                             res = dwarf_attr(memberDie, DW_AT_name, &attr_struct, &error);
-//                             if (res != DW_DLV_OK)
-//                             {
-//                                 logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
-//                             }
-//                         }
+                        if (res == DW_DLV_OK)
+                        {
+                            res = dwarf_attr(memberDie, DW_AT_name, &attr_struct, &error);
+                            if (res != DW_DLV_OK)
+                            {
+                                logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+                            }
+                        }
 
-//                         /* Get the actual name of this member. */
-//                         if (res == DW_DLV_OK)
-//                         {
-//                             res = dwarf_formstring(attr_struct, &memberName, &error);
+                        /* Get the actual name of this member. */
+                        if (res == DW_DLV_OK)
+                        {
+                            res = dwarf_formstring(attr_struct, &memberName, &error);
 
-//                             if (res != DW_DLV_OK)
-//                             {
-//                                 logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-//                             }
-//                         }
+                            if (res != DW_DLV_OK)
+                            {
+                                logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                            }
+                        }
 
-//                         /* Get the data member location attribute of this member. */
-//                         if (res == DW_DLV_OK)
-//                         {
-//                             res = dwarf_attr(memberDie, DW_AT_data_member_location, &attr_struct, &error);
-//                             if (res != DW_DLV_OK)
-//                             {
-//                                 logger.logWarning("Skipping %s.  Error in dwarf_attr(DW_AT_data_member_location).  %u  errno=%u %s", memberName, __LINE__,
-//                                                   dwarf_errno(error), dwarf_errmsg(error));
-//                             }
-//                         }
+                        /* Get the data member location attribute of this member. */
+                        // TODO: There is no DW_AT_data_member_location for members of unions
+                        // if (res == DW_DLV_OK)
+                        // {
+                        //     res = dwarf_attr(memberDie, DW_AT_data_member_location, &attr_struct, &error);
+                        //     if (res != DW_DLV_OK)
+                        //     {
+                        //         logger.logWarning("Skipping %s.  Error in dwarf_attr(DW_AT_data_member_location).  %u  errno=%u %s", memberName, __LINE__,
+                        //                           dwarf_errno(error), dwarf_errmsg(error));
+                        //     }
+                        // }
 
-//                         /* Get the actual data member location of this member. */
-//                         if (res == DW_DLV_OK)
-//                         {
-//                             res = dwarf_formudata(attr_struct, &udata, &error);
-//                             if (res != DW_DLV_OK)
-//                             {
-//                                 logger.logError("Error in dwarf_formudata , level %d.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-//                             }
-//                             else
-//                             {
-//                                 memberLocation = (uint32_t)udata;
-//                             }
-//                         }
+                        /* Get the actual data member location of this member. */
+                        // if (res == DW_DLV_OK)
+                        // {
+                        //     res = dwarf_formudata(attr_struct, &udata, &error);
+                        //     if (res != DW_DLV_OK)
+                        //     {
+                        //         logger.logError("Error in dwarf_formudata , level %d.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                        //     }
+                        //     else
+                        //     {
+                        //         memberLocation = (uint32_t)udata;
+                        //     }
+                        // }
 
-//                         /* Get the actual data member location of this member. */
-//                         if (res == DW_DLV_OK)
-//                         {
-//                             Dwarf_Half formID;
+                        /* Get the actual data member location of this member. */
+                        //                         if (res == DW_DLV_OK)
+                        //                         {
+                        //                             Dwarf_Half formID;
 
-//                             res = dwarf_whatform(attr_struct, &formID, &error);
-//                             if (res != DW_DLV_OK)
-//                             {
-//                                 logger.logError("Error in dwarf_whatform.  errno=%u line=%u  %s", dwarf_errno(error), __LINE__, dwarf_errmsg(error));
-//                             }
+                        //                             res = dwarf_whatform(attr_struct, &formID, &error);
+                        //                             if (res != DW_DLV_OK)
+                        //                             {
+                        //                                 logger.logError("Error in dwarf_whatform.  errno=%u line=%u  %s", dwarf_errno(error), __LINE__,
+                        //                                 dwarf_errmsg(error));
+                        //                             }
 
-//                             switch (formID)
-//                             {
-//                                 case DW_FORM_data1:
-//                                 {
-//                                     res = dwarf_formudata(attr_struct, &udata, &error);
-//                                     if (res != DW_DLV_OK)
-//                                     {
-//                                         DisplayDie(memberDie, 99);
+                        //                             switch (formID)
+                        //                             {
+                        //                                 case DW_FORM_data1:
+                        //                                 {
+                        //                                     res = dwarf_formudata(attr_struct, &udata, &error);
+                        //                                     if (res != DW_DLV_OK)
+                        //                                     {
+                        //                                         DisplayDie(memberDie, 99);
 
-//                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-//                                         dwarf_errmsg(error));
-//                                     }
-//                                     else
-//                                     {
-//                                         memberLocation = (uint32_t)udata;
-//                                     }
+                        //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__,
+                        //                                         dwarf_errno(error), dwarf_errmsg(error));
+                        //                                     }
+                        //                                     else
+                        //                                     {
+                        //                                         memberLocation = (uint32_t)udata;
+                        //                                     }
 
-//                                     break;
-//                                 }
+                        //                                     break;
+                        //                                 }
 
-//                                 case DW_FORM_udata:
-//                                 {
-//                                     Dwarf_Unsigned udata = 0;
+                        //                                 case DW_FORM_udata:
+                        //                                 {
+                        //                                     Dwarf_Unsigned udata = 0;
 
-//                                     res                  = dwarf_formudata(attr_struct, &udata, &error);
-//                                     if (res != DW_DLV_OK)
-//                                     {
-//                                         DisplayDie(memberDie, 99);
+                        //                                     res                  = dwarf_formudata(attr_struct, &udata, &error);
+                        //                                     if (res != DW_DLV_OK)
+                        //                                     {
+                        //                                         DisplayDie(memberDie, 99);
 
-//                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-//                                         dwarf_errmsg(error));
-//                                     }
-//                                     else
-//                                     {
-//                                         memberLocation = (uint32_t)udata;
-//                                     }
+                        //                                         logger.logError("Error in dwarf_formudata.  line=%u  errno=%u %s", __LINE__,
+                        //                                         dwarf_errno(error), dwarf_errmsg(error));
+                        //                                     }
+                        //                                     else
+                        //                                     {
+                        //                                         memberLocation = (uint32_t)udata;
+                        //                                     }
 
-//                                     break;
-//                                 }
-// #ifdef VX_WORKS
-//                                 case DW_FORM_block1:
-//                                 {
-//                                     Dwarf_Block *bdata = 0;
+                        //                                     break;
+                        //                                 }
+                        // #ifdef VX_WORKS
+                        //                                 case DW_FORM_block1:
+                        //                                 {
+                        //                                     Dwarf_Block *bdata = 0;
 
-//                                     res                = dwarf_formblock(attr_struct, &bdata, &error);
-//                                     if (res != DW_DLV_OK)
-//                                     {
-//                                         logger.logError("Error in dwarf_formblock.  line=%u  errno=%u %s", __LINE__, dwarf_errno(error),
-//                                         dwarf_errmsg(error));
-//                                     }
-//                                     else
-//                                     {
-//                                         if (bdata->bl_from_loclist == 0)
-//                                         {
-//                                             /*
-//                                             7.6 Variable Length Data
-//                                             Integers may be encoded using “Little Endian Base 128” (LEB128) numbers. LEB128 is a
-//                                             scheme for encoding integers densely that exploits the assumption that most integers are small in
-//                                             magnitude.
-//                                             This encoding is equally suitable whether the target machine architecture represents data in big-
-//                                             endian or little-endian order. It is “little-endian” only in the sense that it avoids using space to
-//                                             represent the “big” end of an unsigned integer, when the big end is all zeroes or sign extension
-//                                             bits.
-//                                             Unsigned LEB128 (ULEB128) numbers are encoded as follows: start at the low order end of an
-//                                             unsigned integer and chop it into 7-bit chunks. Place each chunk into the low order 7 bits of a
-//                                             byte. Typically, several of the high order bytes will be zero; discard them. Emit the remaining
-//                                             bytes in a stream, starting with the low order byte; set the high order bit on each byte except the
-//                                             last emitted byte. The high bit of zero on the last byte indicates to the decoder that it has
-//                                             encountered the last byte.
-//                                             The integer zero is a special case, consisting of a single zero byte.
+                        //                                     res                = dwarf_formblock(attr_struct, &bdata, &error);
+                        //                                     if (res != DW_DLV_OK)
+                        //                                     {
+                        //                                         logger.logError("Error in dwarf_formblock.  line=%u  errno=%u %s", __LINE__,
+                        //                                         dwarf_errno(error), dwarf_errmsg(error));
+                        //                                     }
+                        //                                     else
+                        //                                     {
+                        //                                         if (bdata->bl_from_loclist == 0)
+                        //                                         {
+                        //                                             /*
+                        //                                             7.6 Variable Length Data
+                        //                                             Integers may be encoded using “Little Endian Base 128” (LEB128) numbers. LEB128 is a
+                        //                                             scheme for encoding integers densely that exploits the assumption that most integers are
+                        //                                             small in magnitude. This encoding is equally suitable whether the target machine
+                        //                                             architecture represents data in big- endian or little-endian order. It is “little-endian”
+                        //                                             only in the sense that it avoids using space to represent the “big” end of an unsigned
+                        //                                             integer, when the big end is all zeroes or sign extension bits. Unsigned LEB128 (ULEB128)
+                        //                                             numbers are encoded as follows: start at the low order end of an unsigned integer and
+                        //                                             chop it into 7-bit chunks. Place each chunk into the low order 7 bits of a byte.
+                        //                                             Typically, several of the high order bytes will be zero; discard them. Emit the remaining
+                        //                                             bytes in a stream, starting with the low order byte; set the high order bit on each byte
+                        //                                             except the last emitted byte. The high bit of zero on the last byte indicates to the
+                        //                                             decoder that it has encountered the last byte. The integer zero is a special case,
+                        //                                             consisting of a single zero byte.
 
-//                                             For more details on the algorithm implementation see
-//                                             "Appendix C1 Variable Length Data:2 Encoding/Decoding (Informative)"
-//                                             section in DWARF5.
-//                                             */
+                        //                                             For more details on the algorithm implementation see
+                        //                                             "Appendix C1 Variable Length Data:2 Encoding/Decoding (Informative)"
+                        //                                             section in DWARF5.
+                        //                                             */
 
-//                                             uint8_t *data = (uint8_t *)bdata->bl_data;
-//                                             if (DW_OP_plus_uconst == data[0])
-//                                             {
-//                                                 int      i      = 0;
-//                                                 int      shift  = 0;
-//                                                 uint8_t *leb128 = &data[1];
-//                                                 memberLocation  = 0;
+                        //                                             uint8_t *data = (uint8_t *)bdata->bl_data;
+                        //                                             if (DW_OP_plus_uconst == data[0])
+                        //                                             {
+                        //                                                 int      i      = 0;
+                        //                                                 int      shift  = 0;
+                        //                                                 uint8_t *leb128 = &data[1];
+                        //                                                 memberLocation  = 0;
 
-//                                                 for (i = 1; i < bdata->bl_len; ++i)
-//                                                 {
-//                                                     memberLocation |= (*leb128++ & ((1 << 7) - 1)) << shift;
-//                                                     shift          += 7;
-//                                                 }
-//                                             }
-//                                         }
-//                                         else
-//                                         {
-//                                             logger.logError("Cannot parse %s.  loclist %d not supported.  line=%u", memberName, __LINE__,
-//                                                             bdata->bl_from_loclist);
-//                                         }
-//                                     }
+                        //                                                 for (i = 1; i < bdata->bl_len; ++i)
+                        //                                                 {
+                        //                                                     memberLocation |= (*leb128++ & ((1 << 7) - 1)) << shift;
+                        //                                                     shift          += 7;
+                        //                                                 }
+                        //                                             }
+                        //                                         }
+                        //                                         else
+                        //                                         {
+                        //                                             logger.logError("Cannot parse %s.  loclist %d not supported.  line=%u", memberName,
+                        //                                             __LINE__,
+                        //                                                             bdata->bl_from_loclist);
+                        //                                         }
+                        //                                     }
 
-//                                     break;
-//                                 }
-// #endif
+                        //                                     break;
+                        //                                 }
+                        // #endif
 
-//                                 default:
-//                                 {
-//                                     logger.logError("Unable to parse '%s' member location. Unsupported form 0x%0x", memberName, formID);
-//                                     break;
-//                                 }
-//                             }
-//                         }
+                        //                                 default:
+                        //                                 {
+                        //                                     logger.logError("Unable to parse '%s' member location. Unsupported form 0x%0x", memberName,
+                        //                                     formID); break;
+                        //                                 }
+                        //                             }
+                        //                         }
 
-//                         /* Get the base type die. */
-//                         if (res == DW_DLV_OK)
-//                         {
-//                             memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList);
+                        /* Get the base type die. */
+                        if (res == DW_DLV_OK)
+                        {
+                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList);
 
-//                             if (memberBaseTypeSymbol == 0)
-//                             {
-//                                 logger.logWarning("Couldn't find base type for %s:%s.", symbol.getName().c_str(), memberName);
+                            if (memberBaseTypeSymbol == 0)
+                            {
+                                logger.logWarning("Couldn't find base type for %s:%s.", symbol.getName().c_str(), memberName);
 
-//                                 /* Set the error code so we don't do anymore processing. */
-//                                 res = DW_DLV_ERROR;
-//                             }
-//                         }
+                                /* Set the error code so we don't do anymore processing. */
+                                res = DW_DLV_ERROR;
+                            }
+                        }
 
-//                         /* We have everything we need.  Add this field. */
-//                         if (res == DW_DLV_OK)
-//                         {
-//                             std::string sMemberName = memberName;
+                        /* We have everything we need.  Add this field. */
+                        if (res == DW_DLV_OK)
+                        {
+                            std::string sMemberName = memberName;
 
-//                             Field       memberField{symbol, sMemberName, (uint32_t)memberLocation, *memberBaseTypeSymbol, dimensionList,
-//                             elf.isLittleEndian()};
+                            Field       memberField{symbol, sMemberName, (uint32_t)memberLocation, *memberBaseTypeSymbol, dimensionList, elf.isLittleEndian()};
 
-//                             addBitFields(memberDie, memberField);
-//                             symbol.addField(memberField);
-//                         }
+                            addBitFields(memberDie, memberField);
+                            symbol.addField(memberField);
+                        }
 
-//                         break;
-//                     }
+                        break;
+                    }
 
-//                     /* Fall through */
-//                     case DW_TAG_template_type_parameter:
-//                     case DW_TAG_template_value_parameter:
-//                     case DW_TAG_GNU_template_parameter_pack:
-//                     case DW_TAG_subprogram:
-//                     {
-//                         /* Ignore these */
-//                         break;
-//                     }
+                    /* Fall through */
+                    case DW_TAG_template_type_parameter:
+                    case DW_TAG_template_value_parameter:
+                    case DW_TAG_GNU_template_parameter_pack:
+                    case DW_TAG_subprogram:
+                    {
+                        /* Ignore these */
+                        break;
+                    }
 
-//                     default:
-//                         break;
-//                 }
-//             }
+                    default:
+                        break;
+                }
+            }
 
-//             res = dwarf_siblingof(dbg, memberDie, &siblingDie, &error);
-//             if (res == DW_DLV_ERROR)
-//             {
-//                 logger.logError("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-//             }
-//             else if (res == DW_DLV_NO_ENTRY)
-//             {
-//                 /* We wrapped around.  We're done processing the member fields. */
-//                 addPaddingToStruct(symbol);
-//                 break;
-//             }
+            res = dwarf_siblingof(dbg, memberDie, &siblingDie, &error);
+            if (res == DW_DLV_ERROR)
+            {
+                logger.logError("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+            }
+            else if (res == DW_DLV_NO_ENTRY)
+            {
+                /* We wrapped around.  We're done processing the member fields. */
+                addPaddingToStruct(symbol);
+                break;
+            }
 
-//             memberDie = siblingDie;
-//         }
+            memberDie = siblingDie;
+        }
 
-//         /* Don't continue looping if there was a problem. */
-//         if (res != DW_DLV_OK)
-//         {
-//             break;
-//         }
-//     }
-// }
+        /* Don't continue looping if there was a problem. */
+        if (res != DW_DLV_OK)
+        {
+            break;
+        }
+    }
+}
 
 void Juicer::addPaddingToStruct(Symbol &symbol)
 {
