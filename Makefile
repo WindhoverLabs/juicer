@@ -40,7 +40,7 @@ UT_OBJ_32     := $(UT_OBJ_32:$(UT_SRC_DIR)/test_file%.cpp=$(UT_OBJ_32BIT_DIR)/te
 
 
 # Set target flags
-CPPFLAGS            := -MMD -MP -std=c++14 -fmessage-length=0 $(INCLUDES)
+CPPFLAGS            := -MMD -MP -std=c++17 -fmessage-length=0 $(INCLUDES)
 CFLAGS              := -Wall -g3 
 CFLAGS_32BIT        := -Wall -g3 -m32 
 LDFLAGS             := -Llib

@@ -4059,7 +4059,7 @@ void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug
                         {
                             std::string sMemberName = memberName;
 
-                            Field       memberField{symbol, sMemberName, (uint32_t)memberLocation, *memberBaseTypeSymbol, dimensionList, elf.isLittleEndian()};
+                            Field       memberField{symbol, sMemberName, std::nullopt, *memberBaseTypeSymbol, dimensionList, elf.isLittleEndian()};
 
                             addBitFields(memberDie, memberField);
                             symbol.addField(memberField);
@@ -4127,9 +4127,9 @@ void Juicer::addPaddingToStruct(Symbol &symbol)
                 previousFieldSize = symbol.getFields().at(i - 1)->getArraySize() * previousFieldSize;
             }
 
-            uint32_t lastFieldOffset     = symbol.getFields().at(i - 1)->getByteOffset();
+            uint32_t lastFieldOffset     = symbol.getFields().at(i - 1)->getByteOffset().value();
 
-            uint32_t memberLocationDelta = symbol.getFields().at(i)->getByteOffset() - lastFieldOffset;
+            uint32_t memberLocationDelta = symbol.getFields().at(i)->getByteOffset().value() - lastFieldOffset;
 
             uint32_t memberLocation      = lastFieldOffset + previousFieldSize;
 
@@ -4192,12 +4192,12 @@ void Juicer::addPaddingEndToStruct(Symbol &symbol)
 
     if (!hasBitFields && symbol.getFields().size() > 0)
     {
-        symbolSize = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize();
+        symbolSize = symbol.getFields().back()->getByteOffset().value() + symbol.getFields().back()->getType().getByteSize();
 
         if (symbol.getFields().back()->getArraySize() > 0)
         {
-            symbolSize =
-                symbol.getFields().back()->getByteOffset() + (symbol.getFields().back()->getType().getByteSize() * symbol.getFields().back()->getArraySize());
+            symbolSize = symbol.getFields().back()->getByteOffset().value() +
+                         (symbol.getFields().back()->getType().getByteSize() * symbol.getFields().back()->getArraySize());
         }
 
         sizeDelta = symbol.getByteSize() - symbolSize;
@@ -4218,7 +4218,7 @@ void Juicer::addPaddingEndToStruct(Symbol &symbol)
                 paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta, newArtifact);
             }
 
-            uint32_t newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize();
+            uint32_t newFieldByteOffset = symbol.getFields().back()->getByteOffset().value() + symbol.getFields().back()->getType().getByteSize();
 
             symbol.addField(paddingFieldName, newFieldByteOffset, *paddingSymbol, symbol.getElf().isLittleEndian(), 0, 0);
         }

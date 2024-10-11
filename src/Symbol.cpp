@@ -48,8 +48,8 @@ void Symbol::addField(Field& inField)
  *unique_ptr, which is also called addField. Maybe we should place our
  *elf data structures inside a namespace called ElfData?
  */
-void Symbol::addField(std::string& inName, uint32_t inByteOffset, Symbol& inType, DimensionList& dimensionList, bool inLittleEndian, uint32_t inBitSize,
-                      uint32_t inBitOffset)
+void Symbol::addField(std::string& inName, std::optional<uint32_t> inByteOffset, Symbol& inType, DimensionList& dimensionList, bool inLittleEndian,
+                      uint32_t inBitSize, uint32_t inBitOffset)
 {
     Field* field = getField(inName);
 

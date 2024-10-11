@@ -1354,41 +1354,79 @@ int SQLiteDB::writeFieldsToDatabase(ElfFile& inElf)
          * but I'm not sure what is the best way to do that without it being
          * messy.
          */
-        std::string writeFieldQuery{};
+        std::string             writeFieldQuery{};
 
-        writeFieldQuery +=
-            "INSERT INTO fields(symbol, name, byte_offset, type, "
-            "little_endian, bit_size, bit_offset, long_description, short_description) VALUES(";
-        writeFieldQuery += std::to_string(field->getSymbol().getId());
-        writeFieldQuery += ",";
-        writeFieldQuery += "\"";
-        writeFieldQuery += field->getName();
-        writeFieldQuery += "\"";
-        writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->getByteOffset());
-        writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->getType().getId());
-        writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->isLittleEndian() ? SQLiteDB_TRUE : SQLiteDB_FALSE);
+        std::optional<uint32_t> byteOffset = field->getByteOffset();
 
-        writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->getBitSize());
-        writeFieldQuery += ",";
-        writeFieldQuery += std::to_string(field->getBitOffset());
+        if (byteOffset)
+        {
+            writeFieldQuery +=
+                "INSERT INTO fields(symbol, name, byte_offset, type, "
+                "little_endian, bit_size, bit_offset, long_description, short_description) VALUES(";
+            writeFieldQuery += std::to_string(field->getSymbol().getId());
+            writeFieldQuery += ",";
+            writeFieldQuery += "\"";
+            writeFieldQuery += field->getName();
+            writeFieldQuery += "\"";
+            writeFieldQuery += ",";
+            writeFieldQuery += std::to_string(field->getByteOffset().value());
+            writeFieldQuery += ",";
+            writeFieldQuery += std::to_string(field->getType().getId());
+            writeFieldQuery += ",";
+            writeFieldQuery += std::to_string(field->isLittleEndian() ? SQLiteDB_TRUE : SQLiteDB_FALSE);
 
-        writeFieldQuery += ",";
-        writeFieldQuery += "\"";
-        writeFieldQuery += field->getLongDescription();
-        writeFieldQuery += "\"";
+            writeFieldQuery += ",";
+            writeFieldQuery += std::to_string(field->getBitSize());
+            writeFieldQuery += ",";
+            writeFieldQuery += std::to_string(field->getBitOffset());
 
-        writeFieldQuery += ",";
-        writeFieldQuery += "\"";
-        writeFieldQuery += field->getShortDescription();
-        writeFieldQuery += "\"";
+            writeFieldQuery += ",";
+            writeFieldQuery += "\"";
+            writeFieldQuery += field->getLongDescription();
+            writeFieldQuery += "\"";
 
-        writeFieldQuery += ");";
+            writeFieldQuery += ",";
+            writeFieldQuery += "\"";
+            writeFieldQuery += field->getShortDescription();
+            writeFieldQuery += "\"";
 
-        rc               = sqlite3_exec(database, writeFieldQuery.c_str(), NULL, NULL, &errorMessage);
+            writeFieldQuery += ");";
+        }
+
+        else
+        {
+            writeFieldQuery +=
+                "INSERT INTO fields(symbol, name, type, "
+                "little_endian, bit_size, bit_offset, long_description, short_description) VALUES(";
+            writeFieldQuery += std::to_string(field->getSymbol().getId());
+            writeFieldQuery += ",";
+            writeFieldQuery += "\"";
+            writeFieldQuery += field->getName();
+            writeFieldQuery += "\"";
+            writeFieldQuery += ",";
+            writeFieldQuery += std::to_string(field->getType().getId());
+            writeFieldQuery += ",";
+            writeFieldQuery += std::to_string(field->isLittleEndian() ? SQLiteDB_TRUE : SQLiteDB_FALSE);
+
+            writeFieldQuery += ",";
+            writeFieldQuery += std::to_string(field->getBitSize());
+            writeFieldQuery += ",";
+            writeFieldQuery += std::to_string(field->getBitOffset());
+
+            writeFieldQuery += ",";
+            writeFieldQuery += "\"";
+            writeFieldQuery += field->getLongDescription();
+            writeFieldQuery += "\"";
+
+            writeFieldQuery += ",";
+            writeFieldQuery += "\"";
+            writeFieldQuery += field->getShortDescription();
+            writeFieldQuery += "\"";
+
+            writeFieldQuery += ");";
+        }
+
+        rc = sqlite3_exec(database, writeFieldQuery.c_str(), NULL, NULL, &errorMessage);
 
         if (SQLITE_OK == rc)
         {
