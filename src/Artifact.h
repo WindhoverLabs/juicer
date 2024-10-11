@@ -8,6 +8,7 @@
 #ifndef SRC_ARTIFACT_H_
 #define SRC_ARTIFACT_H_
 
+#include <cstdint>
 #include <string>
 #include <cstdint>
 

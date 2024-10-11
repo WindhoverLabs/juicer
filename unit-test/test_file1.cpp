@@ -23,7 +23,7 @@ extern "C" {
 Square                                         sq              = {};
 Circle                                         ci              = {};
 
-Circle*                                        ci_ptr              = {};
+Circle*                                        ci_ptr          = {};
 
 __attribute__((used)) CFE_ES_HousekeepingTlm_t hk              = {};
 

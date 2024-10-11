@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:18.04
 RUN apt update
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TERM xterm-256color
@@ -53,6 +53,8 @@ RUN ./juicer-ut "[Symbol]"
 RUN cd /home/docker/juicer && make coverage
 #Useful for CI
 RUN cd /home/docker/juicer &&  gcovr --filter /home/docker/juicer/src/ --object-directory /home/docker/juicer/build/ut_obj/ --xml  coverage.gcov 
+
+
 
 
 

@@ -15,6 +15,8 @@
 10. [Extra Elf Features](#extra_elf_features)
 11. [vxWorks Support](#vxWorks)
 12. [Notes On Multiple DWARF Versions](#multiple_dwarf_versions)
+13. [Bitfields](#Bitfields)
+14. [Docker Dev Environments](#docker_dev_env) 
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
@@ -174,13 +176,13 @@ This is how juicer stores data in the database.
 # GCC Compatibility <a name="compatibility"></a>
 
 Since`juicer` is reading ELF files, the compiler one uses or the specific linux version *can* affect the behavior of the libelf libraries.
-Because of this we have tested `juicer`on the specified platforms in the table below.
+Because of this we have tested `juicer` (and continuously test in CI)on the specified platforms in the table below.
 
-| Ubuntu Version| GCC Version(s)  |
-|---|---|
-| `Ubuntu 16.04.7 LTS`  |     `gcc 5.4.0`, ` gcc 6.5.0 `  | 
-| `Ubuntu 18.04.5 LTS`  |  ` gcc 7.5.0`,  `gcc 8.4.0`  |
-| `Ubuntu 20.04.1 LTS`  | `gcc 7.5.0`,  `gcc  8.4.0`,  `gcc 9.3.0`, `9.4.0`    |
+| Ubuntu Version | GCC Version(s)  | DWARF Version | 
+|---|---| ---|
+| `Ubuntu 18.04.1 LTS`  |   `7.5.0`     | 4 |
+| `Ubuntu 20.04.1 LTS`  |   `9.4.0`     | 4 |
+| `Ubuntu 22.04.5 LTS`  |   `11.4.0`    | 5 |
 
 
 # Padding <a name="padding"></a>
@@ -313,7 +315,7 @@ As juicer evolves, dwarf support will grow and evolve as well. At the moment, we
 | DW_TAG_base_type      | This is the tag that represents intrinsic types such as `int` and `char`. |
 | DW_TAG_typedef        | This is the tag that represents anything that is typdef'd in code such as   `typedef struct{...}` `typedef int16 my_int`. This is what the "target_symbol" column is for in the symbols table. |
 | DW_TAG_structure_type | This is the tag that represents structs such as  `struct Square{ int width; int length; };` |
-| DW_TAG_array_type     | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Noe that this does not include dynamic arrays such as those allocated by malloc or new calls.|
+| DW_TAG_array_type     | This is the tag that represents *statically* allocated arrays such as `int flat_array[] = {1,2,3,4,5,6};`. Note that this does not include dynamic arrays such as those allocated by malloc or new calls.|
 | DW_TAG_pointer_type   | This is the tag that represents pointers in code such as `int* ptr = nullptr`|
 | DW_TAG_enumeration_type | This is the tag that represents enumerations such as `enum Color{RED,BLUE,YELLOW};` |
 | DW_TAG_const_type     | This is the tag that represents C/C++ const qualified type such as `sizetype`, which is used by containers(like std::vector) in the STL C++ library.  |
@@ -391,6 +393,7 @@ At the moment vxWorks support is a work in progress. Support is currently *not* 
 ```
 catchsegv ./juicer-ut "[main_test#3]"
 addr2line -e ./juicer-ut 0x19646c
+
 ```
 
 
@@ -399,4 +402,36 @@ addr2line -e ./juicer-ut 0x19646c
 - Do *not* use DWARF experimental support from your compiler. Use the *default* DWARF version, whether that is 5 or 4. When using a
 DWARF version that still is experimental for your compiler, it is not guaranteed juicer will parse the binary correctly.
 
-Documentation updated on September 29, 2021
+
+# Bitfields <a name="bitfields"></a>
+
+For a bit-packed struct
+```
+struct S
+{
+    uint8_t before;
+    int     j : 5;
+    int     k : 6;
+    int     m : 5;
+    uint8_t p;
+    int     n : 8;
+    uint8_t after;
+};
+```
+
+The fields table looks like this:
+
+![bit_packed_fields](Images/bit_packed_struct.png "symbols-table")
+
+Notice for the bitpacked fields(j,k,m,n) the bit_offset and bit_size columns are nonzero.
+
+
+# Docker Dev Environment <a name="docker_dev_env"></a>
+
+It is often useful to use a virtualized environment for development. There are several recipes on this repo that make this easier.
+For example `make docker-ubuntu22-build-dev` will start a dev environment inside of Docker with Ubuntu22. 
+The repo is mounted as a volume under "/home/docker/juicer" so developers can make their changes on the host and build inside the container.
+
+
+
+Documentation updated on September 19, 2024

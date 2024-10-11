@@ -1,4 +1,5 @@
 root_dir: "."
+clang_format_command: "clang-format"
 
 #When true, files will only be checked. None will be modified.
 check_all: false

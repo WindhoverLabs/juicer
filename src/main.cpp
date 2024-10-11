@@ -74,7 +74,7 @@ static struct argp_option options[] = {{"input", 'i', "FILE", 0, "Input ELF file
                                        {"extras", 'x', NULL, 0,
                                         "Extra DWARF and ELF data such as variables. Enabling this"
                                         "will cause juicer to take longer."},
-                                        {"groupNumber", 'g', "group", 0,
+                                       {"groupNumber", 'g', "group", 0,
                                         "Group number to extract data forom inside of DWARF section."
                                         "Useful for situations where debug sections (eg. debug_macros) are spreadout through different groups."
                                         " An example of this is when macros are split in different groups by gcc for unlinked ELF object files."},
@@ -103,7 +103,7 @@ typedef struct
     char              *project;
     bool               project_set;
     bool               extras;
-    unsigned int       groupNumber;
+    int                groupNumber;
 } arguments_t;
 
 /* Parse a single option. */
@@ -187,6 +187,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
         case 'g':
         {
+            for (int i = 0; i < strlen(arg); i++)
+            {
+                if (isdigit(arg[i]) == 0)
+                {
+                    printf("Error: group number MUST be a number");
+                    argp_usage(state);
+                    return ARGP_KEY_ERROR;
+                }
+            }
+
             arguments->groupNumber = atoi(arg);
             break;
         }
@@ -296,13 +306,13 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
                 }
             }
 
-            //            /* Verify Extras. */
-            //            if (arguments->extras)
-            //            {
-            //                //                printf("Error:  extras name must be set.\n");
-            //                //                argp_usage(state);
-            //                return ARGP_KEY_ERROR;
-            //            }
+            /* Verify group number. */
+            if (arguments->groupNumber < 0)
+            {
+                printf("Error:  Group number must be 0 or greater.\n");
+                argp_usage(state);
+                return ARGP_KEY_ERROR;
+            }
 
             break;
         }
@@ -317,7 +327,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 }
 
 /* Our argp parser. */
-static struct argp argp         = {options, parse_opt, args_doc, doc};
+static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int                main(int argc, char **argv)
 {
@@ -326,13 +336,13 @@ int                main(int argc, char **argv)
 
     /* Set argument default values. */
     memset(&arguments, 0, sizeof(arguments));
-    arguments.verbosity = 1;
-    arguments.extras    = false;
+    arguments.verbosity   = 1;
+    arguments.extras      = false;
     arguments.groupNumber = 0;
 
     /* Parse our arguments; every option seen by parse_opt will
      be reflected in arguments. */
-    parse_error         = argp_parse(&argp, argc, argv, 0, 0, &arguments);
+    parse_error           = argp_parse(&argp, argc, argv, 0, 0, &arguments);
     if (parse_error == 0)
     {
         Juicer juicer;
