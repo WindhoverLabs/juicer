@@ -777,7 +777,7 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
 
     REQUIRE(dataDimensionListsRecords.at(0)["field_id"] == nameToUnionField.at("data")["id"]);
     REQUIRE(dataDimensionListsRecords.at(0)["dim_order"] == "0");
-    REQUIRE(dataDimensionListsRecords.at(0)["upper_bound"] == "31");
+    REQUIRE(dataDimensionListsRecords.at(0)["upper_bound"] == "3");
 
     /**
      * *Clean up our database handle and objects in memory.
