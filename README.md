@@ -452,9 +452,9 @@ union Object
 The union is represented as such in the SQLITE db:
 
 
-![bit_packed_fields](Images/union_symbol_tbl.png "symbols-table")
+![union_symbol](Images/union_symbol_tbl.png "symbols-table")
 
-![bit_packed_fields](Images/union_fields_tbl.png "fields-table")
+![union_fields](Images/union_fields_tbl.png "fields-table")
 
 Notice that the byte_offset is `NULL` for the fields that belong to the union. This is how consumers (such as [auto-yamcs](https://github.com/WindhoverLabs/auto-yamcs)) can make a distinction between unions and structs.
 
