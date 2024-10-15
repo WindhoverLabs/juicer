@@ -123,18 +123,6 @@ clean:
 -include $(UT_OBJ:.o=.d)
 -include $(OBJ:.o=.d)
 
-docker-ubuntu22-build:
-	@sudo docker build --no-cache -t juicer:latest -f Dockerfile.ubuntu22 .
-
-
-docker-ubuntu20-build:
-	@sudo docker build --no-cache -t juicer:latest -f Dockerfile.ubuntu20 .
-
-
-docker-ubuntu22-build-dev:
-	@sudo docker build --no-cache -t juicer-dev:latest -f Dockerfile.ubuntu22.dev .
-	@sudo docker run -v .:/home/docker/juicer -it juicer-dev:latest bash
-
 docker-ubuntu18-build:
 	@sudo docker build --no-cache -t juicer:ubuntu18 -f Dockerfile.ubuntu18 .
 
