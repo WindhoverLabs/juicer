@@ -5745,8 +5745,12 @@ std::string &Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
         {
             return dbgSourceFiles.at(pathIndex);
         }
+        default:
+        {
+            logger.logWarning("Found unsupported version(%d) of DWARF. The index to the source file name table will be used as is.", dwarfVersion);
+            return dbgSourceFiles.at(pathIndex);
+        }
     }
-    return dbgSourceFiles.at(pathIndex);
 }
 
 unsigned int Juicer::getDwarfVersion() { return dwarfVersion; }
