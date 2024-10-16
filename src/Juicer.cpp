@@ -707,7 +707,7 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
                      */
                     /* This branch represents a "void*" since there is no valid type.
                      * Read section 5.2 of DWARF4 for details on this.*/
-                    Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                    Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                     std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                     newArtifact.setMD5(checkSum);
                     outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
@@ -1087,7 +1087,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                              * indicates that no source file has been specified.
                              *
                              */
-                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
@@ -1260,7 +1260,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                              * indicates that no source file has been specified.
                              *
                              */
-                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
@@ -1416,7 +1416,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                              * indicates that no source file has been specified.
                              *
                              */
-                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
@@ -3337,7 +3337,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                              * indicates that no source file has been specified.
                              *
                              */
-                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
@@ -3627,7 +3627,7 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
                  * indicates that no source file has been specified.
                  *
                  */
-                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
@@ -4417,7 +4417,7 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                                  * indicates that no source file has been specified.
                                  *
                                  */
-                                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                                 newArtifact.setMD5(checkSum);
                                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
@@ -5726,8 +5726,13 @@ std::string Juicer::generateMD5SumForFile(std::string filePath)
  * handles debug source files lookups for different DWARF versions.
  * It is assumed the pathIndex is the value of DW_AT_decl_file attribute
  */
-std::string &Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
+std::optional<std::string> Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
 {
+    if (dbgSourceFiles.empty())
+    {
+        return std::nullopt;
+    }
+
     switch (dwarfVersion)
     {
             /**
@@ -5739,11 +5744,11 @@ std::string &Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
 
         case 4:
         {
-            return dbgSourceFiles.at(pathIndex - 1);
+            return std::string{dbgSourceFiles.at(pathIndex - 1)};
         }
         case 5:
         {
-            return dbgSourceFiles.at(pathIndex);
+            return std::string{dbgSourceFiles.at(pathIndex)};
         }
         default:
         {
