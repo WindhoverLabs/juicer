@@ -1568,7 +1568,7 @@ TEST_CASE(
     REQUIRE(numberOfColumns == 9);
 
     /**
-     * Check the correctness of Square struct.
+     * Check the correctness of CFE_ES_HousekeepingTlm_Payload_t struct.
      */
 
     REQUIRE(hkRecords.at(0)["name"] == "CFE_ES_HousekeepingTlm_Payload_t");
@@ -2934,6 +2934,46 @@ TEST_CASE("Test 32-bit binary.", "[main_test#10]")
     REQUIRE(matrix1DDimensionListsRecords.at(0)["field_id"] == squareFieldsRecords.at(8)["id"]);
     REQUIRE(matrix1DDimensionListsRecords.at(0)["dim_order"] == "0");
     REQUIRE(matrix1DDimensionListsRecords.at(0)["upper_bound"] == "1");
+
+    std::string getExtraType{"SELECT * FROM symbols where id="};
+    getExtraType += squareFieldsRecords.at(9)["type"];
+    getExtraType += ";";
+
+    std::vector<std::map<std::string, std::string>> extraTypeRecords{};
+
+    rc = sqlite3_exec(database, getExtraType.c_str(), selectCallbackUsingColNameAsKey, &extraTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(extraTypeRecords.size() == 1);
+
+    std::string extraType{extraTypeRecords.at(0)["id"]};
+
+    REQUIRE(extraTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint8_t)));
+
+    REQUIRE(squareFieldsRecords.at(9)["symbol"] == squareRecords.at(0)["id"]);
+    REQUIRE(squareFieldsRecords.at(9)["name"] == "extra");
+    REQUIRE(squareFieldsRecords.at(9)["byte_offset"] == std::to_string(offsetof(Square, extra)));
+    REQUIRE(squareFieldsRecords.at(9)["type"] == extraType);
+    REQUIRE(squareFieldsRecords.at(9)["little_endian"] == little_endian);
+
+    std::string getSpareEndType{"SELECT * FROM symbols where id="};
+    getSpareEndType += squareFieldsRecords.at(10)["type"];
+    getSpareEndType += ";";
+
+    std::vector<std::map<std::string, std::string>> spareEndTypeRecords{};
+
+    rc = sqlite3_exec(database, getSpareEndType.c_str(), selectCallbackUsingColNameAsKey, &spareEndTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(spareEndTypeRecords.size() == 1);
+
+    std::string spareEndType{spareEndTypeRecords.at(0)["id"]};
+
+    REQUIRE(spareEndTypeRecords.at(0)["byte_size"] == std::to_string(3));
+
+    REQUIRE(squareFieldsRecords.at(10)["symbol"] == squareRecords.at(0)["id"]);
+    REQUIRE(squareFieldsRecords.at(10)["name"] == "_spare_end");
+    REQUIRE(squareFieldsRecords.at(10)["byte_offset"] == std::to_string(offsetof(Square, extra) + sizeof(uint8_t)));
+    REQUIRE(squareFieldsRecords.at(10)["type"] == spareEndType);
+    REQUIRE(squareFieldsRecords.at(10)["little_endian"] == little_endian);
 
     REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
