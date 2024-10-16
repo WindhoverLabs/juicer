@@ -1179,7 +1179,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
              */
             std::string writeSymbolQuery{};
 
-            if (!symbol->hasEncoding())
+            if (!symbol->getEncoding())
             {
                 writeSymbolQuery +=
                     "INSERT INTO symbols(elf, name, byte_size, artifact, long_description, short_description) "
@@ -1242,8 +1242,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
                 writeSymbolQuery += ",";
 
                 writeSymbolQuery += "\"";
-                writeSymbolQuery += std::to_string(symbol->getElf().getDWARFEncoding(symbol->getEncoding()).getId());
-                // writeSymbolQuery += "-47";
+                writeSymbolQuery += std::to_string(symbol->getElf().getDWARFEncoding(symbol->getEncoding().value()).getId());
                 writeSymbolQuery += "\",";
 
                 writeSymbolQuery += std::to_string(symbol->getArtifact().getId());

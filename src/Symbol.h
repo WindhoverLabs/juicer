@@ -71,7 +71,7 @@ class Symbol
 
     bool                                       hasEncoding();
 
-    int                                        getEncoding();
+    std::optional<int>                         getEncoding();
 
    private:
     ElfFile                                  &elf;
@@ -87,7 +87,7 @@ class Symbol
     std::string                               short_description;
     std::string                               long_description;
 
-    int                                       encoding{-1};
+    std::optional<int>                        encoding{std::nullopt};
 };
 
 #endif /* SYMBOL_H_ */
