@@ -1376,8 +1376,17 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                 if (res == DW_DLV_OK)
                 {
-                    std::string cName = dieName;
-                    res               = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
+                    std::string cName{""};
+                    if (dieName != nullptr)
+                    {
+                        cName = dieName;
+                    }
+                    else
+                    {
+                        logger.logWarning("Symbol does not have a name. This usually means an anonymous struct or union.");
+                    }
+
+                    res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
 
                     if (DW_DLV_OK == res)
                     {
@@ -4091,7 +4100,6 @@ void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug
             else if (res == DW_DLV_NO_ENTRY)
             {
                 /* We wrapped around.  We're done processing the member fields. */
-                addPaddingToStruct(symbol);
                 break;
             }
 
@@ -4125,6 +4133,13 @@ void Juicer::addPaddingToStruct(Symbol &symbol)
             if (symbol.getFields().at(i - 1)->isArray() > 0)
             {
                 previousFieldSize = symbol.getFields().at(i - 1)->getArraySize() * previousFieldSize;
+            }
+
+            // There are cases when the byte offset does not exist (e.g. unions)
+            if (!((symbol.getFields().at(i - 1)->getByteOffset()) && (symbol.getFields().at(i)->getByteOffset())))
+            {
+                logger.logInfo("");
+                continue;
             }
 
             uint32_t lastFieldOffset     = symbol.getFields().at(i - 1)->getByteOffset().value();
