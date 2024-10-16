@@ -4138,7 +4138,7 @@ void Juicer::addPaddingToStruct(Symbol &symbol)
             // There are cases when the byte offset does not exist (e.g. unions)
             if (!((symbol.getFields().at(i - 1)->getByteOffset()) && (symbol.getFields().at(i)->getByteOffset())))
             {
-                logger.logInfo("");
+                logger.logWarning("Fields of Symbol %s do not have byte offset.");
                 continue;
             }
 
