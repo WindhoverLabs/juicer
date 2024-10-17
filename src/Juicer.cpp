@@ -1047,8 +1047,17 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                 if (res == DW_DLV_OK)
                 {
-                    std::string cName = dieName;
-                    res               = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
+                    std::string cName{""};
+                    if (dieName != nullptr)
+                    {
+                        cName = dieName;
+                    }
+                    else
+                    {
+                        logger.logWarning("Symbol does not have a name. This usually means an anonymous struct or union.");
+                    }
+
+                    res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
 
                     if (DW_DLV_OK == res)
                     {
