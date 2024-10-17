@@ -45,8 +45,8 @@ class Symbol
     uint32_t           getId(void) const;
     Symbol(const Symbol &symbol);
     void addField(Field &inField);
-    void addField(std::string &inName, uint32_t inByteOffset, Symbol &inType, DimensionList &dimensionList, bool inLittleEndian, uint32_t inBitSize = 0,
-                  uint32_t inBitOffset = 0);
+    void addField(std::string &inName, std::optional<uint32_t> inByteOffset, Symbol &inType, DimensionList &dimensionList, bool inLittleEndian,
+                  uint32_t inBitSize = 0, uint32_t inBitOffset = 0);
     void addField(std::string &inName, uint32_t inByteOffset, Symbol &inType, bool inLittleEndian, uint32_t inBitSize = 0, uint32_t inBitOffset = 0);
     void addEnumeration(Enumeration &inEnumeration);
     void addEnumeration(std::string &name, int32_t value);
@@ -71,7 +71,7 @@ class Symbol
 
     bool                                       hasEncoding();
 
-    int                                        getEncoding();
+    std::optional<int>                         getEncoding();
 
    private:
     ElfFile                                  &elf;
@@ -87,7 +87,7 @@ class Symbol
     std::string                               short_description;
     std::string                               long_description;
 
-    int                                       encoding{-1};
+    std::optional<int>                        encoding{std::nullopt};
 };
 
 #endif /* SYMBOL_H_ */

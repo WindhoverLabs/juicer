@@ -106,47 +106,48 @@ class Juicer
     unsigned int       getDwarfVersion();
 
    private:
-    Dwarf_Debug              dbg = 0;
-    int                      res = DW_DLV_ERROR;
-    Dwarf_Handler            errhand;
-    Dwarf_Ptr                errarg = 0;
-    int                      readCUList(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Error& error);
-    int                      getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level);
-    Symbol*                  process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
-    Symbol*                  process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
-    void                     process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    Symbol*                  process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
-    Symbol*                  process_DW_TAG_variable_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
-    void                     process_DW_TAG_enumeration_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    int                      process_DW_TAG_array_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    char*                    getFirstAncestorName(Dwarf_Die inDie);
-    int                      printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
-    char*                    dwarfStringToChar(char* dwarfString);
-    void                     addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField);
-    void                     addPaddingToStruct(Symbol& symbol);
-    void                     addPaddingEndToStruct(Symbol& symbol);
-    bool                     isDWARFVersionSupported(Dwarf_Die);
-    int                      elfFile = 0;
-    Logger                   logger;
-    IDataContainer*          idc = 0;
-    bool                     isIDCSet(void);
-    Symbol*                  getBaseTypeSymbol(ElfFile& elf, Dwarf_Die inDie, DimensionList& multiplicity);
-    void                     DisplayDie(Dwarf_Die inDie, uint32_t level);
+    Dwarf_Debug                dbg = 0;
+    int                        res = DW_DLV_ERROR;
+    Dwarf_Handler              errhand;
+    Dwarf_Ptr                  errarg = 0;
+    int                        readCUList(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Error& error);
+    int                        getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level);
+    Symbol*                    process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
+    Symbol*                    process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
+    void                       process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    Symbol*                    process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
+    Symbol*                    process_DW_TAG_variable_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
+    void                       process_DW_TAG_enumeration_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    int                        process_DW_TAG_array_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    void                       process_DW_TAG_union_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    char*                      getFirstAncestorName(Dwarf_Die inDie);
+    int                        printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
+    char*                      dwarfStringToChar(char* dwarfString);
+    void                       addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField);
+    void                       addPaddingToStruct(Symbol& symbol);
+    void                       addPaddingEndToStruct(Symbol& symbol);
+    bool                       isDWARFVersionSupported(Dwarf_Die);
+    int                        elfFile = 0;
+    Logger                     logger;
+    IDataContainer*            idc = 0;
+    bool                       isIDCSet(void);
+    Symbol*                    getBaseTypeSymbol(ElfFile& elf, Dwarf_Die inDie, DimensionList& multiplicity);
+    void                       DisplayDie(Dwarf_Die inDie, uint32_t level);
 
-    std::vector<Dwarf_Die>   getChildrenVector(Dwarf_Debug dbg, Dwarf_Die die);
-    int                      getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die);
+    std::vector<Dwarf_Die>     getChildrenVector(Dwarf_Debug dbg, Dwarf_Die die);
+    int                        getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die);
 
-    uint32_t                 calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);
+    uint32_t                   calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);
 
-    DimensionList            getDimList(Dwarf_Debug dbg, Dwarf_Die die);
+    DimensionList              getDimList(Dwarf_Debug dbg, Dwarf_Die die);
 
-    std::vector<std::string> dbgSourceFiles{};
+    std::vector<std::string>   dbgSourceFiles{};
 
-    std::string              generateMD5SumForFile(std::string filePath);
-    std::string&             getdbgSourceFile(ElfFile& elf, int pathIndex);
-    DefineMacro              getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Context mac_context, int i, Dwarf_Unsigned line_number, Dwarf_Unsigned index,
-                                            Dwarf_Unsigned offset, const char* macro_string, Dwarf_Half& forms_count, Dwarf_Error& error, Dwarf_Die cu_die, ElfFile& elf);
-    DefineMacro              getDefineMacroFromString(std::string macro_string);
+    std::string                generateMD5SumForFile(std::string filePath);
+    std::optional<std::string> getdbgSourceFile(ElfFile& elf, int pathIndex);
+    DefineMacro getDefineMacro(Dwarf_Half macro_operator, Dwarf_Macro_Context mac_context, int i, Dwarf_Unsigned line_number, Dwarf_Unsigned index,
+                               Dwarf_Unsigned offset, const char* macro_string, Dwarf_Half& forms_count, Dwarf_Error& error, Dwarf_Die cu_die, ElfFile& elf);
+    DefineMacro getDefineMacroFromString(std::string macro_string);
     std::map<std::string, std::vector<uint8_t>> getObjDataFromElf(ElfFile* elfFileObj);
 
     bool                                        extras;

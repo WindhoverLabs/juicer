@@ -625,37 +625,159 @@ TEST_CASE("Test the correctness of the Circle struct after Juicer has processed 
     REQUIRE(modeEnumsRecords[7]["name"] == "MODE_SLOT_MAX");
     REQUIRE(modeEnumsRecords[7]["value"] == "6");
 
-    REQUIRE(fieldsRecords.at(4)["name"] == "_spare_end");
-    /**
-     *Check the correctness of the fields
-     */
+    // TODO:Add support for unions first before adding these tests.
 
-    std::string getSpareEndType{"SELECT * FROM symbols where id="};
+    REQUIRE(fieldsRecords.at(4)["name"] == "union_object");
+    // /**
+    //  *Check the correctness of the fields
+    //  */
 
-    getSpareEndType += fieldsRecords.at(4)["type"];
-    getSpareEndType += ";";
+    std::string getUnionObjectType{"SELECT * FROM symbols where id="};
 
-    std::vector<std::map<std::string, std::string>> spareEndSymbolRecords{};
+    getUnionObjectType += fieldsRecords.at(4)["type"];
+    getUnionObjectType += ";";
 
-    rc = sqlite3_exec(database, getSpareEndType.c_str(), selectCallbackUsingColNameAsKey, &spareEndSymbolRecords, &errorMessage);
+    std::vector<std::map<std::string, std::string>> unionObjectSymbolRecords{};
+
+    rc = sqlite3_exec(database, getUnionObjectType.c_str(), selectCallbackUsingColNameAsKey, &unionObjectSymbolRecords, &errorMessage);
 
     REQUIRE(rc == SQLITE_OK);
 
-    REQUIRE(spareEndSymbolRecords.size() == 1);
+    REQUIRE(unionObjectSymbolRecords.size() == 1);
 
-    std::string spareEndType{spareEndSymbolRecords.at(0).at("id")};
+    std::string unionObjectType{unionObjectSymbolRecords.at(0).at("id")};
 
-    // TODO:Add support for unions first before adding these tests.
+    REQUIRE(fieldsRecords.at(4)["symbol"] == circleRecords.at(0)["id"]);
+    REQUIRE(fieldsRecords.at(4)["name"] == "union_object");
+    REQUIRE(fieldsRecords.at(4)["byte_offset"] == std::to_string(offsetof(Circle, union_object)));
+    REQUIRE(fieldsRecords.at(4)["type"] == unionObjectType);
+    REQUIRE(fieldsRecords.at(4)["little_endian"] == little_endian);
+    REQUIRE(fieldsRecords.at(4)["bit_size"] == "0");
+    REQUIRE(fieldsRecords.at(4)["bit_offset"] == "0");
+    REQUIRE(fieldsRecords.at(4)["short_description"] == "");
+    REQUIRE(fieldsRecords.at(4)["long_description"] == "");
 
-    // REQUIRE(fieldsRecords.at(4)["symbol"] == circleRecords.at(0)["id"]);
-    // REQUIRE(fieldsRecords.at(4)["name"] == "_spare_end");
-    // REQUIRE(fieldsRecords.at(4)["byte_offset"] == std::to_string( sizeof(float) + sizeof(float) + (sizeof(int) * 128) + sizeof(ModeSlot_t) ));
-    // REQUIRE(fieldsRecords.at(4)["type"] == spareEndType);
-    // REQUIRE(fieldsRecords.at(4)["little_endian"] == little_endian);
-    // REQUIRE(fieldsRecords.at(4)["bit_size"] == "0");
-    // REQUIRE(fieldsRecords.at(4)["bit_offset"] == "0");
-    // REQUIRE(fieldsRecords.at(4)["short_description"] == "");
-    // REQUIRE(fieldsRecords.at(4)["long_description"] == "");
+    // Test the members of the union
+
+    std::string getUnionFields{"SELECT * FROM fields WHERE symbol = "};
+
+    getUnionFields += unionObjectSymbolRecords.at(0).at("id");
+    getUnionFields += ";";
+
+    std::vector<std::map<std::string, std::string>> unionFieldsRecords{};
+
+    rc = sqlite3_exec(database, getUnionFields.c_str(), selectCallbackUsingColNameAsKey, &unionFieldsRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(unionFieldsRecords.size() == 3);
+
+    // Map each record to field name since unions don't have byte_offset, we can't rely on "order"
+
+    std::map<std::string, std::map<std::string, std::string>> nameToUnionField{};
+
+    for (auto unionFieldsRecord : unionFieldsRecords)
+    {
+        nameToUnionField[unionFieldsRecord.at("name")] = unionFieldsRecord;
+    }
+
+    REQUIRE((nameToUnionField.find("id") != nameToUnionField.end()));
+    REQUIRE((nameToUnionField.find("bit_field") != nameToUnionField.end()));
+    REQUIRE((nameToUnionField.find("data") != nameToUnionField.end()));
+
+    std::string getUnionIdtType{"SELECT * FROM symbols where id="};
+
+    getUnionIdtType += nameToUnionField.at("id").at("type");
+    getUnionIdtType += ";";
+
+    std::vector<std::map<std::string, std::string>> unionIdtTypeRecords{};
+
+    rc = sqlite3_exec(database, getUnionIdtType.c_str(), selectCallbackUsingColNameAsKey, &unionIdtTypeRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(unionIdtTypeRecords.size() == 1);
+
+    REQUIRE("int32_t" == unionIdtTypeRecords.at(0).at("name"));
+
+    REQUIRE(nameToUnionField["id"]["symbol"] == unionObjectSymbolRecords.at(0)["id"]);
+    REQUIRE(nameToUnionField["id"]["name"] == "id");
+    REQUIRE(nameToUnionField["id"]["byte_offset"] == "NULL");
+    // REQUIRE(nameToUnionField["id"]["type"] == unionObjectType);
+    REQUIRE(nameToUnionField["id"]["little_endian"] == little_endian);
+    REQUIRE(nameToUnionField["id"]["bit_size"] == "0");
+    REQUIRE(nameToUnionField["id"]["bit_offset"] == "0");
+    REQUIRE(nameToUnionField["id"]["short_description"] == "");
+    REQUIRE(nameToUnionField["id"]["long_description"] == "");
+
+    std::string getUnionBitFieldType{"SELECT * FROM symbols where id="};
+
+    getUnionBitFieldType += nameToUnionField.at("bit_field").at("type");
+    getUnionBitFieldType += ";";
+
+    std::vector<std::map<std::string, std::string>> unionBitFieldTypeRecords{};
+
+    rc = sqlite3_exec(database, getUnionBitFieldType.c_str(), selectCallbackUsingColNameAsKey, &unionBitFieldTypeRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(unionBitFieldTypeRecords.size() == 1);
+
+    REQUIRE("int32_t" == unionBitFieldTypeRecords.at(0).at("name"));
+
+    REQUIRE(nameToUnionField["bit_field"]["symbol"] == unionObjectSymbolRecords.at(0)["id"]);
+    REQUIRE(nameToUnionField["bit_field"]["name"] == "bit_field");
+    REQUIRE(nameToUnionField["bit_field"]["byte_offset"] == "NULL");
+    // REQUIRE(nameToUnionField["id"]["type"] == unionObjectType);
+    REQUIRE(nameToUnionField["bit_field"]["little_endian"] == little_endian);
+    REQUIRE(nameToUnionField["bit_field"]["bit_size"] == "10");
+    REQUIRE(nameToUnionField["bit_field"]["bit_offset"] == "22");
+    REQUIRE(nameToUnionField["bit_field"]["short_description"] == "");
+    REQUIRE(nameToUnionField["bit_field"]["long_description"] == "");
+
+    std::string getUnionDataFieldType{"SELECT * FROM symbols where id="};
+
+    getUnionDataFieldType += nameToUnionField.at("data").at("type");
+    getUnionDataFieldType += ";";
+
+    std::vector<std::map<std::string, std::string>> unionDataFieldTypeRecords{};
+
+    rc = sqlite3_exec(database, getUnionDataFieldType.c_str(), selectCallbackUsingColNameAsKey, &unionDataFieldTypeRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    REQUIRE(unionDataFieldTypeRecords.size() == 1);
+
+    REQUIRE("uint8_t" == unionDataFieldTypeRecords.at(0).at("name"));
+
+    REQUIRE(nameToUnionField["bit_field"]["symbol"] == unionObjectSymbolRecords.at(0)["id"]);
+    REQUIRE(nameToUnionField["bit_field"]["name"] == "bit_field");
+    REQUIRE(nameToUnionField["bit_field"]["byte_offset"] == "NULL");
+    // REQUIRE(nameToUnionField["id"]["type"] == unionObjectType);
+    REQUIRE(nameToUnionField["bit_field"]["little_endian"] == little_endian);
+    REQUIRE(nameToUnionField["bit_field"]["bit_size"] == "10");
+    REQUIRE(nameToUnionField["bit_field"]["bit_offset"] == "22");
+    REQUIRE(nameToUnionField["bit_field"]["short_description"] == "");
+    REQUIRE(nameToUnionField["bit_field"]["long_description"] == "");
+
+    // Test uint8_t data[32] inside of union
+    std::string getDataDimensionLists{"SELECT * FROM dimension_lists WHERE field_id="};
+    getDataDimensionLists += nameToUnionField.at("data")["id"];
+    getDataDimensionLists += ";";
+
+    std::vector<std::map<std::string, std::string>> dataDimensionListsRecords{};
+
+    rc = sqlite3_exec(database, getDataDimensionLists.c_str(), selectCallbackUsingColNameAsKey, &dataDimensionListsRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(dataDimensionListsRecords.size() == 1);
+
+    // Enforce order of records by dim_order
+    std::sort(dataDimensionListsRecords.begin(), dataDimensionListsRecords.end(),
+              [](std::map<std::string, std::string> a, std::map<std::string, std::string> b) { return std::stoi(a["dim_order"]) < std::stoi(b["dim_order"]); });
+
+    REQUIRE(dataDimensionListsRecords.at(0)["field_id"] == nameToUnionField.at("data")["id"]);
+    REQUIRE(dataDimensionListsRecords.at(0)["dim_order"] == "0");
+    REQUIRE(dataDimensionListsRecords.at(0)["upper_bound"] == "3");
 
     /**
      * *Clean up our database handle and objects in memory.
@@ -1446,7 +1568,7 @@ TEST_CASE(
     REQUIRE(numberOfColumns == 9);
 
     /**
-     * Check the correctness of Square struct.
+     * Check the correctness of CFE_ES_HousekeepingTlm_Payload_t struct.
      */
 
     REQUIRE(hkRecords.at(0)["name"] == "CFE_ES_HousekeepingTlm_Payload_t");
@@ -2812,6 +2934,46 @@ TEST_CASE("Test 32-bit binary.", "[main_test#10]")
     REQUIRE(matrix1DDimensionListsRecords.at(0)["field_id"] == squareFieldsRecords.at(8)["id"]);
     REQUIRE(matrix1DDimensionListsRecords.at(0)["dim_order"] == "0");
     REQUIRE(matrix1DDimensionListsRecords.at(0)["upper_bound"] == "1");
+
+    std::string getExtraType{"SELECT * FROM symbols where id="};
+    getExtraType += squareFieldsRecords.at(9)["type"];
+    getExtraType += ";";
+
+    std::vector<std::map<std::string, std::string>> extraTypeRecords{};
+
+    rc = sqlite3_exec(database, getExtraType.c_str(), selectCallbackUsingColNameAsKey, &extraTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(extraTypeRecords.size() == 1);
+
+    std::string extraType{extraTypeRecords.at(0)["id"]};
+
+    REQUIRE(extraTypeRecords.at(0)["byte_size"] == std::to_string(sizeof(uint8_t)));
+
+    REQUIRE(squareFieldsRecords.at(9)["symbol"] == squareRecords.at(0)["id"]);
+    REQUIRE(squareFieldsRecords.at(9)["name"] == "extra");
+    REQUIRE(squareFieldsRecords.at(9)["byte_offset"] == std::to_string(offsetof(Square, extra)));
+    REQUIRE(squareFieldsRecords.at(9)["type"] == extraType);
+    REQUIRE(squareFieldsRecords.at(9)["little_endian"] == little_endian);
+
+    std::string getSpareEndType{"SELECT * FROM symbols where id="};
+    getSpareEndType += squareFieldsRecords.at(10)["type"];
+    getSpareEndType += ";";
+
+    std::vector<std::map<std::string, std::string>> spareEndTypeRecords{};
+
+    rc = sqlite3_exec(database, getSpareEndType.c_str(), selectCallbackUsingColNameAsKey, &spareEndTypeRecords, &errorMessage);
+    REQUIRE(rc == SQLITE_OK);
+    REQUIRE(spareEndTypeRecords.size() == 1);
+
+    std::string spareEndType{spareEndTypeRecords.at(0)["id"]};
+
+    REQUIRE(spareEndTypeRecords.at(0)["byte_size"] == std::to_string(3));
+
+    REQUIRE(squareFieldsRecords.at(10)["symbol"] == squareRecords.at(0)["id"]);
+    REQUIRE(squareFieldsRecords.at(10)["name"] == "_spare_end");
+    REQUIRE(squareFieldsRecords.at(10)["byte_offset"] == std::to_string(offsetof(Square, extra) + sizeof(uint8_t)));
+    REQUIRE(squareFieldsRecords.at(10)["type"] == spareEndType);
+    REQUIRE(squareFieldsRecords.at(10)["little_endian"] == little_endian);
 
     REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;

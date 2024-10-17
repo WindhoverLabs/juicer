@@ -38,10 +38,12 @@ UT_SRC_32     := $(wildcard $(UT_SRC_DIR)/test_file*.cpp)
 UT_OBJ_32     := $(UT_SRC_32:$(UT_SRC_DIR)/test_file%.cpp=$(UT_OBJ_32BIT_DIR)/test_file%.o)
 UT_OBJ_32     := $(UT_OBJ_32:$(UT_SRC_DIR)/test_file%.cpp=$(UT_OBJ_32BIT_DIR)/test_file%.o)
 
+GIT_VERSION   := "$(shell git describe --tags --abbrev=0)($(shell  git rev-parse --short HEAD))"
+
 
 # Set target flags
-CPPFLAGS            := -MMD -MP -std=c++14 -fmessage-length=0 $(INCLUDES)
-CFLAGS              := -Wall -g3 
+CPPFLAGS            := -MMD -MP -std=c++17 -fmessage-length=0 $(INCLUDES)
+CFLAGS              := -Wall -g3 -DJUICER_VERSION=\"$(GIT_VERSION)\"
 CFLAGS_32BIT        := -Wall -g3 -m32 
 LDFLAGS             := -Llib
 LDLIBS              := -lm -ldwarf -lsqlite3 -lelf -lcrypto
@@ -122,7 +124,6 @@ clean:
 
 -include $(UT_OBJ:.o=.d)
 -include $(OBJ:.o=.d)
-
 
 docker-ubuntu18-build:
 	@sudo docker build --no-cache -t juicer:ubuntu18 -f Dockerfile.ubuntu18 .
