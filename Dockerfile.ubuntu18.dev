@@ -20,3 +20,11 @@ RUN mkdir /home/docker/juicer
 WORKDIR /home/docker/juicer
 
 
+
+RUN useradd -ms /bin/bash juicer-dev
+RUN usermod -aG sudo juicer-dev
+RUN echo "juicer-dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+USER juicer-dev
+
+

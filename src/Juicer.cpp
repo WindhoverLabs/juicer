@@ -707,7 +707,7 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
                      */
                     /* This branch represents a "void*" since there is no valid type.
                      * Read section 5.2 of DWARF4 for details on this.*/
-                    Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                    Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                     std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                     newArtifact.setMD5(checkSum);
                     outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
@@ -1047,8 +1047,17 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                 if (res == DW_DLV_OK)
                 {
-                    std::string cName = dieName;
-                    res               = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
+                    std::string cName{""};
+                    if (dieName != nullptr)
+                    {
+                        cName = dieName;
+                    }
+                    else
+                    {
+                        logger.logWarning("Symbol does not have a name. This usually means an anonymous struct or union.");
+                    }
+
+                    res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
 
                     if (DW_DLV_OK == res)
                     {
@@ -1087,7 +1096,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                              * indicates that no source file has been specified.
                              *
                              */
-                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
@@ -1260,7 +1269,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                              * indicates that no source file has been specified.
                              *
                              */
-                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
@@ -1326,9 +1335,127 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
             }
 
             case DW_TAG_union_type:
+
             {
+                Dwarf_Bool     structHasName = false;
+                Dwarf_Bool     parentHasName = false;
+                Dwarf_Unsigned byteSize      = 0;
+
+                /* Does the structure type itself have the name? */
+                res                          = dwarf_hasattr(typeDie, DW_AT_name, &structHasName, &error);
+                if (res != DW_DLV_OK)
+                {
+                    logger.logError("Error in dwarf_hasattr(DW_AT_name).  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                }
+
+                res = dwarf_hasattr(inDie, DW_AT_name, &parentHasName, &error);
+                if (res != DW_DLV_OK)
+                {
+                    logger.logError("Error in dwarf_hasattr(DW_AT_name).  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                }
+
+                /* Read the name from the Die that has it. */
+                if (structHasName)
+                {
+                    res = dwarf_attr(typeDie, DW_AT_name, &attr_struct, &error);
+                    if (res != DW_DLV_OK)
+                    {
+                        logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+                    }
+
+                    if (res == DW_DLV_OK)
+                    {
+                        res = dwarf_formstring(attr_struct, &dieName, &error);
+                        if (res != DW_DLV_OK)
+                        {
+                            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                        }
+                    }
+                }
+
+                if (res == DW_DLV_OK)
+                {
+                    res = dwarf_bytesize(typeDie, &byteSize, &error);
+                    if (res != DW_DLV_OK)
+                    {
+                        logger.logWarning("Skipping '%s'.  Error in dwarf_bytesize.  %u  errno=%u %s", dieName, __LINE__, dwarf_errno(error),
+                                          dwarf_errmsg(error));
+                    }
+                }
+
+                if (res == DW_DLV_OK)
+                {
+                    std::string cName{""};
+                    if (dieName != nullptr)
+                    {
+                        cName = dieName;
+                    }
+                    else
+                    {
+                        logger.logWarning("Symbol does not have a name. This usually means an anonymous struct or union.");
+                    }
+
+                    res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
+
+                    if (DW_DLV_OK == res)
+                    {
+                        unsigned long long pathIndex = 0;
+                        res                          = dwarf_formudata(attr_struct, &pathIndex, &error);
+
+                        /**
+                         * According to 6.2 Line Number Information in DWARF 4:
+                         * Line number information generated for a compilation unit is represented in the .debug_line
+                         * section of an object file and is referenced by a corresponding compilation unit debugging
+                         * information entry (see Section 3.1.1) in the .debug_info section.
+                         * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
+                         * the is_info to true.
+                         *
+                         * We are using a new Dwarf_Die because if we use cur_die, we segfault.
+                         *
+                         * My theory on this is that even though when we initially call dwarf_siblingof on
+                         * cur_die and as we read different kinds of tags/attributes(in particular type-related),
+                         * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
+                         *
+                         * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                         *
+                         * This is just a theory, however. In the future we may revisit this
+                         * to figure out the root cause of this.
+                         *
+                         */
+
+                        if (pathIndex != 0)
+                        {
+                            /**
+                             * Why we are checking against 0 as per DWARF section 2.14:
+                             *
+                             * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
+                             * information table for the compilation unit containing the debugging information entry and
+                             * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
+                             * indicates that no source file has been specified.
+                             *
+                             */
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
+                            std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
+                            newArtifact.setMD5(checkSum);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                        }
+                        else
+                        {
+                            Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
+                            std::string checkSum{};
+                            newArtifact.setMD5(checkSum);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                        }
+                    }
+
+                    if (nullptr != outSymbol)
+                    {
+                        process_DW_TAG_union_type(elf, *outSymbol, dbg, typeDie);
+                    }
+                }
+
                 /* TODO */
-                outSymbol = process_DW_TAG_base_type(elf, dbg, typeDie);
+                // outSymbol = process_DW_TAG_base_type(elf, dbg, typeDie);
                 break;
             }
 
@@ -3228,7 +3355,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                              * indicates that no source file has been specified.
                              *
                              */
-                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                            Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
                             outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
@@ -3518,7 +3645,7 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
                  * indicates that no source file has been specified.
                  *
                  */
-                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
@@ -3838,6 +3965,164 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
     }
 }
 
+/**
+ * @brief Inspects the union and adds each member as a field with byte_offset of zero.
+ * @param in_die the die entry that has the dwarf data.
+ * @param in_level The current level on the dbg structure.
+ * @return 0 if the die, its children and siblings are scanned successfully.
+ * 1 if there is a problem with dies or any of its children.
+ */
+void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+{
+    int             res         = DW_DLV_OK;
+    Dwarf_Attribute attr_struct = nullptr;
+    Dwarf_Die       memberDie   = 0;
+
+    Dwarf_Unsigned  udata       = 0;
+    Dwarf_Error     error       = 0;
+
+    /* Get the fields by getting the first child. */
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_child(inDie, &memberDie, &error);
+        if (res == DW_DLV_ERROR)
+        {
+            logger.logError("Error in dwarf_child. errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
+    }
+
+    /* Start processing the fields. */
+    for (;;)
+    {
+        char          *memberName           = nullptr;
+        Symbol        *memberBaseTypeSymbol = nullptr;
+        uint32_t       memberLocation       = 0;
+
+        Dwarf_Unsigned udata                = 0;
+
+        if (res == DW_DLV_OK)
+        {
+            Dwarf_Half tag;
+            Dwarf_Die  siblingDie = 0;
+
+            res                   = dwarf_tag(memberDie, &tag, &error);
+            if (res == DW_DLV_ERROR)
+            {
+                logger.logError("Error in dwarf_tag. errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+            }
+            else
+            {
+                switch (tag)
+                {
+                    case DW_TAG_union_type:
+                    {
+                        logger.logWarning("TODO:  Union members are not yet supported.");
+                        break;
+                    }
+
+                    case DW_TAG_inheritance:
+                    {
+                        logger.logWarning("TODO:  Inherited members not yet supported.");
+                        break;
+                    }
+
+                    case DW_TAG_typedef:
+                    {
+                        logger.logWarning("TODO:  Typedef member attributes not yet supported.");
+                        break;
+                    }
+
+                    case DW_TAG_member:
+                    {
+                        DimensionList dimensionList{};
+
+                        /* Get the name attribute of this Die. */
+
+                        if (res == DW_DLV_OK)
+                        {
+                            res = dwarf_attr(memberDie, DW_AT_name, &attr_struct, &error);
+                            if (res != DW_DLV_OK)
+                            {
+                                logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+                            }
+                        }
+
+                        /* Get the actual name of this member. */
+                        if (res == DW_DLV_OK)
+                        {
+                            res = dwarf_formstring(attr_struct, &memberName, &error);
+
+                            if (res != DW_DLV_OK)
+                            {
+                                logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                            }
+                        }
+
+                        /* Get the base type die. */
+                        if (res == DW_DLV_OK)
+                        {
+                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList);
+
+                            if (memberBaseTypeSymbol == 0)
+                            {
+                                logger.logWarning("Couldn't find base type for %s:%s.", symbol.getName().c_str(), memberName);
+
+                                /* Set the error code so we don't do anymore processing. */
+                                res = DW_DLV_ERROR;
+                            }
+                        }
+
+                        /* We have everything we need.  Add this field. */
+                        if (res == DW_DLV_OK)
+                        {
+                            std::string sMemberName = memberName;
+
+                            Field       memberField{symbol, sMemberName, std::nullopt, *memberBaseTypeSymbol, dimensionList, elf.isLittleEndian()};
+
+                            addBitFields(memberDie, memberField);
+                            symbol.addField(memberField);
+                        }
+
+                        break;
+                    }
+
+                    /* Fall through */
+                    case DW_TAG_template_type_parameter:
+                    case DW_TAG_template_value_parameter:
+                    case DW_TAG_GNU_template_parameter_pack:
+                    case DW_TAG_subprogram:
+                    {
+                        /* Ignore these */
+                        break;
+                    }
+
+                    default:
+                        break;
+                }
+            }
+
+            res = dwarf_siblingof(dbg, memberDie, &siblingDie, &error);
+            if (res == DW_DLV_ERROR)
+            {
+                logger.logError("Error in dwarf_siblingof.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+            }
+            else if (res == DW_DLV_NO_ENTRY)
+            {
+                /* We wrapped around.  We're done processing the member fields. */
+                break;
+            }
+
+            memberDie = siblingDie;
+        }
+
+        /* Don't continue looping if there was a problem. */
+        if (res != DW_DLV_OK)
+        {
+            break;
+        }
+    }
+}
+
 void Juicer::addPaddingToStruct(Symbol &symbol)
 {
     uint32_t spareCount{0};
@@ -3859,9 +4144,16 @@ void Juicer::addPaddingToStruct(Symbol &symbol)
                 previousFieldSize = symbol.getFields().at(i - 1)->getArraySize() * previousFieldSize;
             }
 
-            uint32_t lastFieldOffset     = symbol.getFields().at(i - 1)->getByteOffset();
+            // There are cases when the byte offset does not exist (e.g. unions)
+            if (!((symbol.getFields().at(i - 1)->getByteOffset()) && (symbol.getFields().at(i)->getByteOffset())))
+            {
+                logger.logWarning("Fields of Symbol %s do not have byte offset.", symbol.getName());
+                continue;
+            }
 
-            uint32_t memberLocationDelta = symbol.getFields().at(i)->getByteOffset() - lastFieldOffset;
+            uint32_t lastFieldOffset     = symbol.getFields().at(i - 1)->getByteOffset().value();
+
+            uint32_t memberLocationDelta = symbol.getFields().at(i)->getByteOffset().value() - lastFieldOffset;
 
             uint32_t memberLocation      = lastFieldOffset + previousFieldSize;
 
@@ -3924,12 +4216,12 @@ void Juicer::addPaddingEndToStruct(Symbol &symbol)
 
     if (!hasBitFields && symbol.getFields().size() > 0)
     {
-        symbolSize = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize();
+        symbolSize = symbol.getFields().back()->getByteOffset().value() + symbol.getFields().back()->getType().getByteSize();
 
         if (symbol.getFields().back()->getArraySize() > 0)
         {
-            symbolSize =
-                symbol.getFields().back()->getByteOffset() + (symbol.getFields().back()->getType().getByteSize() * symbol.getFields().back()->getArraySize());
+            symbolSize = symbol.getFields().back()->getByteOffset().value() +
+                         (symbol.getFields().back()->getType().getByteSize() * symbol.getFields().back()->getArraySize());
         }
 
         sizeDelta = symbol.getByteSize() - symbolSize;
@@ -3950,7 +4242,7 @@ void Juicer::addPaddingEndToStruct(Symbol &symbol)
                 paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta, newArtifact);
             }
 
-            uint32_t newFieldByteOffset = symbol.getFields().back()->getByteOffset() + symbol.getFields().back()->getType().getByteSize();
+            uint32_t newFieldByteOffset = symbol.getFields().back()->getByteOffset().value() + symbol.getFields().back()->getType().getByteSize();
 
             symbol.addField(paddingFieldName, newFieldByteOffset, *paddingSymbol, symbol.getElf().isLittleEndian(), 0, 0);
         }
@@ -4149,7 +4441,7 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                                  * indicates that no source file has been specified.
                                  *
                                  */
-                                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex)};
+                                Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                                 newArtifact.setMD5(checkSum);
                                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
@@ -5149,7 +5441,6 @@ int Juicer::parse(std::string &elfFilePath)
         if (JUICER_OK == return_value)
         {
             /* Initialize the Dwarf library.  This will open the file. */
-            /* Initialize the Dwarf library.  This will open the file. */
             dwarf_value = dwarf_init_b(elfFile, DW_DLC_READ, groupNumber, errhand, errarg, &dbg, &error);
             if (dwarf_value != DW_DLV_OK)
             {
@@ -5459,8 +5750,13 @@ std::string Juicer::generateMD5SumForFile(std::string filePath)
  * handles debug source files lookups for different DWARF versions.
  * It is assumed the pathIndex is the value of DW_AT_decl_file attribute
  */
-std::string &Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
+std::optional<std::string> Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
 {
+    if (dbgSourceFiles.empty())
+    {
+        return std::nullopt;
+    }
+
     switch (dwarfVersion)
     {
             /**
@@ -5472,14 +5768,18 @@ std::string &Juicer::getdbgSourceFile(ElfFile &elf, int pathIndex)
 
         case 4:
         {
-            return dbgSourceFiles.at(pathIndex - 1);
+            return std::string{dbgSourceFiles.at(pathIndex - 1)};
         }
         case 5:
         {
+            return std::string{dbgSourceFiles.at(pathIndex)};
+        }
+        default:
+        {
+            logger.logWarning("Found unsupported version(%d) of DWARF. The index to the source file name table will be used as is.", dwarfVersion);
             return dbgSourceFiles.at(pathIndex);
         }
     }
-    return dbgSourceFiles.at(pathIndex);
 }
 
 unsigned int Juicer::getDwarfVersion() { return dwarfVersion; }
