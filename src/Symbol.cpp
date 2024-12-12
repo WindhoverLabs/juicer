@@ -48,8 +48,8 @@ void Symbol::addField(Field& inField)
  *unique_ptr, which is also called addField. Maybe we should place our
  *elf data structures inside a namespace called ElfData?
  */
-void Symbol::addField(std::string& inName, uint32_t inByteOffset, Symbol& inType, DimensionList& dimensionList, bool inLittleEndian, uint32_t inBitSize,
-                      uint32_t inBitOffset)
+void Symbol::addField(std::string& inName, std::optional<uint32_t> inByteOffset, Symbol& inType, DimensionList& dimensionList, bool inLittleEndian,
+                      uint32_t inBitSize, uint32_t inBitOffset)
 {
     Field* field = getField(inName);
 
@@ -191,31 +191,31 @@ bool Symbol::hasBitFields(void)
     return hasBitField;
 }
 
-Artifact& Symbol::getArtifact() { return artifact; }
+Artifact&          Symbol::getArtifact() { return artifact; }
 
 /**
  * @brief Symbol::setTargetSymbol
  * @note Might make sense to use std:optional for targetSymbol, however need to upgrade to C++17 first.
  * @param newTargetSymbol
  */
-void      Symbol::setTargetSymbol(Symbol* newTargetSymbol) { targetSymbol = newTargetSymbol; }
+void               Symbol::setTargetSymbol(Symbol* newTargetSymbol) { targetSymbol = newTargetSymbol; }
 
 /**
  * @brief Symbol::hasTargetSymbol
  * If this function returns false, then
  * that means this is the concrete symbol not a typdef'd(aliased) symbol.
  */
-bool      Symbol::hasTargetSymbol() { return targetSymbol != nullptr; }
+bool               Symbol::hasTargetSymbol() { return targetSymbol != nullptr; }
 
-Symbol*   Symbol::getTargetSymbol() { return targetSymbol; }
+Symbol*            Symbol::getTargetSymbol() { return targetSymbol; }
 
 /**
  * @brief Symbol::setEncoding
  * @param newEncoding an integer which is one of the values specified in
  *  in dwarf.h or in DWARF5 specification document section 5.1.1 titled "Base Type Encodings"
  */
-void      Symbol::setEncoding(int newEncoding) { encoding = newEncoding; }
+void               Symbol::setEncoding(int newEncoding) { encoding = newEncoding; }
 
-bool      Symbol::hasEncoding() { return encoding != -1; }
+bool               Symbol::hasEncoding() { return encoding != -1; }
 
-int       Symbol::getEncoding() { return encoding; }
+std::optional<int> Symbol::getEncoding() { return encoding; }

@@ -64,7 +64,7 @@
                                   id INTEGER PRIMARY KEY,\
                                   symbol INTEGER NOT NULL,\
                                   name TEXT NOT NULL,\
-                                  byte_offset INTEGER NOT NULL,\
+                                  byte_offset INTEGER,\
                                   type INTEGER NOT NULL,\
                                   little_endian BOOLEAN,\
                                   bit_size INTEGER NOT NULL,\

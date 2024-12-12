@@ -1,6 +1,6 @@
 
 [![Run juicer tests](https://github.com/WindhoverLabs/juicer/actions/workflows/ci.yaml/badge.svg)](https://github.com/WindhoverLabs/juicer/actions/workflows/ci.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/WindhoverLabs/juicer/badge.svg?branch=unit_test_updates)](https://coveralls.io/github/WindhoverLabs/juicer?branch=unit_test_updates)
+[![Coverage Status](https://coveralls.io/repos/github/WindhoverLabs/juicer/badge.svg?branch=unit_test_updates)](https://coveralls.io/github/WindhoverLabs/juicer?branch=develop)
 
 # Table of Contents
 1. [Dependencies](#dependencies)
@@ -17,6 +17,7 @@
 12. [Notes On Multiple DWARF Versions](#multiple_dwarf_versions)
 13. [Bitfields](#Bitfields)
 14. [Docker Dev Environments](#docker_dev_env) 
+15. [Union Support](#union_support) 
 
 ## Dependencies <a name="dependencies"></a>
 * `libdwarf-dev`
@@ -322,6 +323,7 @@ As juicer evolves, dwarf support will grow and evolve as well. At the moment, we
 |  DW_MACRO_define      | This tag represents define macros such as "#define CFE_MISSION_ES_PERF_MAX_IDS 128"|
 | DW_AT_decl_file       | This tag represents the file where a certain symbol is declared. Very useful for traceability of source code.|
 | DW_AT_encoding | The encoding of base type. For example; "unsigned int" will have encoding "DW_ATE_unsigned". This is what the "encodings" table is for in the SQLITE db.|
+| DW_TAG_union_type | The tag used for unions. For example; `union Object { int32_t id; int32_t bit_field : 10; uint8_t data[4];};`.|
 
 For more details on the DWARF debugging format, go on [here](http://www.dwarfstd.org/doc/DWARF4.pdf).
 
@@ -431,6 +433,30 @@ Notice for the bitpacked fields(j,k,m,n) the bit_offset and bit_size columns are
 It is often useful to use a virtualized environment for development. There are several recipes on this repo that make this easier.
 For example `make docker-ubuntu22-build-dev` will start a dev environment inside of Docker with Ubuntu22. 
 The repo is mounted as a volume under "/home/docker/juicer" so developers can make their changes on the host and build inside the container.
+
+
+# Union Support <a name="union_support"></a>
+
+Given the following union:
+
+```C
+union Object
+{
+    int32_t id;
+    int32_t bit_field : 10;
+    uint8_t data[4];
+};
+
+```
+
+The union is represented as such in the SQLITE db:
+
+
+![union_symbol](Images/union_symbol_tbl.png "symbols-table")
+
+![union_fields](Images/union_fields_tbl.png "fields-table")
+
+Notice that the byte_offset is `NULL` for the fields that belong to the union. This is how consumers (such as [auto-yamcs](https://github.com/WindhoverLabs/auto-yamcs)) can make a distinction between unions and structs.
 
 
 

@@ -10,7 +10,7 @@
 Field::Field(Symbol& inSymbol, Symbol& inType)
     : symbol{inSymbol},  // @suppress("Symbol is not resolved")
       name{""},
-      byte_offset{0},
+      byte_offset{std::nullopt},
       type{inType},  // @suppress("Symbol is not resolved")
       dimensionList{},
       little_endian{false},
@@ -22,7 +22,7 @@ Field::Field(Symbol& inSymbol, Symbol& inType)
                     type.getName().c_str(), dimensionList.toString(), little_endian ? "LE" : "BE");
 }
 
-Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbol& inType, DimensionList& inDimensionList, bool inLittleEndian,
+Field::Field(Symbol& inSymbol, std::string& inName, std::optional<uint32_t> inByteOffset, Symbol& inType, DimensionList& inDimensionList, bool inLittleEndian,
              uint32_t inBitSize, uint32_t inBitOffset)
     : symbol{inSymbol},  // @suppress("Symbol is not resolved")
       name{inName},      // @suppress("Symbol is not resolved")
@@ -41,7 +41,8 @@ Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbo
                     type.getName().c_str(), dimensionList.toString(), little_endian ? "LE" : "BE");
 }
 
-Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbol& inType, bool inLittleEndian, uint32_t inBitSize, uint32_t inBitOffset)
+Field::Field(Symbol& inSymbol, std::string& inName, std::optional<uint32_t> inByteOffset, Symbol& inType, bool inLittleEndian, uint32_t inBitSize,
+             uint32_t inBitOffset)
     : symbol{inSymbol},  // @suppress("Symbol is not resolved")
       name{inName},      // @suppress("Symbol is not resolved")
       byte_offset{inByteOffset},
@@ -60,13 +61,13 @@ Field::Field(Symbol& inSymbol, std::string& inName, uint32_t inByteOffset, Symbo
 }
 Field::~Field() {}
 
-uint32_t     Field::getByteOffset() const { return byte_offset; }
+std::optional<uint32_t> Field::getByteOffset() const { return byte_offset; }
 
-bool         Field::isLittleEndian() const { return little_endian; }
+bool                    Field::isLittleEndian() const { return little_endian; }
 
-std::string& Field::getName() { return name; }
+std::string&            Field::getName() { return name; }
 
-void         Field::setName(const std::string& inName)
+void                    Field::setName(const std::string& inName)
 {
     logger.logDebug("Field %s::%s  renamed  to %s.", symbol.getName().c_str(), name.c_str(), inName.c_str());
 
