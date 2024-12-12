@@ -8,6 +8,7 @@
 #ifndef SRC_ARTIFACT_H_
 #define SRC_ARTIFACT_H_
 
+#include <cstdint>
 #include <string>
 
 class ElfFile;
@@ -33,7 +34,6 @@ class Artifact
     std::string getMD5() const;
 
     std::string getFilePath() const;
-    ElfFile    &getElf();
 
     ~Artifact();
 };

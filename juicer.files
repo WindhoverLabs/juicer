@@ -291,6 +291,8 @@ src/ElfFile.cpp
 src/ElfFile.h
 src/ElfSection.cpp
 src/ElfSection.h
+src/Encoding.cpp
+src/Encoding.h
 src/Enumeration.cpp
 src/Enumeration.h
 src/Field.cpp

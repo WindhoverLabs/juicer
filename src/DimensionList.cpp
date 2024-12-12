@@ -63,11 +63,6 @@ std::string DimensionList::toString()
 
     return dimListStr;
 }
-
-uint32_t                                     DimensionList::getId() const { return id; }
-
-void                                         DimensionList::setId(uint32_t id) { this->id = id; }
-
 void                                         DimensionList::addDimension(uint32_t upperBound) { dimensions.push_back(Dimension{upperBound}); }
 
 const std::vector<DimensionList::Dimension>& DimensionList::getDimensions() const { return dimensions; }
