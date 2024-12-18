@@ -1,3 +1,5 @@
+namespace Universe
+{
 namespace World
 {
 struct Shape
@@ -6,6 +8,17 @@ struct Shape
     int length;
 };
 }  // namespace World
+}  // namespace Universe
+
+namespace Universe
+{
+
+struct Shape2
+{
+    int width;
+    int length;
+};
+}  // namespace Universe
 
 class WorldClass
 {
@@ -17,5 +30,7 @@ class WorldClass
     };
 };  // namespace World
 
-World::Shape      myShape{};
-WorldClass::Shape classyShape{};
+Universe::World::Shape myShape{};
+
+Universe::Shape2       myShape2{};
+WorldClass::Shape      classyShape{};
