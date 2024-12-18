@@ -3535,7 +3535,7 @@ TEST_CASE("Test classes with virtual methods.", "[main_test#21]")
 
     REQUIRE(rc == JUICER_OK);
 
-    std::string getSymbolQuery{"SELECT *  FROM symbols where name= \"SHK\" ; "};
+    std::string getSymbolQuery{"SELECT *  FROM symbols where name= \"t2\" ; "};
 
     /**
      *Clean up our database handle and objects in memory.
@@ -3555,6 +3555,7 @@ TEST_CASE("Test classes with virtual methods.", "[main_test#21]")
     REQUIRE(rc == SQLITE_OK);
     // NOTE:For now, anonymous are stored as an empty string.
     // This still is WIP:https://github.com/WindhoverLabs/juicer/issues/43
+    // Another issue related to this:https://github.com/WindhoverLabs/juicer/issues/44
     REQUIRE(symbolRecords.size() == 0);
 
     // uint32_t numberOfColumns = 0;
