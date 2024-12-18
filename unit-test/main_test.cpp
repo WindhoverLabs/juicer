@@ -29,6 +29,8 @@
 
 #define TEST_FILE_4   "ut_obj/macro_test.o"
 
+#define TEST_FILE_5   "ut_obj/virtual_test.o"
+
 // DO NOT rename this macro to something like SQLITE_NULL as that is a macro that exists in sqlite3
 #define TEST_NULL_STR "NULL"
 
@@ -3498,5 +3500,178 @@ TEST_CASE("Test the correctness of bit fields.", "[main_test#20]")
     // REQUIRE(fieldsRecords.at(1)["long_description"] == "");
 
     REQUIRE(remove("./test_db.sqlite") == 0);
+    delete idc;
+}
+
+TEST_CASE("Test classes with virtual methods.", "[main_test#21]")
+{
+    /**
+     * This assumes that the test_file was compiled on
+     * gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0 or   gcc (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0
+     *  little-endian machine.
+     */
+
+    Juicer          juicer;
+    IDataContainer* idc = 0;
+    Logger          logger;
+    int             rc            = 0;
+    char*           errorMessage  = nullptr;
+    std::string     little_endian = is_little_endian() ? "1" : "0";
+
+    logger.logWarning("This is just a test.");
+    std::string inputFile{TEST_FILE_5};
+
+    idc = IDataContainer::Create(IDC_TYPE_SQLITE, "./test_db.sqlite");
+    REQUIRE(idc != nullptr);
+    logger.logInfo("IDataContainer was constructed successfully for unit test.");
+
+    juicer.setIDC(idc);
+
+    rc = juicer.parse(inputFile);
+
+    REQUIRE((juicer.getDwarfVersion() == 4 || juicer.getDwarfVersion() == 5));
+
+    REQUIRE(rc == JUICER_OK);
+
+    REQUIRE(rc == JUICER_OK);
+
+    std::string getSymbolQuery{"SELECT *  FROM symbols where name= \"SHK\" ; "};
+
+    /**
+     *Clean up our database handle and objects in memory.
+     */
+    ((SQLiteDB*)(idc))->close();
+
+    sqlite3* database;
+
+    rc = sqlite3_open("./test_db.sqlite", &database);
+
+    REQUIRE(rc == SQLITE_OK);
+
+    std::vector<std::map<std::string, std::string>> symbolRecords{};
+
+    rc = sqlite3_exec(database, getSymbolQuery.c_str(), selectCallbackUsingColNameAsKey, &symbolRecords, &errorMessage);
+
+    REQUIRE(rc == SQLITE_OK);
+    // NOTE:For now, anonymous are stored as an empty string.
+    // This still is WIP:https://github.com/WindhoverLabs/juicer/issues/43
+    REQUIRE(symbolRecords.size() == 0);
+
+    // uint32_t numberOfColumns = 0;
+
+    // for (auto pair : symbolRecords.at(0))
+    // {
+    //     numberOfColumns++;
+    // }
+
+    // REQUIRE(numberOfColumns == 9);
+
+    // REQUIRE(symbolRecords.at(0).at("byte_size") == std::to_string(sizeof(S)));
+
+    // /**
+    //  *Check the fields of the S struct.
+    //  */
+
+    // std::string sId = symbolRecords.at(0)["id"];
+
+    // std::string getSFields{"SELECT * FROM fields WHERE symbol = "};
+
+    // getSFields += sId;
+    // getSFields += ";";
+
+    // std::vector<std::map<std::string, std::string>> fieldsRecords{};
+
+    // rc = sqlite3_exec(database, getSFields.c_str(), selectCallbackUsingColNameAsKey, &fieldsRecords, &errorMessage);
+
+    // REQUIRE(rc == SQLITE_OK);
+
+    // // TODO:Incosistent across Ubuntu20 and Ubuntu22. Different compilers will have different padding schemes.
+    // REQUIRE(fieldsRecords.size() >= 5);
+
+    // // Enforce order of records by offset
+    // std::sort(fieldsRecords.begin(), fieldsRecords.end(), [](std::map<std::string, std::string> a, std::map<std::string, std::string> b)
+    //           { return std::stoi(a["byte_offset"]) < std::stoi(b["byte_offset"]); });
+
+    // /**
+    //  * Ensure that we have all of the expected keys in our map; these are the column names.
+    //  * Don't love doing this kind of thing in tests...
+    //  */
+    // for (auto record : fieldsRecords)
+    // {
+    //     REQUIRE(record.find("symbol") != record.end());
+    //     REQUIRE(record.find("name") != record.end());
+    //     REQUIRE(record.find("byte_offset") != record.end());
+    //     REQUIRE(record.find("type") != record.end());
+
+    //     REQUIRE(record.find("little_endian") != record.end());
+    //     REQUIRE(record.find("bit_size") != record.end());
+    //     REQUIRE(record.find("bit_offset") != record.end());
+    //     REQUIRE(record.find("short_description") != record.end());
+    //     REQUIRE(record.find("long_description") != record.end());
+    // }
+
+    // REQUIRE(fieldsRecords.at(0)["name"] == "before");
+    // /**
+    //  *Check the correctness of the fields
+    //  */
+
+    // std::string getBeforeType{"SELECT * FROM symbols where id="};
+
+    // getBeforeType += fieldsRecords.at(0)["type"];
+    // getBeforeType += ";";
+
+    // std::vector<std::map<std::string, std::string>> beforeSymbolRecords{};
+
+    // rc = sqlite3_exec(database, getBeforeType.c_str(), selectCallbackUsingColNameAsKey, &beforeSymbolRecords, &errorMessage);
+
+    // REQUIRE(rc == SQLITE_OK);
+
+    // REQUIRE(beforeSymbolRecords.size() == 1);
+
+    // std::string beforeType{beforeSymbolRecords.at(0).at("id")};
+
+    // REQUIRE(fieldsRecords.at(0)["symbol"] == symbolRecords.at(0)["id"]);
+    // REQUIRE(fieldsRecords.at(0)["name"] == "before");
+    // REQUIRE(fieldsRecords.at(0)["byte_offset"] == std::to_string(offsetof(S, before)));
+    // REQUIRE(fieldsRecords.at(0)["type"] == beforeType);
+    // REQUIRE(fieldsRecords.at(0)["little_endian"] == little_endian);
+    // REQUIRE(fieldsRecords.at(0)["bit_size"] == "0");
+    // REQUIRE(fieldsRecords.at(0)["bit_offset"] == "0");
+    // REQUIRE(fieldsRecords.at(0)["short_description"] == "");
+    // REQUIRE(fieldsRecords.at(0)["long_description"] == "");
+
+    // // TODO:Inconsistent across Ubuntu20 and Ubuntu22. Different compilers will have different padding schemes.
+
+    // // REQUIRE(fieldsRecords.at(1)["name"] == "j");
+    // // /**
+    // //  *Check the correctness of the fields
+    // //  */
+
+    // // std::string getFieldType{"SELECT * FROM symbols where id="};
+
+    // // getFieldType += fieldsRecords.at(1)["type"];
+    // // getFieldType += ";";
+
+    // // std::vector<std::map<std::string, std::string>> fieldSymbolRecords{};
+
+    // // rc = sqlite3_exec(database, getFieldType.c_str(), selectCallbackUsingColNameAsKey, &fieldSymbolRecords, &errorMessage);
+
+    // // REQUIRE(rc == SQLITE_OK);
+
+    // // REQUIRE(fieldSymbolRecords.size() == 1);
+
+    // // std::string fieldType{fieldSymbolRecords.at(0).at("id")};
+
+    // // REQUIRE(fieldsRecords.at(1)["symbol"] == symbolRecords.at(0)["id"]);
+    // // REQUIRE(fieldsRecords.at(1)["name"] == "j");
+    // // // REQUIRE(fieldsRecords.at(1)["byte_offset"] == std::to_string(offsetof(S, j)));
+    // // REQUIRE(fieldsRecords.at(1)["type"] == fieldType);
+    // // REQUIRE(fieldsRecords.at(1)["little_endian"] == little_endian);
+    // // REQUIRE(fieldsRecords.at(1)["bit_size"] == "5");
+    // // REQUIRE(fieldsRecords.at(1)["bit_offset"] == "19");
+    // // REQUIRE(fieldsRecords.at(1)["short_description"] == "");
+    // // REQUIRE(fieldsRecords.at(1)["long_description"] == "");
+
+    // REQUIRE(remove("./test_db.sqlite") == 0);
     delete idc;
 }
