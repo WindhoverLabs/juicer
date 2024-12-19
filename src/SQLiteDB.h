@@ -156,6 +156,12 @@
                                   encoding TEXT NOT NULL,\
                                   UNIQUE (encoding));"
 
+#define CREATE_NAMESPACES_TABLE \
+    "CREATE TABLE IF NOT EXISTS namespaces(\
+                                  id INTEGER PRIMARY KEY,\
+                                  name TEXT NOT NULL,\
+                                  UNIQUE (name)); "
+
 //#define CREATE_DATA_OBJECTS_TABLE \
 //    "CREATE TABLE IF NOT EXISTS data_objects(\
 //                                  id INTEGER PRIMARY KEY,\
@@ -194,6 +200,7 @@ class SQLiteDB : public IDataContainer
     int                 createElfSectionsSchema(void);
     int                 createElfSymbolTableSchema(void);
     int                 createEncodingsTableSchema(void);
+    int                 createNamespacesTableSchema(void);
     int                 writeElfToDatabase(ElfFile &inModule);
     int                 writeMacrosToDatabase(ElfFile &inModule);
     int                 writeVariablesToDatabase(ElfFile &inModule);
@@ -205,6 +212,7 @@ class SQLiteDB : public IDataContainer
     int                 writeEnumerationsToDatabase(ElfFile &inModule);
     int                 writeDimensionsListToDatabase(ElfFile &inElf);
     int                 writeEncodingsToDatabase(ElfFile &inElf);
+    int                 writeNamespacesToDatabase(ElfFile &inElf);
     static int          doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
     bool                doesSymbolExist(std::string name);
     bool                doesArtifactExist(std::string name);

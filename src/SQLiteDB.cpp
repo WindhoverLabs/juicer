@@ -393,6 +393,8 @@ int SQLiteDB::write(ElfFile& inElf)
                                     logger.logDebug(
                                         "Variable entries were written to the variables schema "
                                         "with SQLITE_OK status.");
+
+                                    rc = writeNamespacesToDatabase(inElf);
                                 }
                                 else
                                 {
@@ -1848,6 +1850,70 @@ int SQLiteDB::writeEncodingsToDatabase(ElfFile& inElf)
     return rc;
 }
 
+int SQLiteDB::writeNamespacesToDatabase(ElfFile& inElf)
+{
+    int   rc           = SQLITEDB_OK;
+    char* errorMessage = NULL;
+
+    for (auto&& namespace_ : inElf.getNamespaces())
+    {
+        std::string   writeNamespaceQuery{};
+
+        sqlite3_stmt* stmt;
+        const char*   sql = "INSERT INTO namespaces (name) VALUES (?);";
+
+        // Prepare the SQL statement
+        rc                = sqlite3_prepare_v2(database, sql, -1, &stmt, NULL);
+
+        if (rc != SQLITE_OK)
+        {
+            std::cerr << "SQL error: " << sqlite3_errmsg(database) << std::endl;
+        }
+        else
+        {
+            // Bind values to placeholders
+            sqlite3_bind_text(stmt, 1, namespace_.getName().c_str(), -1, SQLITE_STATIC);
+
+            rc = sqlite3_step(stmt);
+
+            // Execute the SQL statement
+            if (rc != SQLITE_DONE)
+            {
+                const char* errorMessage = sqlite3_errmsg(database);
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Elf values were written to the encodings schema with "
+                        "SQLITE_OK status.");
+                }
+                else
+                {
+                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    {
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITE_OK;
+                    }
+                    else
+                    {
+                        logger.logDebug("There was an error while writing data to the encodings table.");
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITEDB_ERROR;
+                    }
+                }
+            }
+
+            // Finalize the statement
+            rc = sqlite3_finalize(stmt);
+            if (rc != SQLITE_OK)
+            {
+                logger.logDebug("There was an error while finalizing the sql statement for encodings table.");
+            }
+        }
+    }
+
+    return rc;
+}
+
 /**
  *@brief This method creates all of the schemas that will be needed to store
  *the DWARF and ELF data.
@@ -1939,6 +2005,20 @@ int SQLiteDB::createSchemas(void)
                                                 logger.logDebug(
                                                     "createEncodingsTableSchema() created the variables schema "
                                                     "successfully.");
+
+                                                rc = createNamespacesTableSchema();
+
+                                                if (rc == SQLITE_OK)
+                                                {
+                                                    logger.logDebug(
+                                                        "createNamespacesTableSchema() created the namespaces schema "
+                                                        "successfully.");
+                                                }
+                                                else
+                                                {
+                                                    logger.logDebug("createNamespacesTableSchema() failed.");
+                                                    rc = SQLITEDB_ERROR;
+                                                }
                                             }
                                             else
                                             {
@@ -2354,6 +2434,30 @@ int SQLiteDB::createEncodingsTableSchema(void)
     else
     {
         logger.logError("Failed to create the artifacts table. '%s'", sqlite3_errmsg(database));
+        rc = SQLITEDB_ERROR;
+    }
+
+    return rc;
+}
+
+int SQLiteDB::createNamespacesTableSchema(void)
+{
+    std::string createNamespacesTableQuery{CREATE_NAMESPACES_TABLE};
+
+    int         rc = SQLITE_OK;
+
+    /*@todo The last argument for sqlite3_exec is an error handler that is not
+     * necessary to pass in, but I really think we should for better error
+     * logging.*/
+    rc             = sqlite3_exec(database, createNamespacesTableQuery.c_str(), NULL, NULL, NULL);
+
+    if (SQLITE_OK == rc)
+    {
+        logger.logDebug("Created table \"namespaces\" with OK status");
+    }
+    else
+    {
+        logger.logError("Failed to create the namespaces table. '%s'", sqlite3_errmsg(database));
         rc = SQLITEDB_ERROR;
     }
 
