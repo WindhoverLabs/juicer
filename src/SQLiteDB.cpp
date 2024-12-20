@@ -1872,7 +1872,7 @@ int SQLiteDB::writeNamespacesToDatabase(ElfFile& inElf)
         else
         {
             // Bind values to placeholders
-            sqlite3_bind_text(stmt, 1, namespace_.getName().c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 1, namespace_->getName().c_str(), -1, SQLITE_STATIC);
 
             rc = sqlite3_step(stmt);
 

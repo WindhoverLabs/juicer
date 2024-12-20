@@ -21,6 +21,7 @@
 #include "Field.h"
 #include "Juicer.h"
 #include "Logger.h"
+#include "Namespace.hpp"
 #include "Variable.h"
 #include "dwarf.h"
 
@@ -28,6 +29,7 @@ class Symbol;
 class Field;
 class Enumeration;
 class Variable;
+class Namespace;
 
 /**
  * The elf class contains an "module" with a user-defined name.
@@ -90,6 +92,10 @@ class ElfFile
     int                                                getElfClass();
 
     void                                               setElfClass(int newelfClass);
+
+    void                                               addNamespace(Namespace newNamespace);
+    std::vector<std::unique_ptr<Namespace>>           &getNamespaces();
+    Namespace                                         *getNamespace(std::string name);
 
    private:
     std::string                                 md5;
@@ -155,7 +161,7 @@ class ElfFile
 
     };
 
-    Encoding &getDWARFEncoding();
+    Encoding                               &getDWARFEncoding();
 
     /**
      * @brief elfClass
@@ -164,7 +170,9 @@ class ElfFile
      * #define ELFCLASS32	1		 32-bit objects
      * #define ELFCLASS64	2		 64-bit objects
      */
-    int       elfClass{ELFCLASSNONE};
+    int                                     elfClass{ELFCLASSNONE};
+
+    std::vector<std::unique_ptr<Namespace>> namespaces{};
 };
 
 #endif /* ElfFile_H_ */

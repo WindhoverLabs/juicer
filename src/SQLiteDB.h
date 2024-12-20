@@ -160,7 +160,11 @@
     "CREATE TABLE IF NOT EXISTS namespaces(\
                                   id INTEGER PRIMARY KEY,\
                                   name TEXT NOT NULL,\
-                                  UNIQUE (name)); "
+                                  parent INTEGER ,\
+                                  child INTEGER ,\
+                                  FOREIGN KEY (parent) REFERENCES namespaces(id),\
+                                  FOREIGN KEY (child) REFERENCES namespaces(id),\
+                                  UNIQUE (name, parent, child)); "
 
 //#define CREATE_DATA_OBJECTS_TABLE \
 //    "CREATE TABLE IF NOT EXISTS data_objects(\

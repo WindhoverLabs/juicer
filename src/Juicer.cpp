@@ -55,19 +55,9 @@
 #include "Enumeration.h"
 #include "Field.h"
 #include "IDataContainer.h"
+#include "Namespace.hpp"
 #include "Symbol.h"
 #include "Variable.h"
-
-struct macro_counts_s
-{
-    long mc_start_file;
-    long mc_end_file;
-    long mc_define;
-    long mc_undef;
-    long mc_extension;
-    long mc_code_zero;
-    long mc_unknown;
-};
 
 Juicer::Juicer() {}
 
@@ -413,7 +403,7 @@ int Juicer::readCUList(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Error &error)
                 dbgSourceFiles.insert(dbgSourceFiles.begin(), filePaths, &filePaths[fileCount]);
             }
 
-            return_value = getDieAndSiblings(elf, dbg, cu_die, 0);
+            return_value = getDieAndSiblings(elf, dbg, cu_die, 0, nullptr);
         }
 
         if (JUICER_OK != return_value)
@@ -637,6 +627,59 @@ char *Juicer::getFirstAncestorName(Dwarf_Die inDie)
     }
 
     return outName;
+}
+
+int Juicer::process_DW_TAG_namespace(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, int in_level, Namespace *currentNamespace)
+{
+    Dwarf_Attribute attr_struct;
+    Dwarf_Error     error = 0;
+    char           *name  = nullptr;
+    int             res   = 0;
+    Namespace       ns{};
+
+    res = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
+    if (res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+    }
+
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_formstring(attr_struct, &name, &error);
+        if (res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
+
+        std::cout << "Namespace: " << name << std::endl;
+    }
+
+    if (res == DW_DLV_OK)
+    {
+        ns.setName(name);
+        ns.setParent(currentNamespace);
+        elf.addNamespace(ns);
+
+        if (currentNamespace != nullptr)
+        {
+            currentNamespace->setChild(elf.getNamespace(name));
+        }
+    }
+
+    // Dwarf_Die child;
+    // res = dwarf_child(inDie, &child, &error);
+
+    // if (res == DW_DLV_ERROR)
+    // {
+    //     logger.logError("Error in dwarf_child , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+    //     res = JUICER_ERROR;
+    // }
+    // else if (res == DW_DLV_OK)
+    // {
+    //     int res = getDieAndSiblings(elf, dbg, child, in_level + 1, elf.getNamespace(ns.getName()));
+    // }
+
+    return res;
 }
 
 Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
@@ -4322,7 +4365,7 @@ bool Juicer::isDWARFVersionSupported(Dwarf_Die inDie)
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level)
+int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, Namespace *currentNamespace)
 {
     int             res     = DW_DLV_ERROR;
     Dwarf_Die       cur_die = in_die;
@@ -4485,6 +4528,48 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                 }
                 break;
             }
+
+            case DW_TAG_namespace:
+            {
+                // res = process_DW_TAG_namespace(elf, dbg, cur_die, in_level, ns);
+
+                Dwarf_Attribute attr_struct;
+                Dwarf_Error     error = 0;
+                char           *name  = nullptr;
+                int             res   = 0;
+                Namespace       ns{};
+
+                res = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
+                if (res != DW_DLV_OK)
+                {
+                    logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+                }
+
+                if (res == DW_DLV_OK)
+                {
+                    res = dwarf_formstring(attr_struct, &name, &error);
+                    if (res != DW_DLV_OK)
+                    {
+                        logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                    }
+
+                    std::cout << "Namespace: " << name << std::endl;
+                }
+
+                if (res == DW_DLV_OK)
+                {
+                    ns.setName(name);
+                    ns.setParent(currentNamespace);
+                    elf.addNamespace(ns);
+
+                    if (currentNamespace != nullptr)
+                    {
+                        currentNamespace->setChild(elf.getNamespace(name));
+                    }
+                }
+
+                break;
+            }
         }
 
         res = dwarf_child(cur_die, &child, &error);
@@ -4495,7 +4580,7 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
         }
         else if (res == DW_DLV_OK)
         {
-            getDieAndSiblings(elf, dbg, child, in_level + 1);
+            getDieAndSiblings(elf, dbg, child, in_level + 1, currentNamespace);
         }
 
         /* res == DW_DLV_NO_ENTRY */

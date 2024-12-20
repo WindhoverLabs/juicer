@@ -238,4 +238,21 @@ void      ElfFile::setElfClass(int newelfClass)
     }
 }
 
-int ElfFile::getElfClass() { return elfClass; }
+int        ElfFile::getElfClass() { return elfClass; }
+
+void       ElfFile::addNamespace(Namespace newNamespace) { namespaces.push_back(std::make_unique<Namespace>(newNamespace)); }
+
+Namespace* ElfFile::getNamespace(std::string name)
+{
+    for (auto&& namespace_ : namespaces)
+    {
+        if (namespace_->getName() == name)
+        {
+            return namespace_.get();
+        }
+    }
+
+    return nullptr;
+}
+
+std::vector<std::unique_ptr<Namespace>>& ElfFile::getNamespaces() { return namespaces; }
