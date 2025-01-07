@@ -161,10 +161,9 @@
                                   id INTEGER PRIMARY KEY,\
                                   name TEXT NOT NULL,\
                                   parent INTEGER ,\
-                                  child INTEGER ,\
+                                  fully_qualified_name TEXT NOT NULL,\
                                   FOREIGN KEY (parent) REFERENCES namespaces(id),\
-                                  FOREIGN KEY (child) REFERENCES namespaces(id),\
-                                  UNIQUE (name, parent, child)); "
+                                  UNIQUE (fully_qualified_name)); "
 
 //#define CREATE_DATA_OBJECTS_TABLE \
 //    "CREATE TABLE IF NOT EXISTS data_objects(\
@@ -216,12 +215,14 @@ class SQLiteDB : public IDataContainer
     int                 writeEnumerationsToDatabase(ElfFile &inModule);
     int                 writeDimensionsListToDatabase(ElfFile &inElf);
     int                 writeEncodingsToDatabase(ElfFile &inElf);
-    int                 writeNamespacesToDatabase(ElfFile &inElf);
+    int                 writeNamespacesToDatabase(std::vector<Namespace*> &namespaces, std::optional<int> parentID);
+    int                 writeAllNamespacesToDatabase(ElfFile &inElf);
     static int          doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
     bool                doesSymbolExist(std::string name);
     bool                doesArtifactExist(std::string name);
 
     bool                doEncodingsExist();
+    bool                doesNamespaceExistInDB(const std::string &fullyqualifiedName);
 
    public:
     SQLiteDB();

@@ -657,12 +657,12 @@ int Juicer::process_DW_TAG_namespace(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in
     if (res == DW_DLV_OK)
     {
         ns.setName(name);
-        ns.setParent(currentNamespace);
+        // ns.setParent(currentNamespace);
         elf.addNamespace(ns);
 
         if (currentNamespace != nullptr)
         {
-            currentNamespace->setChild(elf.getNamespace(name));
+            currentNamespace->addChild(elf.getNamespace(name));
         }
     }
 
@@ -4559,13 +4559,15 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                 if (res == DW_DLV_OK)
                 {
                     ns.setName(name);
-                    ns.setParent(currentNamespace);
+                    // ns.setParent(currentNamespace);
                     elf.addNamespace(ns);
 
                     if (currentNamespace != nullptr)
                     {
-                        currentNamespace->setChild(elf.getNamespace(name));
+                        currentNamespace->addChild(elf.getNamespace(name));
                     }
+
+                    currentNamespace = elf.getNamespace(name);
                 }
 
                 break;
