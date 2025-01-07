@@ -11,19 +11,21 @@ class Namespace
    public:
     Namespace();
     Namespace(std::string name);
-    std::string getName();
-    void        setName(std::string name);
-    Namespace*  getChild();
-    void        setChild(Namespace* child);
-    void        setParent(Namespace* parent);
-    Namespace*  getParent();
+    std::string&            getName();
+    void                    setName(std::string name);
+    Namespace*              getChild();
+    void                    setChild(Namespace* child);
+    void                    setParent(Namespace* parent);
+    Namespace*              getParent();
+    std::optional<uint32_t> getId();
+    void                    setId(int id);
 
    private:
-    std::string name;
-    // std::list is owrth considering here
-    Namespace*  parent;
-    Namespace*  child;
-    uint32_t    id;
+    std::string             name;
+    // std::list is worth considering here
+    Namespace*              parent{nullptr};
+    Namespace*              child{nullptr};
+    std::optional<uint32_t> id{std::nullopt};
     // std::vector<Symbol*>     symbols;
 };
 
