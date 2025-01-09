@@ -238,9 +238,36 @@ void      ElfFile::setElfClass(int newelfClass)
     }
 }
 
-int        ElfFile::getElfClass() { return elfClass; }
+int  ElfFile::getElfClass() { return elfClass; }
 
-void       ElfFile::addNamespace(Namespace newNamespace) { namespaces.push_back(std::make_unique<Namespace>(newNamespace)); }
+void ElfFile::addNamespace(Namespace newNamespace)
+{
+    // Check if the namespace already exists
+    // for (auto&& namespace_ : namespaces)
+    // {
+    //     if (namespace_->getName() == newNamespace.getName())
+    //     {
+    //         // Logger::getInstance().logError("Namespace already exists in the list");
+    //         return;
+    //     }
+    // }
+    namespaces.push_back(std::make_unique<Namespace>(newNamespace));
+}
+
+
+void ElfFile::addNamespace(std::unique_ptr<Namespace> newNamespace)
+{
+    // Check if the namespace already exists
+    for (auto&& namespace_ : namespaces)
+    {
+        if (namespace_->getFullyQualifiedName() == newNamespace->getFullyQualifiedName())
+        {
+            // Logger::getInstance().logError("Namespace already exists in the list");
+            return;
+        }
+    }
+    namespaces.push_back(std::move(newNamespace));
+}
 
 Namespace* ElfFile::getNamespace(std::string name)
 {

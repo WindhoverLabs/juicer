@@ -94,6 +94,7 @@ class ElfFile
     void                                               setElfClass(int newelfClass);
 
     void                                               addNamespace(Namespace newNamespace);
+    void                                               addNamespace(std::unique_ptr<Namespace> newNamespace);
     std::vector<std::unique_ptr<Namespace>>           &getNamespaces();
     Namespace                                         *getNamespace(std::string name);
 

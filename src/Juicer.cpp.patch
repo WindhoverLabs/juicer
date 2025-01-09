@@ -1,0 +1,83 @@
+diff --git a/src/Juicer.cpp b/src/Juicer.cpp
+index e19d941a..07d93bf1 100644
+--- a/src/Juicer.cpp
++++ b/src/Juicer.cpp
+@@ -49,6 +49,7 @@
+ #include <sstream>
+ #include <string>
+ #include <vector>
++#include <random>
+ 
+ #include "Artifact.h"
+ #include "ElfFile.h"
+@@ -1032,7 +1033,22 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
+                 else
+                 {
+                     /* Couldn't find the name at all. */
+-                    res = DW_DLV_ERROR;
++
++                    //  std::string outName = getFirstAncestorName(inDie);
++                    //  std::cout << "outName-->" << outName << std::endl;
++                    Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
++                    std::string checkSum{};
++                    newArtifact.setMD5(checkSum);
++                    // std::string s{"ImSPecial"};
++                    cName = {generateRandomName(16)};
++                    dieName = cName.data();
++                    
++                    
++                    // outSymbol = elf.addSymbol(s, byteSize, newArtifact);
++                    
++                    // process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
++                    // res = DW_DLV_ERROR;
++                    res = DW_DLV_OK;
+                 }
+ 
+                 if (res == DW_DLV_OK)
+@@ -1047,17 +1063,22 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
+ 
+                 if (res == DW_DLV_OK)
+                 {
+-                    std::string cName{""};
++                    
+                     if (dieName != nullptr)
+                     {
+                         cName = dieName;
++
++                        if(cName == "VC_HkTlm_t")
++                        {
++                            printf("break *****\n");
++                        }
+                     }
+                     else
+                     {
+                         logger.logWarning("Symbol does not have a name. This usually means an anonymous struct or union.");
+                     }
+ 
+-                    res = dwarf_attr(inDie, DW_AT_decl_file, &attr_struct, &error);
++                    res = dwarf_attr(typeDie, DW_AT_decl_file, &attr_struct, &error);
+ 
+                     if (DW_DLV_OK == res)
+                     {
+@@ -4524,6 +4545,21 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
+     return return_value;
+ }
+ 
++// Function to generate a random name of a given length
++std::string Juicer::generateRandomName(int length) {
++    const std::string characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
++    std::string randomName;
++    std::random_device rd;
++    std::mt19937 generator(rd());
++    std::uniform_int_distribution<> distrib(0, characters.size() - 1);
++
++    for (int i = 0; i < length; ++i) {
++        randomName += characters[distrib(generator)];
++    }
++
++    return randomName;
++}
++
+ /**
+  * @brief prints the data on the DIE dwarf node.
+  * @param print_me the DIE dwarf node containing the DWARF data to explore.

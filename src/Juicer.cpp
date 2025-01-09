@@ -654,30 +654,55 @@ int Juicer::process_DW_TAG_namespace(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in
         std::cout << "Namespace: " << name << std::endl;
     }
 
+    // // check if namespace already exists
+    // TODO: Need to think about the edge case where the namespace already exists but at a different level, meaning they are not the same namespace.
+    // I think they way to go might be to use the fully qualified name of the namespace.
+    // for (auto &ns : elf.getNamespaces() )
+    // {
+    //     if (ns->getName() == name && currentNamespace == nullptr)
+    //     {
+    //         return DW_DLV_OK;
+    //         break;
+    //     }
+    // }
+
+    std::unique_ptr<Namespace> nsPtr = std::make_unique<Namespace>();
+
     if (res == DW_DLV_OK)
     {
         ns.setName(name);
-        // ns.setParent(currentNamespace);
+        // nsPtr->setName(name);
         elf.addNamespace(ns);
 
         if (currentNamespace != nullptr)
         {
             currentNamespace->addChild(elf.getNamespace(name));
+            // currentNamespace->addChild(nsPtr.get());
         }
+
+        else
+        {
+            currentNamespace = elf.getNamespace(name);
+            // currentNamespace = nsPtr.get();
+        }
+
+        // elf.addNamespace(std::move(nsPtr));
     }
 
-    // Dwarf_Die child;
-    // res = dwarf_child(inDie, &child, &error);
+    Dwarf_Die child;
+    res = dwarf_child(inDie, &child, &error);
 
-    // if (res == DW_DLV_ERROR)
-    // {
-    //     logger.logError("Error in dwarf_child , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-    //     res = JUICER_ERROR;
-    // }
-    // else if (res == DW_DLV_OK)
-    // {
-    //     int res = getDieAndSiblings(elf, dbg, child, in_level + 1, elf.getNamespace(ns.getName()));
-    // }
+    if (res == DW_DLV_ERROR)
+    {
+        logger.logError("Error in dwarf_child , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+        res = JUICER_ERROR;
+    }
+    else if (res == DW_DLV_OK)
+    {
+        int res = getDieAndSiblings(elf, dbg, child, in_level + 1, currentNamespace);
+    }
+
+    currentNamespace = nullptr;
 
     return res;
 }
@@ -4531,48 +4556,12 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
             case DW_TAG_namespace:
             {
-                // res = process_DW_TAG_namespace(elf, dbg, cur_die, in_level, ns);
-
-                Dwarf_Attribute attr_struct;
-                Dwarf_Error     error = 0;
-                char           *name  = nullptr;
-                int             res   = 0;
-                Namespace       ns{};
-
-                res = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
-                if (res != DW_DLV_OK)
-                {
-                    logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
-                }
-
-                if (res == DW_DLV_OK)
-                {
-                    res = dwarf_formstring(attr_struct, &name, &error);
-                    if (res != DW_DLV_OK)
-                    {
-                        logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-                    }
-
-                    std::cout << "Namespace: " << name << std::endl;
-                }
-
-                if (res == DW_DLV_OK)
-                {
-                    ns.setName(name);
-                    // ns.setParent(currentNamespace);
-                    elf.addNamespace(ns);
-
-                    if (currentNamespace != nullptr)
-                    {
-                        currentNamespace->addChild(elf.getNamespace(name));
-                    }
-
-                    currentNamespace = elf.getNamespace(name);
-                }
-
+                res = process_DW_TAG_namespace(elf, dbg, cur_die, in_level, currentNamespace);
                 break;
             }
         }
+
+        // iterate through all children at this level
 
         res = dwarf_child(cur_die, &child, &error);
         if (res == DW_DLV_ERROR)
@@ -4584,6 +4573,8 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
         {
             getDieAndSiblings(elf, dbg, child, in_level + 1, currentNamespace);
         }
+
+        // currentNamespace = nullptr;
 
         /* res == DW_DLV_NO_ENTRY */
         res = dwarf_siblingof(dbg, cur_die, &sib_die, &error);
@@ -4607,6 +4598,8 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
         cur_die = sib_die;
     }
+
+    // currentNamespace = nullptr;
 
     return return_value;
 }

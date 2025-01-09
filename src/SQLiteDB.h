@@ -215,7 +215,7 @@ class SQLiteDB : public IDataContainer
     int                 writeEnumerationsToDatabase(ElfFile &inModule);
     int                 writeDimensionsListToDatabase(ElfFile &inElf);
     int                 writeEncodingsToDatabase(ElfFile &inElf);
-    int                 writeNamespacesToDatabase(std::vector<Namespace*> &namespaces, std::optional<int> parentID);
+    int                 writeNamespacesToDatabase(std::vector<Namespace *> &namespaces, std::optional<int> parentID);
     int                 writeAllNamespacesToDatabase(ElfFile &inElf);
     static int          doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
     bool                doesSymbolExist(std::string name);

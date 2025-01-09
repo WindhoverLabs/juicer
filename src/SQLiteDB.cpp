@@ -1976,15 +1976,58 @@ int SQLiteDB::writeNamespacesToDatabase(std::vector<Namespace*>& namespaces, std
 
             sqlite3_bind_int(stmt, 2, parentID.value_or(-1));
 
+            std::string fqn = namespace_->getFullyQualifiedName();
+
+            sqlite3_bind_text(stmt, 3, fqn.c_str(), -1, SQLITE_STATIC);
+
+            rc = sqlite3_step(stmt);
+
+            // Execute the SQL statement
+            if (rc != SQLITE_DONE)
+            {
+                const char* errorMessage = sqlite3_errmsg(database);
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Elf values were written to the encodings schema with "
+                        "SQLITE_OK status.");
+                }
+                else
+                {
+                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    {
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITE_OK;
+                    }
+                    else
+                    {
+                        logger.logDebug("There was an error while writing data to the encodings table.");
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITEDB_ERROR;
+                    }
+                }
+            }
+
+            // Finalize the statement
+            rc = sqlite3_finalize(stmt);
+            if (rc != SQLITE_OK)
+            {
+                logger.logDebug("There was an error while finalizing the sql statement for encodings table.");
+            }
+            else
+            {
+                lastRowId = sqlite3_last_insert_rowid(database);
+
+                namespace_->setId(lastRowId);
+            }
+
             if (namespace_->getChildren().size() > 0)
             {
+                int lastRowID = writeNamespacesToDatabase(namespace_->getChildren(), namespace_->getId());
                 for (auto& child : namespace_->getChildren())
                 {
                     // Parent is the current namespace. So we need to write it to the database first.
                     // Then we can get the id of the parent (and store it in parentID) and write it to the child.
-
-
-                    int lastRowID = writeNamespacesToDatabase(child->getChildren(), parentID);
 
                     // if (!child->getId().has_value())
                     // {
@@ -2047,51 +2090,6 @@ int SQLiteDB::writeNamespacesToDatabase(std::vector<Namespace*>& namespaces, std
             {
                 // sqlite3_bind_int(stmt, 3, -1);
             }
-
-            std::string fqn = namespace_->getFullyQualifiedName();
-
-            sqlite3_bind_text(stmt, 3, fqn.c_str(), -1, SQLITE_STATIC);
-
-            rc = sqlite3_step(stmt);
-
-            // Execute the SQL statement
-            if (rc != SQLITE_DONE)
-            {
-                const char* errorMessage = sqlite3_errmsg(database);
-                if (SQLITE_OK == rc)
-                {
-                    logger.logDebug(
-                        "Elf values were written to the encodings schema with "
-                        "SQLITE_OK status.");
-                }
-                else
-                {
-                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
-                    {
-                        logger.logDebug("%s.", errorMessage);
-                        rc = SQLITE_OK;
-                    }
-                    else
-                    {
-                        logger.logDebug("There was an error while writing data to the encodings table.");
-                        logger.logDebug("%s.", errorMessage);
-                        rc = SQLITEDB_ERROR;
-                    }
-                }
-            }
-
-            // Finalize the statement
-            rc = sqlite3_finalize(stmt);
-            if (rc != SQLITE_OK)
-            {
-                logger.logDebug("There was an error while finalizing the sql statement for encodings table.");
-            }
-            else
-            {
-                lastRowId = sqlite3_last_insert_rowid(database);
-
-                namespace_->setId(lastRowId);
-            }
         }
     }
 
@@ -2100,8 +2098,8 @@ int SQLiteDB::writeNamespacesToDatabase(std::vector<Namespace*>& namespaces, std
 
 int SQLiteDB::writeAllNamespacesToDatabase(ElfFile& inElf)
 {
-    int   rc           = SQLITEDB_OK;
-    char* errorMessage = NULL;
+    int                     rc           = SQLITEDB_OK;
+    char*                   errorMessage = NULL;
 
     std::vector<Namespace*> namespacesPointers{};
 

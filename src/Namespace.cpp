@@ -28,6 +28,26 @@ void                    Namespace::setId(int id) { this->id = id; }
 
 void                    Namespace::addChild(Namespace* child)
 {
+    if (child == nullptr)
+    {
+        return;
+    }
+
+    // NOTE: It might be better to use a map instead of a vector to store children, maybe...
+
+    // Check child is not already in the list using fully qualified name
+    for (auto& c : children)
+    {
+        std::string c_fqn     = c->getFullyQualifiedName();
+        std::string child_fqn = child->getFullyQualifiedName();
+        if (c_fqn == child_fqn)
+        {
+            // log error
+            // Logger::getInstance().logError("Namespace::addChild: Child already exists in the list");
+            return;
+        }
+    }
+
     child->setParent(this);
     children.push_back(child);
     // fullyQualifiedName += separator + child->getName();
