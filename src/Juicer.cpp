@@ -4315,7 +4315,6 @@ bool Juicer::isDWARFVersionSupported(Dwarf_Die inDie)
     return isSupported;
 }
 
-
 /**
  * @brief Inspects the data on the die and its own children recursively.
  * @param in_die the die entry that has the dwarf data.
