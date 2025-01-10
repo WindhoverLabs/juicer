@@ -113,7 +113,6 @@ class Juicer
     Dwarf_Ptr                  errarg = 0;
     int                        readCUList(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Error& error);
     int                        getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, Namespace* currentNamespace);
-    int                        getDieAndSiblingsNamespaces(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, Namespace* currentNamespace);
     Symbol*                    process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
     Symbol*                    process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
     void                       process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);

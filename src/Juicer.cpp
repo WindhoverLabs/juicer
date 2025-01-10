@@ -404,7 +404,6 @@ int Juicer::readCUList(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Error &error)
             }
 
             return_value = getDieAndSiblings(elf, dbg, cu_die, 0, nullptr);
-            //  return_value = getDieAndSiblingsNamespaces(elf, dbg, cu_die, 0, nullptr);
         }
 
         if (JUICER_OK != return_value)
@@ -636,118 +635,6 @@ int Juicer::process_DW_TAG_namespace(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in
     Dwarf_Error     error = 0;
     char           *name  = nullptr;
     int             res   = 0;
-    Namespace       ns{};
-
-    // Need to figure out if this die has already been processed.
-
-    res = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
-    if (res != DW_DLV_OK)
-    {
-        logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
-    }
-
-    if (res == DW_DLV_OK)
-    {
-        res = dwarf_formstring(attr_struct, &name, &error);
-        if (res != DW_DLV_OK)
-        {
-            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-        }
-
-        std::cout << "Namespace: " << name << std::endl;
-    }
-
-    bool        namespaceExists = false;
-    std::string strName{name};
-
-    if (strName == "_4D")
-    {
-        printf("break here.....\n");
-    }
-
-    std::string currentNamespaceFQN = name;
-
-    if (currentNamespace)
-    {
-        currentNamespaceFQN = currentNamespace->getFullyQualifiedName() + "::" + name;
-    }
-
-    // currentNamespaceFQN = currentNamespace->getFullyQualifiedName();
-
-    // // check if namespace already exists
-    // TODO: Need to think about the edge case where the namespace already exists but at a different level, meaning they are not the same namespace.
-    // I think they way to go might be to use the fully qualified name of the namespace.
-    for (auto &ns : elf.getNamespaces())
-    {
-        if (currentNamespace != nullptr)
-        {
-            std::string nsFQN = ns->getFullyQualifiedName();
-
-            if (nsFQN == currentNamespaceFQN)
-            {
-                return DW_DLV_OK;
-                namespaceExists = true;
-                break;
-            }
-            else
-            {
-                printf("break here.....\n");
-            }
-        }
-
-        else
-        {
-            if (ns->getName() == name)
-            {
-                return DW_DLV_OK;
-                namespaceExists = true;
-                break;
-            }
-        }
-    }
-
-    if (namespaceExists)
-    {
-        return DW_DLV_OK;
-    }
-    std::unique_ptr<Namespace> nsPtr = std::make_unique<Namespace>();
-
-    if (res == DW_DLV_OK)
-    {
-        ns.setName(name);
-        // nsPtr->setName(name);
-        elf.addNamespace(ns);
-
-        if (currentNamespace != nullptr)
-        {
-            currentNamespace->addChild(elf.getNamespace(name));
-            // currentNamespace->addChild(nsPtr.get());
-        }
-
-        else
-        {
-            // currentNamespace = elf.getNamespace(name);
-            // currentNamespace = nsPtr.get();
-        }
-        currentNamespace = elf.getNamespace(name);
-
-        // elf.addNamespace(std::move(nsPtr));
-    }
-
-    Dwarf_Die child;
-    res = dwarf_child(inDie, &child, &error);
-
-    if (res == DW_DLV_ERROR)
-    {
-        logger.logError("Error in dwarf_child , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-        res = JUICER_ERROR;
-    }
-    else if (res == DW_DLV_OK)
-    {
-        int res = getDieAndSiblingsNamespaces(elf, dbg, child, in_level + 1, currentNamespace);
-    }
-
-    currentNamespace = nullptr;
 
     return res;
 }
@@ -4428,219 +4315,6 @@ bool Juicer::isDWARFVersionSupported(Dwarf_Die inDie)
     return isSupported;
 }
 
-int Juicer::getDieAndSiblingsNamespaces(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, Namespace *currentNamespace)
-{
-    int             res     = DW_DLV_ERROR;
-    Dwarf_Die       cur_die = in_die;
-    Dwarf_Die       child   = 0;
-    Dwarf_Error     error   = 0;
-    char           *dieName;
-    Dwarf_Attribute attr_struct;
-    int             return_value = JUICER_OK;
-
-    Symbol         *outSymbol    = nullptr;
-
-    for (;;)
-    {
-        Dwarf_Die  sib_die = 0;
-        Dwarf_Half tag     = 0;
-        Dwarf_Off  offset  = 0;
-
-        res                = dwarf_dieoffset(cur_die, &offset, &error);
-
-        if (res != DW_DLV_OK)
-        {
-            logger.logError("Error in dwarf_dieoffset , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-            return_value = JUICER_ERROR;
-        }
-
-        DisplayDie(cur_die, in_level);
-
-        res = dwarf_tag(cur_die, &tag, &error);
-
-        if (res != DW_DLV_OK)
-        {
-            logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-            return_value = JUICER_ERROR;
-        }
-
-        if (DW_DLV_OK == res)
-        {
-            bool isDwarfSupported = isDWARFVersionSupported(cur_die);
-
-            if (isDwarfSupported == false)
-            {
-                logger.logWarning("This DWARF version is not supported for this die. At the moment only DWARF Version 4 is supported.");
-            }
-        }
-
-        switch (tag)
-        {
-                // case DW_TAG_base_type:
-                // {
-                //     process_DW_TAG_base_type(elf, dbg, cur_die);
-
-                //     break;
-                // }
-
-                // case DW_TAG_typedef:
-                // {
-                //     process_DW_TAG_typedef(elf, dbg, cur_die);
-
-                //     break;
-                // }
-
-                // case DW_TAG_structure_type:
-                // {
-                //     res = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
-                //     if (res == DW_DLV_OK)
-                //     {
-                //         res = dwarf_formstring(attr_struct, &dieName, &error);
-                //         if (res != DW_DLV_OK)
-                //         {
-                //             logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-                //         }
-                //         else
-                //         {
-                //             Dwarf_Unsigned     byteSize;
-                //             unsigned long long file_path_numbr = 0;
-                //             res                                = dwarf_bytesize(cur_die, &byteSize, &error);
-                //             std::string sDieName{dieName};
-
-                //             res = dwarf_attr(cur_die, DW_AT_decl_file, &attr_struct, &error);
-
-                //             if (DW_DLV_OK == res)
-                //             {
-                //                 unsigned long long pathIndex = 0;
-                //                 res                          = dwarf_formudata(attr_struct, &pathIndex, &error);
-
-                //                 /**
-                //                  * According to 6.2 Line Number Information in DWARF 4:
-                //                  * Line number information generated for a compilation unit is represented in the .debug_line
-                //                  * section of an object file and is referenced by a corresponding compilation unit debugging
-                //                  * information entry (see Section 3.1.1) in the .debug_info section.
-                //                  * This is why we are using dwarf_siblingof_b  instead of dwarf_siblingof and setting
-                //                  * the is_info to true.
-                //                  *
-                //                  * We are using a new Dwarf_Die because if we use cur_die, we segfault.
-                //                  *
-                //                  * My theory on this is that even though when we initially call dwarf_siblingof on
-                //                  * cur_die and as we read different kinds of tags/attributes(in particular type-related),
-                //                  * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
-                //                  *
-                //                  * Notice that in
-                //                  * https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
-                //                  *
-                //                  * This is just a a theory, however. In the future we may revisit this
-                //                  * to figure out the root cause of this.
-                //                  *
-                //                  */
-
-                //                 if (pathIndex != 0)
-                //                 {
-                //                     /**
-                //                      * Why we are checking against 0 as per DWARF section 2.14:
-                //                      *
-                //                      * The value of the DW_AT_decl_file attribute corresponds to a file number from the line number
-                //                      * information table for the compilation unit containing the debugging information entry and
-                //                      * represents the source file in which the declaration appeared (see Section 6.2 ). The value 0
-                //                      * indicates that no source file has been specified.
-                //                      *
-                //                      */
-                //                     Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
-                //                     std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
-                //                     newArtifact.setMD5(checkSum);
-                //                     outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
-                //                 }
-                //                 else
-                //                 {
-                //                     Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
-                //                     std::string checkSum{};
-                //                     newArtifact.setMD5(checkSum);
-                //                     outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
-                //                 }
-                //             }
-                //             else
-                //             {
-                //                 Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
-                //                 std::string checkSum{};
-                //                 newArtifact.setMD5(checkSum);
-                //                 outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
-                //             }
-
-                //             process_DW_TAG_structure_type(elf, *outSymbol, dbg, cur_die);
-                //         }
-                //     }
-
-                //     break;
-                // }
-                // case DW_TAG_array_type:
-                // {
-                //     Symbol s{elf};
-
-                //     res = process_DW_TAG_array_type(elf, s, dbg, cur_die);
-
-                //     break;
-                // }
-
-                // case DW_TAG_variable:
-                // {
-                //     if (extras)
-                //     {
-                //         process_DW_TAG_variable_type(elf, dbg, cur_die);
-                //     }
-                //     break;
-                // }
-
-            case DW_TAG_namespace:
-            {
-                res = process_DW_TAG_namespace(elf, dbg, cur_die, in_level, currentNamespace);
-                break;
-            }
-        }
-
-        // iterate through all children at this level
-
-        // res = dwarf_child(cur_die, &child, &error);
-        // if (res == DW_DLV_ERROR)
-        // {
-        //     logger.logError("Error in dwarf_child , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-        //     return_value = JUICER_ERROR;
-        // }
-        // else if (res == DW_DLV_OK)
-        // {
-        //     // getDieAndSiblings(elf, dbg, child, in_level + 1, currentNamespace);
-        // }
-
-        // currentNamespace = nullptr;
-
-        /* res == DW_DLV_NO_ENTRY */
-        res = dwarf_siblingof(dbg, cur_die, &sib_die, &error);
-        if (res == DW_DLV_ERROR)
-        {
-            logger.logError("Error in dwarf_siblingof , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-            return_value = JUICER_ERROR;
-        }
-
-        if (res == DW_DLV_NO_ENTRY)
-        {
-            /* Done at this level. */
-            break;
-        }
-
-        /* res == DW_DLV_OK */
-        if (cur_die != in_die)
-        {
-            dwarf_dealloc(dbg, cur_die, DW_DLA_DIE);
-        }
-
-        cur_die = sib_die;
-    }
-
-    // currentNamespace = nullptr;
-
-    return return_value;
-}
 
 /**
  * @brief Inspects the data on the die and its own children recursively.
@@ -4819,16 +4493,17 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
             case DW_TAG_namespace:
             {
                 // res = process_DW_TAG_namespace(elf, dbg, cur_die, in_level, currentNamespace);
-                // getDieAndSiblingsNamespaces(elf, dbg, cur_die, in_level, currentNamespace);
                 Dwarf_Attribute attr_struct;
                 Dwarf_Error     error = 0;
                 char           *name  = nullptr;
                 int             res   = 0;
                 Namespace       ns{};
 
+                bool            namespaceExists = false;
+
                 // Need to figure out if this die has already been processed.
 
-                res = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
+                res                             = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
                 if (res != DW_DLV_OK)
                 {
                     logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
@@ -4842,69 +4517,51 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                         logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
                     }
 
-                    std::cout << "Namespace: " << name << std::endl;
-                }
+                    namespaceName                   = name;
 
-                bool namespaceExists = false;
-                namespaceName        = name;
+                    std::string currentNamespaceFQN = name;
 
-                if (namespaceName == "Universe")
-                {
-                    printf("break here.....\n");
-                }
-
-                std::string currentNamespaceFQN = name;
-
-                if (currentNamespace)
-                {
-                    currentNamespaceFQN = currentNamespace->getFullyQualifiedName() + "::" + name;
-                }
-                // // check if namespace already exists
-                // TODO: Need to think about the edge case where the namespace already exists but at a different level, meaning they are not the same namespace.
-                // I think they way to go might be to use the fully qualified name of the namespace.
-                for (auto &ns : elf.getNamespaces())
-                {
-                    if (currentNamespace != nullptr)
+                    if (currentNamespace)
                     {
-                        std::string nsFQN = ns->getFullyQualifiedName();
-
-                        if (nsFQN == currentNamespaceFQN)
-                        {
-                            // return DW_DLV_OK;
-                            namespaceExists = true;
-                            break;
-                        }
-                        else
-                        {
-                            printf("break here.....\n");
-                        }
+                        currentNamespaceFQN = currentNamespace->getFullyQualifiedName() + "::" + name;
                     }
-
-                    else
+                    // check if namespace already exists
+                    for (auto &ns : elf.getNamespaces())
                     {
-                        if (ns->getName() == name)
-                        {
-                            // return DW_DLV_OK;
-                            namespaceExists = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!namespaceExists)
-                {
-                    std::unique_ptr<Namespace> nsPtr = std::make_unique<Namespace>();
-
-                    if (res == DW_DLV_OK)
-                    {
-                        ns.setName(name);
-                        ns.setParent(currentNamespace);
-                        elf.addNamespace(ns);
-                        newParentNamespace = elf.getNamespace(ns.getFullyQualifiedName());
-
                         if (currentNamespace != nullptr)
                         {
-                            currentNamespace->addChild(elf.getNamespace(ns.getFullyQualifiedName()));
+                            std::string nsFQN = ns->getFullyQualifiedName();
+
+                            if (nsFQN == currentNamespaceFQN)
+                            {
+                                namespaceExists = true;
+                                break;
+                            }
+                        }
+
+                        else
+                        {
+                            if (ns->getName() == name)
+                            {
+                                namespaceExists = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!namespaceExists)
+                    {
+                        if (res == DW_DLV_OK)
+                        {
+                            ns.setName(name);
+                            ns.setParent(currentNamespace);
+                            elf.addNamespace(ns);
+                            newParentNamespace = elf.getNamespace(ns.getFullyQualifiedName());
+
+                            if (currentNamespace != nullptr)
+                            {
+                                currentNamespace->addChild(elf.getNamespace(ns.getFullyQualifiedName()));
+                            }
                         }
                     }
                 }
