@@ -4662,7 +4662,7 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
     Symbol         *outSymbol    = nullptr;
 
     std::string     namespaceName{""};
-    Namespace* newParentNamespace = nullptr;
+    Namespace      *newParentNamespace = nullptr;
 
     for (;;)
     {

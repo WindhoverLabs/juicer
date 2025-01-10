@@ -25,7 +25,7 @@ class Namespace
     // std::string&             getFullyQualifiedName() { return fullyQualifiedName; }
 
     std::string              getFullyQualifiedName();
-    void                    setParent(Namespace* parent);
+    void                     setParent(Namespace* parent);
 
    private:
     std::string             name;
