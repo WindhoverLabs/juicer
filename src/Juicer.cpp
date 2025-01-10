@@ -629,14 +629,90 @@ char *Juicer::getFirstAncestorName(Dwarf_Die inDie)
     return outName;
 }
 
-int Juicer::process_DW_TAG_namespace(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, int in_level, Namespace *currentNamespace)
+/**
+ * @brief Add new namespace to elf, if it does not exist.
+ *
+ * @return The new namespace that was added. Not that this namespace may be null if it already exists.
+ */
+Namespace *Juicer::process_DW_TAG_namespace(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, int in_level, Namespace *currentNamespace)
 {
     Dwarf_Attribute attr_struct;
     Dwarf_Error     error = 0;
     char           *name  = nullptr;
     int             res   = 0;
+    Namespace       ns{};
+    std::string     namespaceName{};
 
-    return res;
+    Namespace      *newParentNamespace = nullptr;
+
+    bool            namespaceExists    = false;
+
+    // Need to figure out if this die has already been processed.
+
+    res                                = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
+    if (res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+    }
+
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_formstring(attr_struct, &name, &error);
+        if (res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
+
+        namespaceName                   = name;
+
+        std::string currentNamespaceFQN = name;
+
+        if (currentNamespace)
+        {
+            currentNamespaceFQN = currentNamespace->getFullyQualifiedName() + "::" + name;
+        }
+        // check if namespace already exists
+        for (auto &ns : elf.getNamespaces())
+        {
+            if (currentNamespace != nullptr)
+            {
+                std::string nsFQN = ns->getFullyQualifiedName();
+
+                if (nsFQN == currentNamespaceFQN)
+                {
+                    namespaceExists = true;
+                    break;
+                }
+            }
+
+            else
+            {
+                if (ns->getName() == name)
+                {
+                    namespaceExists = true;
+                    break;
+                }
+            }
+        }
+
+        if (!namespaceExists)
+        {
+            if (res == DW_DLV_OK)
+            {
+                ns.setName(name);
+                ns.setParent(currentNamespace);
+                elf.addNamespace(ns);
+                newParentNamespace = elf.getNamespace(ns.getFullyQualifiedName());
+
+                if (currentNamespace != nullptr)
+                {
+                    currentNamespace->addChild(elf.getNamespace(ns.getFullyQualifiedName()));
+                }
+            }
+        }
+    }
+
+    return newParentNamespace;
 }
 
 Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
@@ -4491,80 +4567,7 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
 
             case DW_TAG_namespace:
             {
-                // res = process_DW_TAG_namespace(elf, dbg, cur_die, in_level, currentNamespace);
-                Dwarf_Attribute attr_struct;
-                Dwarf_Error     error = 0;
-                char           *name  = nullptr;
-                int             res   = 0;
-                Namespace       ns{};
-
-                bool            namespaceExists = false;
-
-                // Need to figure out if this die has already been processed.
-
-                res                             = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
-                if (res != DW_DLV_OK)
-                {
-                    logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
-                }
-
-                if (res == DW_DLV_OK)
-                {
-                    res = dwarf_formstring(attr_struct, &name, &error);
-                    if (res != DW_DLV_OK)
-                    {
-                        logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
-                    }
-
-                    namespaceName                   = name;
-
-                    std::string currentNamespaceFQN = name;
-
-                    if (currentNamespace)
-                    {
-                        currentNamespaceFQN = currentNamespace->getFullyQualifiedName() + "::" + name;
-                    }
-                    // check if namespace already exists
-                    for (auto &ns : elf.getNamespaces())
-                    {
-                        if (currentNamespace != nullptr)
-                        {
-                            std::string nsFQN = ns->getFullyQualifiedName();
-
-                            if (nsFQN == currentNamespaceFQN)
-                            {
-                                namespaceExists = true;
-                                break;
-                            }
-                        }
-
-                        else
-                        {
-                            if (ns->getName() == name)
-                            {
-                                namespaceExists = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (!namespaceExists)
-                    {
-                        if (res == DW_DLV_OK)
-                        {
-                            ns.setName(name);
-                            ns.setParent(currentNamespace);
-                            elf.addNamespace(ns);
-                            newParentNamespace = elf.getNamespace(ns.getFullyQualifiedName());
-
-                            if (currentNamespace != nullptr)
-                            {
-                                currentNamespace->addChild(elf.getNamespace(ns.getFullyQualifiedName()));
-                            }
-                        }
-                    }
-                }
-
+                newParentNamespace = process_DW_TAG_namespace(elf, dbg, cur_die, in_level, currentNamespace);
                 break;
             }
         }
