@@ -449,7 +449,7 @@ char *Juicer::dwarfStringToChar(char *dwarfString)
  * it does NOT mean that no array was found. There are cases where an array is found on the die,
  * however, because it has no name we decide to not add it to the elf at all.
  */
-int Juicer::process_DW_TAG_array_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+int Juicer::process_DW_TAG_array_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     Dwarf_Die       dieSubrangeType;
     Dwarf_Unsigned  dwfUpperBound = 0;
@@ -538,7 +538,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug 
              */
             std::string stdString{arrayName};
 
-            Symbol     *arraySymbol = getBaseTypeSymbol(elf, inDie, dimList);
+            Symbol     *arraySymbol = getBaseTypeSymbol(elf, inDie, dimList, currentNamespace);
 
             if (nullptr == arraySymbol)
             {
@@ -715,7 +715,7 @@ Namespace *Juicer::process_DW_TAG_namespace(ElfFile &elf, Dwarf_Debug dbg, Dwarf
     return newParentNamespace;
 }
 
-Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
+Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     Symbol         *outSymbol   = 0;
     Dwarf_Attribute attr_struct = nullptr;
@@ -786,7 +786,7 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
                     Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                     std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                     newArtifact.setMD5(checkSum);
-                    outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
+                    outSymbol = elf.addSymbol(voidType, byteSize, newArtifact, nullptr);
                 }
                 else
                 {
@@ -795,7 +795,7 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
                     Artifact    newArtifact{elf, "NOT_FOUND:" + voidType};
                     std::string checkSum{};
                     newArtifact.setMD5(checkSum);
-                    outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
+                    outSymbol = elf.addSymbol(voidType, byteSize, newArtifact, nullptr);
                 }
             }
         }
@@ -863,14 +863,14 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
             Artifact    newArtifact{elf, "NOT_FOUND:" + name};
             std::string checkSum{};
             newArtifact.setMD5(checkSum);
-            outSymbol = elf.addSymbol(name, byteSize, newArtifact);
+            outSymbol = elf.addSymbol(name, byteSize, newArtifact, currentNamespace);
         }
     }
 
     return outSymbol;
 }
 
-Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
+Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     Symbol         *outSymbol   = 0;
     Dwarf_Attribute attr_struct = nullptr;
@@ -960,7 +960,7 @@ Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwar
 
                         DimensionList dimList{};
                         // TODO:Really don't like the pattern of passing an empty object to getBaseTypeSymbol...
-                        Symbol       *s = getBaseTypeSymbol(elf, inDie, dimList);
+                        Symbol       *s = getBaseTypeSymbol(elf, inDie, dimList, currentNamespace);
 
                         if (s != nullptr)
                         {
@@ -990,7 +990,7 @@ Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwar
     return outSymbol;
 }
 
-Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &dimList)
+Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &dimList, Namespace *currentNamespace)
 {
     int             res = DW_DLV_OK;
     Dwarf_Attribute attr_struct;
@@ -1047,7 +1047,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
         {
             case DW_TAG_pointer_type:
             {
-                outSymbol = process_DW_TAG_pointer_type(elf, dbg, typeDie);
+                outSymbol = process_DW_TAG_pointer_type(elf, dbg, typeDie, currentNamespace);
                 break;
             }
 
@@ -1175,20 +1175,20 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                         else
                         {
                             Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                             std::string checkSum{};
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                     }
 
                     if (nullptr != outSymbol)
                     {
-                        process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
+                        process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie, currentNamespace);
                     }
                 }
                 else
@@ -1199,20 +1199,20 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                     Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                     std::string checkSum{};
                     newArtifact.setMD5(checkSum);
-                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                 }
                 break;
             }
 
             case DW_TAG_base_type:
             {
-                outSymbol = process_DW_TAG_base_type(elf, dbg, typeDie);
+                outSymbol = process_DW_TAG_base_type(elf, dbg, typeDie, currentNamespace);
                 break;
             }
 
             case DW_TAG_typedef:
             {
-                outSymbol = process_DW_TAG_typedef(elf, dbg, typeDie);
+                outSymbol = process_DW_TAG_typedef(elf, dbg, typeDie, currentNamespace);
 
                 break;
             }
@@ -1348,14 +1348,14 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                         else
                         {
                             Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                             std::string checkSum{};
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                     }
 
@@ -1364,7 +1364,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                         Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                         std::string checkSum{};
                         newArtifact.setMD5(checkSum);
-                        outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                        outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                     }
 
                     process_DW_TAG_enumeration_type(elf, *outSymbol, dbg, typeDie);
@@ -1376,7 +1376,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
             {
                 /* First get the base type itself. */
 
-                outSymbol = getBaseTypeSymbol(elf, typeDie, dimList);
+                outSymbol = getBaseTypeSymbol(elf, typeDie, dimList, currentNamespace);
 
                 /* Set the multiplicity argument. */
                 if (res == DW_DLV_OK)
@@ -1399,7 +1399,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                 /* Get the type attribute. */
                 res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
 
-                getBaseTypeSymbol(elf, typeDie, dimList);
+                getBaseTypeSymbol(elf, typeDie, dimList, currentNamespace);
 
                 break;
             }
@@ -1513,20 +1513,20 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                         else
                         {
                             Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                             std::string checkSum{};
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                     }
 
                     if (nullptr != outSymbol)
                     {
-                        process_DW_TAG_union_type(elf, *outSymbol, dbg, typeDie);
+                        process_DW_TAG_union_type(elf, *outSymbol, dbg, typeDie, currentNamespace);
                     }
                 }
 
@@ -3308,7 +3308,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
     // }
 }
 
-Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
+Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     int             res      = DW_DLV_OK;
     Dwarf_Unsigned  byteSize = 0;
@@ -3434,14 +3434,14 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, currentNamespace);
                         }
                         else
                         {
                             Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
                             std::string checkSum{};
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, currentNamespace);
                         }
                     }
 
@@ -3453,7 +3453,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                         Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                         std::string checkSum{};
                         newArtifact.setMD5(checkSum);
-                        outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                        outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                     }
                 }
             }
@@ -3624,7 +3624,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile &elf, Symbol &symbol, Dwarf
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
+Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     int             res            = DW_DLV_OK;
     uint32_t        byteSize       = 0;
@@ -3658,7 +3658,7 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
     {
         DimensionList dimensionList{};
 
-        baseTypeSymbol = getBaseTypeSymbol(elf, inDie, dimensionList);
+        baseTypeSymbol = getBaseTypeSymbol(elf, inDie, dimensionList, currentNamespace);
 
         if (baseTypeSymbol == 0)
         {
@@ -3724,14 +3724,14 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
                 Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
+                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol, currentNamespace);
             }
             else
             {
                 Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
                 std::string checkSum{};
                 newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
+                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol, currentNamespace);
             }
         }
     }
@@ -3746,7 +3746,7 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     int             res         = DW_DLV_OK;
     Dwarf_Attribute attr_struct = nullptr;
@@ -3978,7 +3978,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
                         /* Get the base type die. */
                         if (res == DW_DLV_OK)
                         {
-                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList);
+                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList, currentNamespace);
 
                             if (memberBaseTypeSymbol == 0)
                             {
@@ -4048,7 +4048,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     int             res         = DW_DLV_OK;
     Dwarf_Attribute attr_struct = nullptr;
@@ -4137,7 +4137,7 @@ void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug
                         /* Get the base type die. */
                         if (res == DW_DLV_OK)
                         {
-                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList);
+                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList, currentNamespace);
 
                             if (memberBaseTypeSymbol == 0)
                             {
@@ -4253,7 +4253,7 @@ void Juicer::addPaddingToStruct(Symbol &symbol)
                     std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                     newArtifact.setMD5(checkSum);
 
-                    paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize, newArtifact);
+                    paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize, newArtifact, nullptr);
                 }
 
                 auto &&fields    = symbol.getFields();
@@ -4315,7 +4315,7 @@ void Juicer::addPaddingEndToStruct(Symbol &symbol)
                 Artifact    newArtifact{symbol.getElf(), symbol.getArtifact().getFilePath()};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
-                paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta, newArtifact);
+                paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta, newArtifact, (Namespace *)nullptr);
             }
 
             uint32_t newFieldByteOffset = symbol.getFields().back()->getByteOffset().value() + symbol.getFields().back()->getType().getByteSize();
@@ -4451,14 +4451,14 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
         {
             case DW_TAG_base_type:
             {
-                process_DW_TAG_base_type(elf, dbg, cur_die);
+                process_DW_TAG_base_type(elf, dbg, cur_die, currentNamespace);
 
                 break;
             }
 
             case DW_TAG_typedef:
             {
-                process_DW_TAG_typedef(elf, dbg, cur_die);
+                process_DW_TAG_typedef(elf, dbg, cur_die, currentNamespace);
 
                 break;
             }
@@ -4523,14 +4523,14 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                                 Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                                 newArtifact.setMD5(checkSum);
-                                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, currentNamespace);
                             }
                             else
                             {
                                 Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
                                 std::string checkSum{};
                                 newArtifact.setMD5(checkSum);
-                                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, currentNamespace);
                             }
                         }
                         else
@@ -4538,10 +4538,10 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                             Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
                             std::string checkSum{};
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, currentNamespace);
                         }
 
-                        process_DW_TAG_structure_type(elf, *outSymbol, dbg, cur_die);
+                        process_DW_TAG_structure_type(elf, *outSymbol, dbg, cur_die, currentNamespace);
                     }
                 }
 
@@ -4551,7 +4551,7 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
             {
                 Symbol s{elf};
 
-                res = process_DW_TAG_array_type(elf, s, dbg, cur_die);
+                res = process_DW_TAG_array_type(elf, s, dbg, cur_die, currentNamespace);
 
                 break;
             }
@@ -4560,7 +4560,7 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
             {
                 if (extras)
                 {
-                    process_DW_TAG_variable_type(elf, dbg, cur_die);
+                    process_DW_TAG_variable_type(elf, dbg, cur_die, currentNamespace);
                 }
                 break;
             }

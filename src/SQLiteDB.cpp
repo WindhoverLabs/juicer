@@ -315,7 +315,7 @@ int SQLiteDB::write(ElfFile& inElf)
                 else
                 {
                     logger.logDebug(
-                        "There was an error while writing macro entries to the"
+                        "There was an error while writing Artifact entries to the"
                         " database.");
                     rc = SQLITEDB_ERROR;
                 }
@@ -333,13 +333,29 @@ int SQLiteDB::write(ElfFile& inElf)
             if (SQLITEDB_ERROR != rc)
             {
                 logger.logDebug(
-                    "Variable entries were written to the variables schema "
+                    "Encoding entries were written to the Encodings schema "
                     "with SQLITE_OK status.");
+
+                rc = writeAllNamespacesToDatabase(inElf);
+
+                if (SQLITEDB_ERROR != rc)
+                {
+                    logger.logDebug(
+                        "Namespace entries were written to the namespaces schema "
+                        "with SQLITE_OK status.");
+                }
+                else
+                {
+                    logger.logDebug(
+                        "There was an error while writing namespace entries to the"
+                        " database.");
+                    rc = SQLITEDB_ERROR;
+                }
             }
             else
             {
                 logger.logDebug(
-                    "There was an error while writing variable entries to the"
+                    "There was an error while writing Encoding entries to the"
                     " database.");
                 rc = SQLITEDB_ERROR;
             }
@@ -354,13 +370,27 @@ int SQLiteDB::write(ElfFile& inElf)
 
                 rc = writeFieldsToDatabase(inElf);
 
-                writeDimensionsListToDatabase(inElf);
-
                 if (SQLITEDB_ERROR != rc)
                 {
                     logger.logDebug(
                         "Field entries were written to the fields schema "
                         "with SQLITE_OK status.");
+
+                    rc = writeDimensionsListToDatabase(inElf);
+
+                    if (SQLITEDB_ERROR != rc)
+                    {
+                        logger.logDebug(
+                            "Field entries were written to the dimension_lists schema "
+                            "with SQLITE_OK status.");
+                    }
+                    else
+                    {
+                        logger.logDebug(
+                            "There was an error while writing dimension_lists entries to the"
+                            " database.");
+                        rc = SQLITEDB_ERROR;
+                    }
 
                     rc = writeEnumerationsToDatabase(inElf);
 
@@ -383,7 +413,7 @@ int SQLiteDB::write(ElfFile& inElf)
                             if (SQLITEDB_ERROR != rc)
                             {
                                 logger.logDebug(
-                                    "Variable entries were written to the variables schema "
+                                    "Elf Sections were written to the variables schema "
                                     "with SQLITE_OK status.");
 
                                 rc = writeElfSymboltableSymbolsToDatabase(inElf);
@@ -391,10 +421,8 @@ int SQLiteDB::write(ElfFile& inElf)
                                 if (SQLITEDB_ERROR != rc)
                                 {
                                     logger.logDebug(
-                                        "Variable entries were written to the variables schema "
+                                        "Elf Symbol Table Symbols entries were written to the variables schema "
                                         "with SQLITE_OK status.");
-
-                                    rc = writeAllNamespacesToDatabase(inElf);
                                 }
                                 else
                                 {
@@ -1184,7 +1212,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
             if (!symbol->getEncoding())
             {
                 writeSymbolQuery +=
-                    "INSERT INTO symbols(elf, name, byte_size, artifact, long_description, short_description) "
+                    "INSERT INTO symbols(elf, name, byte_size, artifact, namespace, long_description, short_description) "
                     "VALUES(";
                 writeSymbolQuery += std::to_string(symbol->getElf().getId());
                 writeSymbolQuery += ",\"";
@@ -1194,6 +1222,17 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
                 writeSymbolQuery += std::to_string(symbol->getByteSize());
                 writeSymbolQuery += ",";
                 writeSymbolQuery += std::to_string(symbol->getArtifact().getId());
+
+                writeSymbolQuery += ",";
+
+                if (symbol->getNamespace() != nullptr)
+                {
+                    writeSymbolQuery += std::to_string(symbol->getNamespace()->getId().value());
+                }
+                else
+                {
+                    writeSymbolQuery += "-1";
+                }
 
                 writeSymbolQuery += ",\"";
                 writeSymbolQuery += symbol->getLongDescription();

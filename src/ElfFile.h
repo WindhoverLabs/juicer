@@ -48,25 +48,25 @@ class ElfFile
    public:
     ElfFile(std::string &name);
     virtual ~ElfFile();
-    std::vector<std::unique_ptr<Symbol>>              &getSymbols();
+    std::vector<std::unique_ptr<Symbol>> &getSymbols();
 
-    std::string                                        getName() const;
-    uint32_t                                           getId(void) const;
-    void                                               setId(uint32_t newId);
-    Symbol                                            *addSymbol(std::string &name, uint32_t byte_size, Artifact newArtifact);
-    Symbol                                            *addSymbol(std::string &inName, uint32_t inByteSize, Artifact newArtifact, Symbol *targetSymbol);
-    std::vector<Field *>                               getFields();
-    std::vector<Enumeration *>                         getEnumerations();
-    Symbol                                            *getSymbol(std::string &name);
-    const std::string                                 &getDate() const;
-    void                                               setDate(const std::string &date);
-    bool                                               isLittleEndian() const;
-    void                                               isLittleEndian(bool littleEndian);
-    void                                               setMD5(std::string newID);
-    std::string                                        getMD5() const;
-    void                                               addDefineMacro(DefineMacro newMacro);
+    std::string                           getName() const;
+    uint32_t                              getId(void) const;
+    void                                  setId(uint32_t newId);
+    Symbol                               *addSymbol(std::string &name, uint32_t byte_size, Artifact newArtifact, Namespace *symbolNamepace);
+    Symbol                         *addSymbol(std::string &inName, uint32_t inByteSize, Artifact newArtifact, Symbol *targetSymbol, Namespace *symbolNamepace);
+    std::vector<Field *>            getFields();
+    std::vector<Enumeration *>      getEnumerations();
+    Symbol                         *getSymbol(std::string &name);
+    const std::string              &getDate() const;
+    void                            setDate(const std::string &date);
+    bool                            isLittleEndian() const;
+    void                            isLittleEndian(bool littleEndian);
+    void                            setMD5(std::string newID);
+    std::string                     getMD5() const;
+    void                            addDefineMacro(DefineMacro newMacro);
 
-    const std::vector<DefineMacro>                    &getDefineMacros() const;
+    const std::vector<DefineMacro> &getDefineMacros() const;
 
     const std::map<std::string, std::vector<uint8_t>> &getInitializedSymbolData() const;
 

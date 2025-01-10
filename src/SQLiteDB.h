@@ -42,12 +42,14 @@
                                   artifact INTEGER,\
                                   target_symbol INTEGER,\
                                   encoding INTEGER,\
+                                  namespace INTEGER,\
                                   short_description TEXT ,\
                                   long_description TEXT ,\
                                   FOREIGN KEY(elf) REFERENCES elfs(id),\
 								  FOREIGN KEY(artifact) REFERENCES artifacts(id)\
                                   FOREIGN KEY(target_symbol) REFERENCES symbols(id)\
                                   FOREIGN KEY(encoding) REFERENCES encodings(id)\
+                                  FOREIGN KEY(namespace) REFERENCES namespaces(id)\
                                   UNIQUE(name));"
 
 #define CREATE_DIMENSION_TABLE \

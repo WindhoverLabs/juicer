@@ -85,7 +85,7 @@ Symbol*     ElfFile::getSymbol(std::string& name)
     return returnSymbol;
 }
 
-Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact, Symbol* targetSymbol)
+Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact, Symbol* targetSymbol, Namespace* symbolNamepace)
 {
     Symbol* symbol = getSymbol(inName);
 
@@ -102,13 +102,14 @@ Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact ne
     return symbol;
 }
 
-Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact)
+Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact, Namespace* symbolNamepace)
 {
     Symbol* symbol = getSymbol(inName);
 
     if (symbol == nullptr)
     {
         std::unique_ptr<Symbol> newSymbol = std::make_unique<Symbol>(*this, inName, inByteSize, newArtifact);
+        newSymbol->setNamespace(symbolNamepace);
 
         symbols.push_back(std::move(newSymbol));
 

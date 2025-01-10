@@ -113,14 +113,14 @@ class Juicer
     Dwarf_Ptr                  errarg = 0;
     int                        readCUList(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Error& error);
     int                        getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, Namespace* currentNamespace);
-    Symbol*                    process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
-    Symbol*                    process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die);
-    void                       process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    Symbol*                    process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
-    Symbol*                    process_DW_TAG_variable_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie);
+    Symbol*                    process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, Namespace* currentNamespace);
+    Symbol*                    process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, Namespace* currentNamespace);
+    void                       process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
+    Symbol*                    process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
+    Symbol*                    process_DW_TAG_variable_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
     void                       process_DW_TAG_enumeration_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    int                        process_DW_TAG_array_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    void                       process_DW_TAG_union_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    int                        process_DW_TAG_array_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
+    void                       process_DW_TAG_union_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
     Namespace*                 process_DW_TAG_namespace(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie, int in_level, Namespace* currentNamespace);
     char*                      getFirstAncestorName(Dwarf_Die inDie);
     int                        printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
@@ -133,7 +133,7 @@ class Juicer
     Logger                     logger;
     IDataContainer*            idc = 0;
     bool                       isIDCSet(void);
-    Symbol*                    getBaseTypeSymbol(ElfFile& elf, Dwarf_Die inDie, DimensionList& multiplicity);
+    Symbol*                    getBaseTypeSymbol(ElfFile& elf, Dwarf_Die inDie, DimensionList& dimList, Namespace* currentNamespace);
     void                       DisplayDie(Dwarf_Die inDie, uint32_t level);
 
     std::vector<Dwarf_Die>     getChildrenVector(Dwarf_Debug dbg, Dwarf_Die die);

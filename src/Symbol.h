@@ -20,6 +20,7 @@
 #include "Enumeration.h"
 #include "Field.h"
 #include "Logger.h"
+#include "Namespace.hpp"
 
 class Field;
 class Enumeration;
@@ -73,6 +74,10 @@ class Symbol
 
     std::optional<int>                         getEncoding();
 
+    void                                       setNamespace(Namespace *newNamespace) { namespace_ = newNamespace; }
+
+    Namespace                                 *getNamespace() { return namespace_; }
+
    private:
     ElfFile                                  &elf;
     std::string                               name;
@@ -88,6 +93,8 @@ class Symbol
     std::string                               long_description;
 
     std::optional<int>                        encoding{std::nullopt};
+
+    Namespace                                *namespace_{nullptr};
 };
 
 #endif /* SYMBOL_H_ */
