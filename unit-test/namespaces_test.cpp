@@ -1,36 +1,52 @@
 namespace Universe
 {
-namespace World
+namespace Earth
 {
 struct Shape
 {
     int width;
     int length;
 };
-}  // namespace World
+
+}  // namespace Earth
+
+namespace Mars
+{
+struct Shape
+{
+    int width;
+    int length;
+};
+}  // namespace Mars
 }  // namespace Universe
 
+namespace Plane
+{
+namespace _3D
+{
+struct Shape
+{
+    int width;
+    int length;
+};
+}  // namespace _3D
+
+namespace _4D
+{
 namespace Universe
 {
-
-struct Shape2
+struct Shape
 {
     int width;
     int length;
 };
 }  // namespace Universe
+}  // namespace _4D
 
-class WorldClass
-{
-   public:
-    struct Shape
-    {
-        int width;
-        int length;
-    };
-};  // namespace World
+}  // namespace Plane
+Universe::Earth::Shape      earth{};
+// Universe::Mars::Shape  mars{};
 
-Universe::World::Shape myShape{};
+// Plane::_3D::Shape      Space{};
 
-Universe::Shape2       myShape2{};
-WorldClass::Shape      classyShape{};
+Plane::_4D::Universe::Shape Star{};
