@@ -25,6 +25,7 @@ class Namespace
     // std::string&             getFullyQualifiedName() { return fullyQualifiedName; }
 
     std::string              getFullyQualifiedName();
+    void                    setParent(Namespace* parent);
 
    private:
     std::string             name;
@@ -36,7 +37,6 @@ class Namespace
     Namespace*              child{nullptr};
 
     std::optional<uint32_t> id{std::nullopt};
-    void                    setParent(Namespace* parent);
     // std::vector<Symbol*>     symbols;
 };
 

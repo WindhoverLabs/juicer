@@ -2110,67 +2110,6 @@ int SQLiteDB::writeAllNamespacesToDatabase(ElfFile& inElf)
 
     writeNamespacesToDatabase(namespacesPointers, std::nullopt);
 
-    // for (auto&& namespace_ : inElf.getNamespaces())
-    // {
-    //     std::string   writeNamespaceQuery{};
-
-    //     sqlite3_stmt* stmt;
-    //     const char*   sql = "INSERT INTO namespaces (name) VALUES (?);";
-
-    //     // Prepare the SQL statement
-    //     rc                = sqlite3_prepare_v2(database, sql, -1, &stmt, NULL);
-
-    //     if (rc != SQLITE_OK)
-    //     {
-    //         std::cerr << "SQL error: " << sqlite3_errmsg(database) << std::endl;
-    //     }
-    //     else
-    //     {
-    //         // Bind values to placeholders
-    //         sqlite3_bind_text(stmt, 1, namespace_->getName().c_str(), -1, SQLITE_STATIC);
-    //         rc = sqlite3_step(stmt);
-
-    //         // Execute the SQL statement
-    //         if (rc != SQLITE_DONE)
-    //         {
-    //             const char* errorMessage = sqlite3_errmsg(database);
-    //             if (SQLITE_OK == rc)
-    //             {
-    //                 logger.logDebug(
-    //                     "Elf values were written to the encodings schema with "
-    //                     "SQLITE_OK status.");
-    //             }
-    //             else
-    //             {
-    //                 if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
-    //                 {
-    //                     logger.logDebug("%s.", errorMessage);
-    //                     rc = SQLITE_OK;
-    //                 }
-    //                 else
-    //                 {
-    //                     logger.logDebug("There was an error while writing data to the encodings table.");
-    //                     logger.logDebug("%s.", errorMessage);
-    //                     rc = SQLITEDB_ERROR;
-    //                 }
-    //             }
-    //         }
-
-    //         // Finalize the statement
-    //         rc = sqlite3_finalize(stmt);
-    //         if (rc != SQLITE_OK)
-    //         {
-    //             logger.logDebug("There was an error while finalizing the sql statement for encodings table.");
-    //         }
-    //         else
-    //         {
-    //             sqlite3_int64 lastRowId = sqlite3_last_insert_rowid(database);
-
-    //             namespace_->setId(lastRowId);
-    //         }
-    //     }
-    // }
-
     for (auto&& namespace_ : inElf.getNamespaces())
     {
         // Check if namespace already exists in database

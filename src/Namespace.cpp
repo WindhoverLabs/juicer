@@ -50,15 +50,17 @@ void                    Namespace::addChild(Namespace* child)
 
     child->setParent(this);
     children.push_back(child);
-    // fullyQualifiedName += separator + child->getName();
 }
 
 std::string Namespace::getFullyQualifiedName()
 {
-    while (parent != nullptr)
+    // Ensure we don't set the member parent to nullptr
+    Namespace* tmpParent = parent;
+    fullyQualifiedName   = name;
+    while (tmpParent != nullptr)
     {
-        fullyQualifiedName = parent->getName() + separator + fullyQualifiedName;
-        parent             = parent->getParent();
+        fullyQualifiedName = tmpParent->getName() + separator + fullyQualifiedName;
+        tmpParent          = tmpParent->getParent();
     }
     return fullyQualifiedName;
 }

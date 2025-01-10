@@ -254,7 +254,6 @@ void ElfFile::addNamespace(Namespace newNamespace)
     namespaces.push_back(std::make_unique<Namespace>(newNamespace));
 }
 
-
 void ElfFile::addNamespace(std::unique_ptr<Namespace> newNamespace)
 {
     // Check if the namespace already exists
@@ -273,7 +272,7 @@ Namespace* ElfFile::getNamespace(std::string name)
 {
     for (auto&& namespace_ : namespaces)
     {
-        if (namespace_->getName() == name)
+        if (namespace_->getFullyQualifiedName() == name)
         {
             return namespace_.get();
         }
