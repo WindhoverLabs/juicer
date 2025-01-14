@@ -70,15 +70,28 @@ std::string ElfFile::getMD5() const { return md5; }
  *nonetheless. Will re-evaluate. Visit https://en.cppreference.com/w/cpp/utility/optional
  *and https://en.cppreference.com/w/cpp/utility/tuple for details.
  */
-Symbol*     ElfFile::getSymbol(std::string& name)
+Symbol*     ElfFile::getSymbol(std::string& name, Namespace* ns)
 {
     Symbol* returnSymbol = nullptr;
 
     for (auto&& symbol : symbols)
     {
-        if (symbol->getName() == name)
+        if (ns != nullptr && symbol->getNamespace() != nullptr)
         {
-            returnSymbol = symbol.get();
+            if (symbol->getName() == name && symbol->getNamespace()->getFullyQualifiedName() == ns->getFullyQualifiedName())
+            {
+                returnSymbol = symbol.get();
+            }
+        }
+
+        else if (ns == nullptr && symbol->getNamespace() == nullptr)
+        {
+            {
+                if (symbol->getName() == name)
+                {
+                    returnSymbol = symbol.get();
+                }
+            }
         }
     }
 
@@ -87,7 +100,7 @@ Symbol*     ElfFile::getSymbol(std::string& name)
 
 Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact, Symbol* targetSymbol, Namespace* symbolNamepace)
 {
-    Symbol* symbol = getSymbol(inName);
+    Symbol* symbol = getSymbol(inName, symbolNamepace);
 
     if (symbol == nullptr)
     {
@@ -104,7 +117,7 @@ Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact ne
 
 Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact, Namespace* symbolNamepace)
 {
-    Symbol* symbol = getSymbol(inName);
+    Symbol* symbol = getSymbol(inName, symbolNamepace);
 
     if (symbol == nullptr)
     {

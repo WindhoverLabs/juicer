@@ -57,7 +57,7 @@ class ElfFile
     Symbol                         *addSymbol(std::string &inName, uint32_t inByteSize, Artifact newArtifact, Symbol *targetSymbol, Namespace *symbolNamepace);
     std::vector<Field *>            getFields();
     std::vector<Enumeration *>      getEnumerations();
-    Symbol                         *getSymbol(std::string &name);
+    Symbol                         *getSymbol(std::string &name, Namespace *ns);
     const std::string              &getDate() const;
     void                            setDate(const std::string &date);
     bool                            isLittleEndian() const;

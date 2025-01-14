@@ -59,6 +59,346 @@
 #include "Symbol.h"
 #include "Variable.h"
 
+/* A simple container to hold the path of DIE offsets. */
+typedef struct
+{
+    Dwarf_Off *array;
+    size_t     size;
+    size_t     capacity;
+} OffsetStack;
+
+/* Push an offset onto the stack */
+static void push_offset(OffsetStack *stack, Dwarf_Off off)
+{
+    if (stack->size >= stack->capacity)
+    {
+        /* Grow the array (very simplistic growth strategy) */
+        size_t     new_cap = (stack->capacity == 0) ? 16 : stack->capacity * 2;
+        Dwarf_Off *tmp     = (Dwarf_Off *)realloc(stack->array, new_cap * sizeof(Dwarf_Off));
+        if (!tmp)
+        {
+            fprintf(stderr, "Error: out of memory in push_offset()\n");
+            exit(EXIT_FAILURE);
+        }
+        stack->array    = tmp;
+        stack->capacity = new_cap;
+    }
+    stack->array[stack->size++] = off;
+}
+
+/* Pop the last offset (only call after a successful push) */
+static void pop_offset(OffsetStack *stack)
+{
+    if (stack->size > 0)
+    {
+        stack->size--;
+    }
+}
+
+/*
+ * Recursive DFS to locate a DIE with 'target_off' in the subtree
+ * rooted at 'current_die'.
+ *
+ * If found, returns 1 (the path is stored in 'path_stack').
+ * If not found, returns 0.
+ */
+static int find_die_path(Dwarf_Debug dbg, Dwarf_Die current_die, Dwarf_Off target_off, OffsetStack *path_stack)
+{
+    Dwarf_Error err = 0;
+    Dwarf_Off   cur_off;
+
+    if (dwarf_dieoffset(current_die, &cur_off, &err) != DW_DLV_OK)
+    {
+        fprintf(stderr, "Error: dwarf_dieoffset() failed: %s\n", dwarf_errmsg(err));
+        return 0;
+    }
+
+    /* Push current DIE onto the path. */
+    push_offset(path_stack, cur_off);
+
+    /* Check if this is our target DIE. */
+    if (cur_off == target_off)
+    {
+        return 1; /* Found it. The path stack now includes this DIE. */
+    }
+
+    /* Traverse the child (if any). */
+    {
+        Dwarf_Die child_die = 0;
+        int       rc        = dwarf_child(current_die, &child_die, &err);
+        if (rc == DW_DLV_ERROR)
+        {
+            fprintf(stderr, "Error: dwarf_child() failed: %s\n", dwarf_errmsg(err));
+        }
+        else if (rc == DW_DLV_OK)
+        {
+            if (find_die_path(dbg, child_die, target_off, path_stack))
+            {
+                dwarf_dealloc(dbg, child_die, DW_DLA_DIE);
+                return 1;
+            }
+            dwarf_dealloc(dbg, child_die, DW_DLA_DIE);
+        }
+    }
+
+    /*
+     * If not found in the child, traverse siblings.
+     * We need to keep calling dwarf_siblingof(...) to walk over each sibling.
+     */
+    {
+        Dwarf_Die sibling_die = 0;
+        int       sres        = dwarf_siblingof(dbg, current_die, &sibling_die, &err);
+
+        while (sres == DW_DLV_OK)
+        {
+            if (find_die_path(dbg, sibling_die, target_off, path_stack))
+            {
+                dwarf_dealloc(dbg, sibling_die, DW_DLA_DIE);
+                return 1;
+            }
+
+            /* Get the next sibling in a loop. */
+            {
+                Dwarf_Die next_sibling = 0;
+                int       nsres        = dwarf_siblingof(dbg, sibling_die, &next_sibling, &err);
+                dwarf_dealloc(dbg, sibling_die, DW_DLA_DIE);
+                sibling_die = next_sibling;
+                sres        = nsres;
+            }
+        }
+        if (sres == DW_DLV_ERROR)
+        {
+            fprintf(stderr, "Error: dwarf_siblingof() failed: %s\n", dwarf_errmsg(err));
+        }
+    }
+
+    /* Not found in this subtree. Pop from path and return 0. */
+    pop_offset(path_stack);
+    return 0;
+}
+
+/*
+ * Given a target DIE, retrieve all of its ancestor offsets (parents, grandparents).
+ *
+ * High-level flow:
+ *  1) Get offset of 'target_die'.
+ *  2) For each CU, do a DFS from the CU root to see if we can find that offset.
+ *  3) If found, the path stack contains [CU_root, ..., parent, target_die].
+ *     Extract all but the last as "parents".
+ */
+int get_parents_of_die(Dwarf_Debug dbg, Dwarf_Die target_die, Dwarf_Off **out_parent_list, size_t *out_parent_count)
+{
+    Dwarf_Error err        = 0;
+    Dwarf_Off   target_off = 0;
+    int         found      = 0;
+
+    /* 1) Get the target DIE's offset. */
+    if (dwarf_dieoffset(target_die, &target_off, &err) != DW_DLV_OK)
+    {
+        fprintf(stderr, "Error: dwarf_dieoffset() failed: %s\n", dwarf_errmsg(err));
+        return 0;
+    }
+
+    /* Prepare a stack to store the path (offsets). */
+    OffsetStack path_stack;
+    memset(&path_stack, 0, sizeof(path_stack));
+
+    /* 2) Iterate over all compilation units to find the one containing the target DIE. */
+    Dwarf_Die cu_die = 0;
+    int       cu_res = dwarf_siblingof(dbg, NULL, &cu_die, &err);
+    while (cu_res == DW_DLV_OK)
+    {
+        /*
+         * Attempt to locate the target_off in this CU's hierarchy.
+         * We reset the path stack each time we check a new CU.
+         */
+        path_stack.size = 0;
+
+        if (find_die_path(dbg, cu_die, target_off, &path_stack))
+        {
+            found = 1;
+            break;
+        }
+
+        /* Move to next CU in a loop. */
+        Dwarf_Die next_cu  = 0;
+        int       next_res = dwarf_siblingof(dbg, cu_die, &next_cu, &err);
+        dwarf_dealloc(dbg, cu_die, DW_DLA_DIE);
+        cu_die = next_cu;
+        cu_res = next_res;
+    }
+
+    if (found)
+    {
+        /*
+         * The path stack now contains [CU_root_offset, ..., parent_offset, target_off].
+         * We want everything except the final element as the parent chain.
+         */
+        if (path_stack.size > 0)
+        {
+            /* Exclude the last offset (the target DIE's offset). */
+            size_t parent_count = path_stack.size - 1;
+            *out_parent_list    = (Dwarf_Off *)malloc(parent_count * sizeof(Dwarf_Off));
+            if (!*out_parent_list)
+            {
+                fprintf(stderr, "Error: out of memory in get_parents_of_die()\n");
+                free(path_stack.array);
+                return 0;
+            }
+            memcpy(*out_parent_list, path_stack.array, parent_count * sizeof(Dwarf_Off));
+            *out_parent_count = parent_count;
+        }
+        else
+        {
+            /* Should not happen if found == 1, but just in case. */
+            *out_parent_list  = NULL;
+            *out_parent_count = 0;
+        }
+    }
+    else
+    {
+        /* Could not locate target_off in any CU. */
+        *out_parent_list  = NULL;
+        *out_parent_count = 0;
+    }
+
+    if (cu_res == DW_DLV_ERROR)
+    {
+        fprintf(stderr, "Error iterating compilation units: %s\n", dwarf_errmsg(err));
+    }
+    if (cu_die)
+    {
+        dwarf_dealloc(dbg, cu_die, DW_DLA_DIE);
+    }
+
+    free(path_stack.array);
+    return found;
+}
+
+std::string getFullyQualifiedNameForDIE(Dwarf_Debug dbg, Dwarf_Die die)
+{
+    /* Actually retrieve that DIE's parents (which, ironically, may be empty if it's a CU). */
+    Dwarf_Off  *parents      = NULL;
+    size_t      parent_count = 0;
+    std::string fqn{};
+
+    Dwarf_Error error   = 0;
+
+    Dwarf_Half  tag     = 0;
+    Dwarf_Off   offset  = 0;
+
+    int         success = get_parents_of_die(dbg, die, &parents, &parent_count);
+    if (success)
+    {
+        printf("Found the DIE's parent chain (length = %zu):\n", parent_count);
+        // The minus 1 is to exclude the DIE itself.
+        for (size_t i = 0; i < parent_count - 1; i++)
+        {
+            // printf("  Parent offset: 0x%lx\n", (unsigned long)parents[i]);
+            Dwarf_Die parent_die = 0;
+
+            success              = dwarf_offdie(dbg, parents[i], &parent_die, &error);
+
+            if (success != DW_DLV_OK)
+            {
+                // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+                success = JUICER_ERROR;
+            }
+            else
+            {
+                success = dwarf_tag(parent_die, &tag, &error);
+                printf("tag: %d\n", tag);
+                switch (tag)
+                {
+                    // case DW_TAG_compile_unit:
+                    // {
+                    //     success = dwarf_attrval_unsigned(parent_die, DW_AT_stmt_list, &offset, &error);
+                    //     if (success != DW_DLV_OK)
+                    //     {
+                    //         // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+                    //         success = JUICER_ERROR;
+                    //     }
+                    //     else
+                    //     {
+                    //         fqn += "CU";
+                    //         fqn += "::";
+                    //     }
+                    //     break;
+                    // }
+                    case DW_TAG_namespace:
+                    {
+                        char *name = 0;
+                        success    = dwarf_diename(parent_die, &name, &error);
+                        if (success != DW_DLV_OK)
+                        {
+                            // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+                            success = JUICER_ERROR;
+                        }
+                        else
+                        {
+                            std::cout << "Namespace: " << name << "And offset: " << parents[i] << std::endl;
+                            std::string nsName{name};
+                            fqn += nsName;
+                            fqn += "::";
+                        }
+                        break;
+                    }
+                        // case DW_TAG_structure_type:
+                        // {
+                        //     char *name = 0;
+                        //     success    = dwarf_diename(parent_die, &name, &error);
+                        //     if (success != DW_DLV_OK)
+                        //     {
+                        //         // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+                        //         success = JUICER_ERROR;
+                        //     }
+                        //     else
+                        //     {
+                        //         fqn += name;
+                        //         fqn += "::";
+                        //     }
+                        //     break;
+                        // }
+                        // case DW_TAG_typedef:
+                        // {
+                        //     char *name = 0;
+                        //     success    = dwarf_diename(parent_die, &name, &error);
+                        //     if (success != DW_DLV_OK)
+                        //     {
+                        //         // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+                        //         success = JUICER_ERROR;
+                        //     }
+                        //     else
+                        //     {
+                        //         fqn += name;
+                        //         fqn += "::";
+                        //     }
+                        //     break;
+                        // }
+                        // case DW_TAG_enumeration_type:
+                        // {
+                        //     char *name = 0;
+                        //     success    = dwarf_diename(parent_die, &name, &error);
+                        //     if (success != DW_DLV_OK)
+                        //     {
+                        //         // logger
+                        //     }
+                        // }
+                }
+
+            }
+            // else
+            // {
+            //     printf("Could not find the DIE's parents (or DIE not found in any CU).\n");
+            // }
+        }
+    }
+
+    return fqn;
+
+    free(parents);
+}
+
 Juicer::Juicer() {}
 
 DefineMacro Juicer::getDefineMacroFromString(std::string macro_string)
@@ -549,7 +889,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug 
             else
             {
                 std::string arrayBaseType{arraySymbol->getName().c_str()};
-                outSymbol = elf.getSymbol(arrayBaseType);
+                outSymbol = elf.getSymbol(arrayBaseType, currentNamespace);
                 outSymbol->addField(stdString, 0, *outSymbol, dimList, elf.isLittleEndian());
             }
         }
@@ -1154,7 +1494,8 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                          * cur_die and as we read different kinds of tags/attributes(in particular type-related),
                          * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
                          *
-                         * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                         * Notice that in
+                         * https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
                          *
                          * This is just a theory, however. In the future we may revisit this
                          * to figure out the root cause of this.
@@ -1327,7 +1668,8 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                          * cur_die and as we read different kinds of tags/attributes(in particular type-related),
                          * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
                          *
-                         * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                         * Notice that in
+                         * https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
                          *
                          * This is just a theory, however. In the future we may revisit this
                          * to figure out the root cause of this.
@@ -1492,7 +1834,8 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                          * cur_die and as we read different kinds of tags/attributes(in particular type-related),
                          * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
                          *
-                         * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                         * Notice that in
+                         * https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
                          *
                          * This is just a theory, however. In the future we may revisit this
                          * to figure out the root cause of this.
@@ -3362,7 +3705,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
         }
     }
 
-    outSymbol = elf.getSymbol(cName);
+    outSymbol = elf.getSymbol(cName, currentNamespace);
 
     if (outSymbol == 0)
     {
@@ -3373,7 +3716,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
         {
             /* See if we already have this symbol. */
             cName     = dieName;
-            outSymbol = elf.getSymbol(cName);
+            outSymbol = elf.getSymbol(cName, currentNamespace);
             if (outSymbol == 0)
             {
                 /* No.  This is new.  Process it. */
@@ -3413,7 +3756,8 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                          * cur_die and as we read different kinds of tags/attributes(in particular type-related),
                          * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
                          *
-                         * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                         * Notice that in
+                         * https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
                          *
                          * This is just a theory, however. In the future we may revisit this
                          * to figure out the root cause of this.
@@ -3710,6 +4054,11 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
              *
              */
 
+            if (sDieName == "Square")
+            {
+                printf("Break here...\n");
+            }
+
             if (pathIndex != 0)
             {
                 /**
@@ -3978,6 +4327,33 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
                         /* Get the base type die. */
                         if (res == DW_DLV_OK)
                         {
+                            /* Actually retrieve that DIE's parents (which, ironically, may be empty if it's a CU). */
+                            Dwarf_Off  *parents      = NULL;
+                            size_t      parent_count = 0;
+                            // int        success      = get_parents_of_die(dbg, memberDie, &parents, &parent_count);
+                            std::string ns           = getFullyQualifiedNameForDIE(dbg, memberDie);
+
+                            if (ns.length() > 4)
+                            {
+                                std::cout << "******************ns:" << ns << std::endl;
+                                // printf("******************ns:%s\n", ns.c_str());
+                            }
+
+                            // if (success)
+                            // {
+                            //     printf("Found the DIE's parent chain (length = %zu):\n", parent_count);
+                            //     for (size_t i = 0; i < parent_count; i++)
+                            //     {
+                            //         printf("  Parent offset: 0x%lx\n", (unsigned long)parents[i]);
+                            //     }
+                            // }
+                            // else
+                            // {
+                            //     printf("Could not find the DIE's parents (or DIE not found in any CU).\n");
+                            // }
+
+                            // free(parents);
+
                             memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList, currentNamespace);
 
                             if (memberBaseTypeSymbol == 0)
@@ -4245,7 +4621,7 @@ void Juicer::addPaddingToStruct(Symbol &symbol)
 
                 paddingType           += std::to_string(paddingSize * 8);
 
-                Symbol *paddingSymbol  = symbol.getElf().getSymbol(paddingType);
+                Symbol *paddingSymbol  = symbol.getElf().getSymbol(paddingType, nullptr);
 
                 if (paddingSymbol == nullptr)
                 {
@@ -4308,7 +4684,7 @@ void Juicer::addPaddingEndToStruct(Symbol &symbol)
         {
             paddingType           += std::to_string(sizeDelta * 8);
 
-            Symbol *paddingSymbol  = symbol.getElf().getSymbol(paddingType);
+            Symbol *paddingSymbol  = symbol.getElf().getSymbol(paddingType, nullptr);
 
             if (paddingSymbol == nullptr)
             {
@@ -4826,7 +5202,8 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                                                     }
 
                                                     logger.logInfo(
-                                                        "Found symbol %s with size: %d, st_value:%u, st_name:%u, st_info:%u, st_other:%u, st_shndx:%u\n",
+                                                        "Found symbol %s with size: %d, st_value:%u, st_name:%u, st_info:%u, st_other:%u, "
+                                                        "st_shndx:%u\n",
                                                         name.c_str(), symbol->st_size, symbol->st_value, symbol->st_name, symbol->st_info, symbol->st_other,
                                                         symbol->st_shndx);
 
@@ -4839,8 +5216,10 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
 
                                                     if (symbolSectionHeader != nullptr)
                                                     {
-                                                        //                                                    std::cout << "symbol data section file offset-->"
-                                                        //                                                    << symbolSectionHeader->sh_offset << std::endl;
+                                                        //                                                    std::cout << "symbol data section file
+                                                        //                                                    offset-->"
+                                                        //                                                    << symbolSectionHeader->sh_offset <<
+                                                        //                                                    std::endl;
                                                         symbolSectionFileOffset = symbolSectionHeader->sh_offset;
                                                     }
 

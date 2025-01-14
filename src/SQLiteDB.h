@@ -37,12 +37,12 @@
     "CREATE TABLE IF NOT EXISTS symbols(\
                                   id INTEGER PRIMARY KEY,\
                                   elf INTEGER NOT NULL,\
-                                  name TEXT UNIQUE NOT NULL,\
+                                  name TEXT NOT NULL,\
                                   byte_size INTEGER NOT NULL,\
                                   artifact INTEGER,\
                                   target_symbol INTEGER,\
                                   encoding INTEGER,\
-                                  namespace INTEGER,\
+                                  namespace INTEGER NOT NULL,\
                                   short_description TEXT ,\
                                   long_description TEXT ,\
                                   FOREIGN KEY(elf) REFERENCES elfs(id),\
@@ -50,7 +50,7 @@
                                   FOREIGN KEY(target_symbol) REFERENCES symbols(id)\
                                   FOREIGN KEY(encoding) REFERENCES encodings(id)\
                                   FOREIGN KEY(namespace) REFERENCES namespaces(id)\
-                                  UNIQUE(name));"
+                                  UNIQUE(name, namespace));"
 
 #define CREATE_DIMENSION_TABLE \
     "CREATE TABLE IF NOT EXISTS dimension_lists (\
@@ -220,7 +220,7 @@ class SQLiteDB : public IDataContainer
     int                 writeNamespacesToDatabase(std::vector<Namespace *> &namespaces, std::optional<int> parentID);
     int                 writeAllNamespacesToDatabase(ElfFile &inElf);
     static int          doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
-    bool                doesSymbolExist(std::string name);
+    bool                doesSymbolExist(std::string name, Namespace *ns);
     bool                doesArtifactExist(std::string name);
 
     bool                doEncodingsExist();
