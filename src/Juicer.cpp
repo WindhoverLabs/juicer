@@ -59,221 +59,6 @@
 #include "Symbol.h"
 #include "Variable.h"
 
-/* A simple container to hold the path of DIE offsets. */
-typedef struct
-{
-    Dwarf_Off *array;
-    size_t     size;
-    size_t     capacity;
-} OffsetStack;
-
-/* Push an offset onto the stack */
-static void push_offset(OffsetStack *stack, Dwarf_Off off)
-{
-    if (stack->size >= stack->capacity)
-    {
-        /* Grow the array (very simplistic growth strategy) */
-        size_t     new_cap = (stack->capacity == 0) ? 16 : stack->capacity * 2;
-        Dwarf_Off *tmp     = (Dwarf_Off *)realloc(stack->array, new_cap * sizeof(Dwarf_Off));
-        if (!tmp)
-        {
-            fprintf(stderr, "Error: out of memory in push_offset()\n");
-            exit(EXIT_FAILURE);
-        }
-        stack->array    = tmp;
-        stack->capacity = new_cap;
-    }
-    stack->array[stack->size++] = off;
-}
-
-/* Pop the last offset (only call after a successful push) */
-static void pop_offset(OffsetStack *stack)
-{
-    if (stack->size > 0)
-    {
-        stack->size--;
-    }
-}
-
-/*
- * Recursive DFS to locate a DIE with 'target_off' in the subtree
- * rooted at 'current_die'.
- *
- * If found, returns 1 (the path is stored in 'path_stack').
- * If not found, returns 0.
- */
-static int find_die_path(Dwarf_Debug dbg, Dwarf_Die current_die, Dwarf_Off target_off, OffsetStack *path_stack)
-{
-    Dwarf_Error err = 0;
-    Dwarf_Off   cur_off;
-
-    if (dwarf_dieoffset(current_die, &cur_off, &err) != DW_DLV_OK)
-    {
-        fprintf(stderr, "Error: dwarf_dieoffset() failed: %s\n", dwarf_errmsg(err));
-        return 0;
-    }
-
-    /* Push current DIE onto the path. */
-    push_offset(path_stack, cur_off);
-
-    /* Check if this is our target DIE. */
-    if (cur_off == target_off)
-    {
-        return 1; /* Found it. The path stack now includes this DIE. */
-    }
-
-    /* Traverse the child (if any). */
-    {
-        Dwarf_Die child_die = 0;
-        int       rc        = dwarf_child(current_die, &child_die, &err);
-        if (rc == DW_DLV_ERROR)
-        {
-            fprintf(stderr, "Error: dwarf_child() failed: %s\n", dwarf_errmsg(err));
-        }
-        else if (rc == DW_DLV_OK)
-        {
-            if (find_die_path(dbg, child_die, target_off, path_stack))
-            {
-                dwarf_dealloc(dbg, child_die, DW_DLA_DIE);
-                return 1;
-            }
-            dwarf_dealloc(dbg, child_die, DW_DLA_DIE);
-        }
-    }
-
-    /*
-     * If not found in the child, traverse siblings.
-     * We need to keep calling dwarf_siblingof(...) to walk over each sibling.
-     */
-    {
-        Dwarf_Die sibling_die = 0;
-        int       sres        = dwarf_siblingof(dbg, current_die, &sibling_die, &err);
-
-        while (sres == DW_DLV_OK)
-        {
-            if (find_die_path(dbg, sibling_die, target_off, path_stack))
-            {
-                dwarf_dealloc(dbg, sibling_die, DW_DLA_DIE);
-                return 1;
-            }
-
-            /* Get the next sibling in a loop. */
-            {
-                Dwarf_Die next_sibling = 0;
-                int       nsres        = dwarf_siblingof(dbg, sibling_die, &next_sibling, &err);
-                dwarf_dealloc(dbg, sibling_die, DW_DLA_DIE);
-                sibling_die = next_sibling;
-                sres        = nsres;
-            }
-        }
-        if (sres == DW_DLV_ERROR)
-        {
-            fprintf(stderr, "Error: dwarf_siblingof() failed: %s\n", dwarf_errmsg(err));
-        }
-    }
-
-    /* Not found in this subtree. Pop from path and return 0. */
-    pop_offset(path_stack);
-    return 0;
-}
-
-/*
- * Given a target DIE, retrieve all of its ancestor offsets (parents, grandparents).
- *
- * High-level flow:
- *  1) Get offset of 'target_die'.
- *  2) For each CU, do a DFS from the CU root to see if we can find that offset.
- *  3) If found, the path stack contains [CU_root, ..., parent, target_die].
- *     Extract all but the last as "parents".
- */
-int get_parents_of_die(Dwarf_Debug dbg, Dwarf_Die target_die, Dwarf_Off **out_parent_list, size_t *out_parent_count)
-{
-    Dwarf_Error err        = 0;
-    Dwarf_Off   target_off = 0;
-    int         found      = 0;
-
-    /* 1) Get the target DIE's offset. */
-    if (dwarf_dieoffset(target_die, &target_off, &err) != DW_DLV_OK)
-    {
-        fprintf(stderr, "Error: dwarf_dieoffset() failed: %s\n", dwarf_errmsg(err));
-        return 0;
-    }
-
-    /* Prepare a stack to store the path (offsets). */
-    OffsetStack path_stack;
-    memset(&path_stack, 0, sizeof(path_stack));
-
-    /* 2) Iterate over all compilation units to find the one containing the target DIE. */
-    Dwarf_Die cu_die = 0;
-    int       cu_res = dwarf_siblingof(dbg, NULL, &cu_die, &err);
-    while (cu_res == DW_DLV_OK)
-    {
-        /*
-         * Attempt to locate the target_off in this CU's hierarchy.
-         * We reset the path stack each time we check a new CU.
-         */
-        path_stack.size = 0;
-
-        if (find_die_path(dbg, cu_die, target_off, &path_stack))
-        {
-            found = 1;
-            break;
-        }
-
-        /* Move to next CU in a loop. */
-        Dwarf_Die next_cu  = 0;
-        int       next_res = dwarf_siblingof(dbg, cu_die, &next_cu, &err);
-        dwarf_dealloc(dbg, cu_die, DW_DLA_DIE);
-        cu_die = next_cu;
-        cu_res = next_res;
-    }
-
-    if (found)
-    {
-        /*
-         * The path stack now contains [CU_root_offset, ..., parent_offset, target_off].
-         * We want everything except the final element as the parent chain.
-         */
-        if (path_stack.size > 0)
-        {
-            /* Exclude the last offset (the target DIE's offset). */
-            size_t parent_count = path_stack.size - 1;
-            *out_parent_list    = (Dwarf_Off *)malloc(parent_count * sizeof(Dwarf_Off));
-            if (!*out_parent_list)
-            {
-                fprintf(stderr, "Error: out of memory in get_parents_of_die()\n");
-                free(path_stack.array);
-                return 0;
-            }
-            memcpy(*out_parent_list, path_stack.array, parent_count * sizeof(Dwarf_Off));
-            *out_parent_count = parent_count;
-        }
-        else
-        {
-            /* Should not happen if found == 1, but just in case. */
-            *out_parent_list  = NULL;
-            *out_parent_count = 0;
-        }
-    }
-    else
-    {
-        /* Could not locate target_off in any CU. */
-        *out_parent_list  = NULL;
-        *out_parent_count = 0;
-    }
-
-    if (cu_res == DW_DLV_ERROR)
-    {
-        fprintf(stderr, "Error iterating compilation units: %s\n", dwarf_errmsg(err));
-    }
-    if (cu_die)
-    {
-        dwarf_dealloc(dbg, cu_die, DW_DLA_DIE);
-    }
-
-    free(path_stack.array);
-    return found;
-}
 
 std::string getFullyQualifiedNameForDIE(Dwarf_Debug dbg, Dwarf_Die die)
 {
@@ -286,117 +71,116 @@ std::string getFullyQualifiedNameForDIE(Dwarf_Debug dbg, Dwarf_Die die)
 
     Dwarf_Half  tag     = 0;
     Dwarf_Off   offset  = 0;
+    // Replace with new code in getPathForTargetDie
+    // int         success = get_parents_of_die(dbg, die, &parents, &parent_count);
+    // if (success)
+    // {
+    //     printf("Found the DIE's parent chain (length = %zu):\n", parent_count);
+    //     // The minus 1 is to exclude the DIE itself.
+    //     for (size_t i = 0; i < parent_count; i++)
+    //     {
+    //         // printf("  Parent offset: 0x%lx\n", (unsigned long)parents[i]);
+    //         Dwarf_Die parent_die = 0;
 
-    int         success = get_parents_of_die(dbg, die, &parents, &parent_count);
-    if (success)
-    {
-        printf("Found the DIE's parent chain (length = %zu):\n", parent_count);
-        // The minus 1 is to exclude the DIE itself.
-        for (size_t i = 0; i < parent_count - 1; i++)
-        {
-            // printf("  Parent offset: 0x%lx\n", (unsigned long)parents[i]);
-            Dwarf_Die parent_die = 0;
+    //         success              = dwarf_offdie(dbg, parents[i], &parent_die, &error);
 
-            success              = dwarf_offdie(dbg, parents[i], &parent_die, &error);
+    //         if (success != DW_DLV_OK)
+    //         {
+    //             // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+    //             success = JUICER_ERROR;
+    //         }
+    //         else
+    //         {
+    //             success = dwarf_tag(parent_die, &tag, &error);
+    //             printf("tag: %d\n", tag);
+    //             switch (tag)
+    //             {
+    //                 // case DW_TAG_compile_unit:
+    //                 // {
+    //                 //     success = dwarf_attrval_unsigned(parent_die, DW_AT_stmt_list, &offset, &error);
+    //                 //     if (success != DW_DLV_OK)
+    //                 //     {
+    //                 //         // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+    //                 //         success = JUICER_ERROR;
+    //                 //     }
+    //                 //     else
+    //                 //     {
+    //                 //         fqn += "CU";
+    //                 //         fqn += "::";
+    //                 //     }
+    //                 //     break;
+    //                 // }
+    //                 case DW_TAG_namespace:
+    //                 {
+    //                     char *name = 0;
+    //                     success    = dwarf_diename(parent_die, &name, &error);
+    //                     if (success != DW_DLV_OK)
+    //                     {
+    //                         // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+    //                         success = JUICER_ERROR;
+    //                     }
+    //                     else
+    //                     {
+    //                         std::cout << "Namespace: " << name << "And offset: " << parents[i] << std::endl;
+    //                         std::string nsName{name};
+    //                         fqn += nsName;
+    //                         fqn += "::";
+    //                     }
+    //                     break;
+    //                 }
+    //                     // case DW_TAG_structure_type:
+    //                     // {
+    //                     //     char *name = 0;
+    //                     //     success    = dwarf_diename(parent_die, &name, &error);
+    //                     //     if (success != DW_DLV_OK)
+    //                     //     {
+    //                     //         // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+    //                     //         success = JUICER_ERROR;
+    //                     //     }
+    //                     //     else
+    //                     //     {
+    //                     //         fqn += name;
+    //                     //         fqn += "::";
+    //                     //     }
+    //                     //     break;
+    //                     // }
+    //                     // case DW_TAG_typedef:
+    //                     // {
+    //                     //     char *name = 0;
+    //                     //     success    = dwarf_diename(parent_die, &name, &error);
+    //                     //     if (success != DW_DLV_OK)
+    //                     //     {
+    //                     //         // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+    //                     //         success = JUICER_ERROR;
+    //                     //     }
+    //                     //     else
+    //                     //     {
+    //                     //         fqn += name;
+    //                     //         fqn += "::";
+    //                     //     }
+    //                     //     break;
+    //                     // }
+    //                     // case DW_TAG_enumeration_type:
+    //                     // {
+    //                     //     char *name = 0;
+    //                     //     success    = dwarf_diename(parent_die, &name, &error);
+    //                     //     if (success != DW_DLV_OK)
+    //                     //     {
+    //                     //         // logger
+    //                     //     }
+    //                     // }
+    //             }
+    //         }
+    //         // else
+    //         // {
+    //         //     printf("Could not find the DIE's parents (or DIE not found in any CU).\n");
+    //         // }
+    //     }
+    // }
 
-            if (success != DW_DLV_OK)
-            {
-                // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-                success = JUICER_ERROR;
-            }
-            else
-            {
-                success = dwarf_tag(parent_die, &tag, &error);
-                printf("tag: %d\n", tag);
-                switch (tag)
-                {
-                    // case DW_TAG_compile_unit:
-                    // {
-                    //     success = dwarf_attrval_unsigned(parent_die, DW_AT_stmt_list, &offset, &error);
-                    //     if (success != DW_DLV_OK)
-                    //     {
-                    //         // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-                    //         success = JUICER_ERROR;
-                    //     }
-                    //     else
-                    //     {
-                    //         fqn += "CU";
-                    //         fqn += "::";
-                    //     }
-                    //     break;
-                    // }
-                    case DW_TAG_namespace:
-                    {
-                        char *name = 0;
-                        success    = dwarf_diename(parent_die, &name, &error);
-                        if (success != DW_DLV_OK)
-                        {
-                            // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-                            success = JUICER_ERROR;
-                        }
-                        else
-                        {
-                            std::cout << "Namespace: " << name << "And offset: " << parents[i] << std::endl;
-                            std::string nsName{name};
-                            fqn += nsName;
-                            fqn += "::";
-                        }
-                        break;
-                    }
-                        // case DW_TAG_structure_type:
-                        // {
-                        //     char *name = 0;
-                        //     success    = dwarf_diename(parent_die, &name, &error);
-                        //     if (success != DW_DLV_OK)
-                        //     {
-                        //         // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-                        //         success = JUICER_ERROR;
-                        //     }
-                        //     else
-                        //     {
-                        //         fqn += name;
-                        //         fqn += "::";
-                        //     }
-                        //     break;
-                        // }
-                        // case DW_TAG_typedef:
-                        // {
-                        //     char *name = 0;
-                        //     success    = dwarf_diename(parent_die, &name, &error);
-                        //     if (success != DW_DLV_OK)
-                        //     {
-                        //         // logger.logError("Error in dwarf_tag , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
-                        //         success = JUICER_ERROR;
-                        //     }
-                        //     else
-                        //     {
-                        //         fqn += name;
-                        //         fqn += "::";
-                        //     }
-                        //     break;
-                        // }
-                        // case DW_TAG_enumeration_type:
-                        // {
-                        //     char *name = 0;
-                        //     success    = dwarf_diename(parent_die, &name, &error);
-                        //     if (success != DW_DLV_OK)
-                        //     {
-                        //         // logger
-                        //     }
-                        // }
-                }
+    // return fqn;
 
-            }
-            // else
-            // {
-            //     printf("Could not find the DIE's parents (or DIE not found in any CU).\n");
-            // }
-        }
-    }
-
-    return fqn;
-
-    free(parents);
+    // free(parents);
 }
 
 Juicer::Juicer() {}
@@ -1467,6 +1251,88 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                     if (dieName != nullptr)
                     {
                         cName = dieName;
+
+                        if (cName == "MShape")
+                        {
+                            // std::string ns = getFullyQualifiedNameForDIE(dbg, typeDie);
+                            Dwarf_Die              cu_die;
+                            Dwarf_Die              sib_die;
+                            int                    cu_res       = dwarf_siblingof(dbg, NULL, &cu_die, &error);
+
+                            Dwarf_Off              targetOffset = 0;
+
+                            std::vector<Dwarf_Die> dieList{};
+
+                            // std::vector<std::string> dieList{};
+
+                            for (;;)
+                            {
+                                Dwarf_Die foundDIE = getPathForTargetDie(typeDie, dbg, cu_die, 0, dieList);
+
+                                if (foundDIE != 0)
+                                {
+                                    break;
+                                }
+
+                                /* res == DW_DLV_NO_ENTRY */
+                                res = dwarf_siblingof(dbg, cu_die, &sib_die, &error);
+                                if (res == DW_DLV_ERROR)
+                                {
+                                    logger.logError("Error in dwarf_siblingof , level UNKNOWN.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                                    res = JUICER_ERROR;
+                                }
+
+                                if (res == DW_DLV_NO_ENTRY)
+                                {
+                                    /* Done at this level. */
+                                    break;
+                                }
+
+                                /* res == DW_DLV_OK */
+                                // if (cu_die != in_die)
+                                // {
+                                //     dwarf_dealloc(dbg, cu_die, DW_DLA_DIE);
+                                // }
+
+                                cu_die = sib_die;
+                            }
+
+                            // TODO:Write code to convert the vector of Dwarf_Die's to something like "Universe::MilkyWay::Mars::MShape". Keep in mind DW_TAG_compile_unit is included in the vector.
+                            for (Dwarf_Die d : dieList)
+                            {
+                                Dwarf_Attribute attr_struct;
+                                Dwarf_Error     error = 0;
+                                char           *name  = nullptr;
+                                int             res   = 0;
+                                // std::unique_ptr<Namespace> ns    = std::make_unique<Namespace>();
+                                std::string     namespaceName{};
+
+                                // Need to figure out if this die has already been processed.
+
+                                res = dwarf_attr(d, DW_AT_name, &attr_struct, &error);
+                                if (res != DW_DLV_OK)
+                                {
+                                    logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+                                }
+
+                                if (res == DW_DLV_OK)
+                                {
+                                    res = dwarf_formstring(attr_struct, &name, &error);
+                                    if (res != DW_DLV_OK)
+                                    {
+                                        logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                                    }
+
+                                    // dieList.push_back(name);
+                                }
+
+                                namespaceName = name;
+
+                                std::cout << "namespaceName#1:" << namespaceName << std::endl;
+                            }
+
+                            std::cout << "breakpoint" << std::endl;
+                        }
                     }
                     else
                     {
@@ -4327,16 +4193,21 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
                         /* Get the base type die. */
                         if (res == DW_DLV_OK)
                         {
+                            std::string sMemberName  = memberName;
                             /* Actually retrieve that DIE's parents (which, ironically, may be empty if it's a CU). */
                             Dwarf_Off  *parents      = NULL;
                             size_t      parent_count = 0;
                             // int        success      = get_parents_of_die(dbg, memberDie, &parents, &parent_count);
-                            std::string ns           = getFullyQualifiedNameForDIE(dbg, memberDie);
 
-                            if (ns.length() > 4)
+                            if (sMemberName == "NestedMars")
                             {
-                                std::cout << "******************ns:" << ns << std::endl;
-                                // printf("******************ns:%s\n", ns.c_str());
+                                // std::string ns = getFullyQualifiedNameForDIE(dbg, memberDie);
+
+                                // if (ns.length() > 4)
+                                // {
+                                //     std::cout << "******************ns:" << ns << std::endl;
+                                //     // printf("******************ns:%s\n", ns.c_str());
+                                // }
                             }
 
                             // if (success)
@@ -4765,6 +4636,159 @@ bool Juicer::isDWARFVersionSupported(Dwarf_Die inDie)
     }
 
     return isSupported;
+}
+
+/**
+ * @brief Searches for the target die and stores the "path" to it in the dieList. It starts from the in_die and goes through all its children and siblings.
+ * For example a namespaced die such as Universe::MilkyWay::Mars::MShape will be stored as a vector of Dwarf_Die objects in DieList, including the DW_TAG_compile_unit root node.
+ * So for our example:
+ *
+ * This is only needed because, unfortunately, libdwarf does not provide a way to get the parent of a die.
+ * This is very useful for finding the namespace of a die (struct, class,).
+ *
+ * */
+
+Dwarf_Die Juicer::getPathForTargetDie(Dwarf_Die targetDie, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, std::vector<Dwarf_Die> &dieList)
+{
+    int             res         = DW_DLV_ERROR;
+    Dwarf_Die       cur_die     = in_die;
+    Dwarf_Die       child       = 0;
+    Dwarf_Die       returnedDie = 0;
+    Dwarf_Error     error       = 0;
+    char           *dieName;
+    Dwarf_Attribute attr_struct;
+    int             return_value       = JUICER_OK;
+
+    Symbol         *outSymbol          = nullptr;
+
+    Namespace      *newParentNamespace = nullptr;
+
+    Dwarf_Die       sib_die            = 0;
+    Dwarf_Half      tag                = 0;
+    Dwarf_Off       offset             = 0;
+    Dwarf_Off       targetOffset       = 0;
+
+    res                                = dwarf_dieoffset(cur_die, &offset, &error);
+
+    if (res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_dieoffset , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+        return_value = JUICER_ERROR;
+    }
+
+    res = dwarf_dieoffset(targetDie, &targetOffset, &error);
+
+    if (targetOffset == offset)
+    {
+        //  return whether the target die is found or not
+        dieList.push_back(cur_die);
+
+        std::string namespaceName{};
+        char       *name = NULL;
+
+        // Need to figure out if this die has already been processed.
+
+        res              = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
+        if (res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+        }
+
+        if (res == DW_DLV_OK)
+        {
+            res = dwarf_formstring(attr_struct, &name, &error);
+            if (res != DW_DLV_OK)
+            {
+                logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+            }
+
+            // dieList.push_back(name);
+        }
+
+        namespaceName = name;
+
+        std::cout << "namespaceName#2:" << namespaceName << std::endl;
+
+        return cur_die;
+    }
+
+    std::string namespaceName{};
+    char       *name = NULL;
+
+    // Need to figure out if this die has already been processed.
+
+    res              = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
+    if (res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+    }
+
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_formstring(attr_struct, &name, &error);
+        if (res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
+
+        // dieList.push_back(name);
+        namespaceName = name;
+
+        if ("Universe" == namespaceName)
+        {
+            printf("Break here...\n");
+        }
+    }
+
+    // iterate through all children at this level
+
+    res = dwarf_child(cur_die, &child, &error);
+    if (res == DW_DLV_ERROR)
+    {
+        logger.logError("Error in dwarf_child , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+        return_value = JUICER_ERROR;
+    }
+    else if (res == DW_DLV_OK)
+    {
+        returnedDie = getPathForTargetDie(targetDie, dbg, child, in_level + 1, dieList);
+        if (returnedDie != 0)
+        {
+            std::cout << "namespaceName#3:" << namespaceName << std::endl;
+
+            dieList.push_back(cur_die);
+        }
+        else
+        {
+            for (;;)
+            {
+                /* res == DW_DLV_NO_ENTRY */
+                res = dwarf_siblingof(dbg, child, &sib_die, &error);
+                if (res == DW_DLV_ERROR)
+                {
+                    logger.logError("Error in dwarf_siblingof , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+                    return_value = JUICER_ERROR;
+                    break;
+                }
+
+                if (res == DW_DLV_NO_ENTRY)
+                {
+                    /* Done at this level. */
+                    break;
+                }
+
+                child       = sib_die;
+
+                returnedDie = getPathForTargetDie(targetDie, dbg, child, in_level + 1, dieList);
+                if (returnedDie != 0)
+                {
+                    dieList.push_back(cur_die);
+                    break;
+                }
+            }
+        }
+    }
+
+    return returnedDie;
 }
 
 /**
