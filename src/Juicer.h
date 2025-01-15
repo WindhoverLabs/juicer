@@ -107,42 +107,43 @@ class Juicer
     unsigned int       getDwarfVersion();
 
    private:
-    Dwarf_Debug            dbg = 0;
-    int                    res = DW_DLV_ERROR;
-    Dwarf_Handler          errhand;
-    Dwarf_Ptr              errarg = 0;
-    int                    readCUList(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Error& error);
-    int                    getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, Namespace* currentNamespace);
-    Dwarf_Die              getPathForTargetDie(Dwarf_Die targetDie, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, std::vector<Dwarf_Die>& dieList);
-    Symbol*                process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, Namespace* currentNamespace);
-    Symbol*                process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, Namespace* currentNamespace);
-    void                   process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
-    Symbol*                process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
-    Symbol*                process_DW_TAG_variable_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
-    void                   process_DW_TAG_enumeration_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
-    int                    process_DW_TAG_array_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
-    void                   process_DW_TAG_union_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
-    Namespace*             process_DW_TAG_namespace(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie, int in_level, Namespace* currentNamespace);
-    char*                  getFirstAncestorName(Dwarf_Die inDie);
-    int                    printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
-    char*                  dwarfStringToChar(char* dwarfString);
-    void                   addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField);
-    void                   addPaddingToStruct(Symbol& symbol);
-    void                   addPaddingEndToStruct(Symbol& symbol);
-    bool                   isDWARFVersionSupported(Dwarf_Die);
-    int                    elfFile = 0;
-    Logger                 logger;
-    IDataContainer*        idc = 0;
-    bool                   isIDCSet(void);
-    Symbol*                getBaseTypeSymbol(ElfFile& elf, Dwarf_Die inDie, DimensionList& dimList, Namespace* currentNamespace);
-    void                   DisplayDie(Dwarf_Die inDie, uint32_t level);
+    Dwarf_Debug                dbg = 0;
+    int                        res = DW_DLV_ERROR;
+    Dwarf_Handler              errhand;
+    Dwarf_Ptr                  errarg = 0;
+    int                        readCUList(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Error& error);
+    int                        getDieAndSiblings(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, Namespace* currentNamespace);
+    Dwarf_Die                  getPathForTargetDie(Dwarf_Die targetDie, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, std::vector<Dwarf_Die>& dieList);
+    std::optional<std::string> getFullyQualifiedNameForDIE(Dwarf_Debug dbg, Dwarf_Die die);
+    Symbol*                    process_DW_TAG_typedef(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, Namespace* currentNamespace);
+    Symbol*                    process_DW_TAG_base_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die in_die, Namespace* currentNamespace);
+    void                       process_DW_TAG_structure_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
+    Symbol*                    process_DW_TAG_pointer_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
+    Symbol*                    process_DW_TAG_variable_type(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
+    void                       process_DW_TAG_enumeration_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie);
+    int                        process_DW_TAG_array_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
+    void                       process_DW_TAG_union_type(ElfFile& elf, Symbol& symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace* currentNamespace);
+    Namespace*                 process_DW_TAG_namespace(ElfFile& elf, Dwarf_Debug dbg, Dwarf_Die inDie, int in_level, Namespace* currentNamespace);
+    char*                      getFirstAncestorName(Dwarf_Die inDie);
+    int                        printDieData(Dwarf_Debug dbg, Dwarf_Die print_me, uint32_t level);
+    char*                      dwarfStringToChar(char* dwarfString);
+    void                       addBitFields(Dwarf_Die dataMemberDie, Field& dataMemberField);
+    void                       addPaddingToStruct(Symbol& symbol);
+    void                       addPaddingEndToStruct(Symbol& symbol);
+    bool                       isDWARFVersionSupported(Dwarf_Die);
+    int                        elfFile = 0;
+    Logger                     logger;
+    IDataContainer*            idc = 0;
+    bool                       isIDCSet(void);
+    Symbol*                    getBaseTypeSymbol(ElfFile& elf, Dwarf_Die inDie, DimensionList& dimList, Namespace* currentNamespace);
+    void                       DisplayDie(Dwarf_Die inDie, uint32_t level);
 
-    std::vector<Dwarf_Die> getChildrenVector(Dwarf_Debug dbg, Dwarf_Die die);
-    int                    getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die);
+    std::vector<Dwarf_Die>     getChildrenVector(Dwarf_Debug dbg, Dwarf_Die die);
+    int                        getNumberOfSiblingsForDie(Dwarf_Debug dbg, Dwarf_Die die);
 
-    uint32_t               calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);
+    uint32_t                   calcArraySizeForDimension(Dwarf_Debug dbg, Dwarf_Die die);
 
-    DimensionList          getDimList(Dwarf_Debug dbg, Dwarf_Die die);
+    DimensionList              getDimList(Dwarf_Debug dbg, Dwarf_Die die);
 
     std::vector<std::string>   dbgSourceFiles{};
 
