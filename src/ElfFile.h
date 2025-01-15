@@ -21,6 +21,7 @@
 #include "Field.h"
 #include "Juicer.h"
 #include "Logger.h"
+#include "Namespace.hpp"
 #include "Variable.h"
 #include "dwarf.h"
 
@@ -28,6 +29,7 @@ class Symbol;
 class Field;
 class Enumeration;
 class Variable;
+class Namespace;
 
 /**
  * The elf class contains an "module" with a user-defined name.
@@ -46,25 +48,25 @@ class ElfFile
    public:
     ElfFile(std::string &name);
     virtual ~ElfFile();
-    std::vector<std::unique_ptr<Symbol>>              &getSymbols();
+    std::vector<std::unique_ptr<Symbol>> &getSymbols();
 
-    std::string                                        getName() const;
-    uint32_t                                           getId(void) const;
-    void                                               setId(uint32_t newId);
-    Symbol                                            *addSymbol(std::string &name, uint32_t byte_size, Artifact newArtifact);
-    Symbol                                            *addSymbol(std::string &inName, uint32_t inByteSize, Artifact newArtifact, Symbol *targetSymbol);
-    std::vector<Field *>                               getFields();
-    std::vector<Enumeration *>                         getEnumerations();
-    Symbol                                            *getSymbol(std::string &name);
-    const std::string                                 &getDate() const;
-    void                                               setDate(const std::string &date);
-    bool                                               isLittleEndian() const;
-    void                                               isLittleEndian(bool littleEndian);
-    void                                               setMD5(std::string newID);
-    std::string                                        getMD5() const;
-    void                                               addDefineMacro(DefineMacro newMacro);
+    std::string                           getName() const;
+    uint32_t                              getId(void) const;
+    void                                  setId(uint32_t newId);
+    Symbol                               *addSymbol(std::string &name, uint32_t byte_size, Artifact newArtifact, Namespace *symbolNamepace);
+    Symbol                         *addSymbol(std::string &inName, uint32_t inByteSize, Artifact newArtifact, Symbol *targetSymbol, Namespace *symbolNamepace);
+    std::vector<Field *>            getFields();
+    std::vector<Enumeration *>      getEnumerations();
+    Symbol                         *getSymbol(std::string &name, Namespace *ns);
+    const std::string              &getDate() const;
+    void                            setDate(const std::string &date);
+    bool                            isLittleEndian() const;
+    void                            isLittleEndian(bool littleEndian);
+    void                            setMD5(std::string newID);
+    std::string                     getMD5() const;
+    void                            addDefineMacro(DefineMacro newMacro);
 
-    const std::vector<DefineMacro>                    &getDefineMacros() const;
+    const std::vector<DefineMacro> &getDefineMacros() const;
 
     const std::map<std::string, std::vector<uint8_t>> &getInitializedSymbolData() const;
 
@@ -90,6 +92,11 @@ class ElfFile
     int                                                getElfClass();
 
     void                                               setElfClass(int newelfClass);
+
+    void                                               addNamespace(Namespace newNamespace);
+    void                                               addNamespace(std::unique_ptr<Namespace> newNamespace);
+    std::vector<std::unique_ptr<Namespace>>           &getNamespaces();
+    Namespace                                         *getNamespace(std::string name);
 
    private:
     std::string                                 md5;
@@ -155,7 +162,7 @@ class ElfFile
 
     };
 
-    Encoding &getDWARFEncoding();
+    Encoding                               &getDWARFEncoding();
 
     /**
      * @brief elfClass
@@ -164,7 +171,9 @@ class ElfFile
      * #define ELFCLASS32	1		 32-bit objects
      * #define ELFCLASS64	2		 64-bit objects
      */
-    int       elfClass{ELFCLASSNONE};
+    int                                     elfClass{ELFCLASSNONE};
+
+    std::vector<std::unique_ptr<Namespace>> namespaces{};
 };
 
 #endif /* ElfFile_H_ */

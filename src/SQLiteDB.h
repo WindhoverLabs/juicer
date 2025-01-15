@@ -37,18 +37,20 @@
     "CREATE TABLE IF NOT EXISTS symbols(\
                                   id INTEGER PRIMARY KEY,\
                                   elf INTEGER NOT NULL,\
-                                  name TEXT UNIQUE NOT NULL,\
+                                  name TEXT NOT NULL,\
                                   byte_size INTEGER NOT NULL,\
                                   artifact INTEGER,\
                                   target_symbol INTEGER,\
                                   encoding INTEGER,\
+                                  namespace INTEGER NOT NULL,\
                                   short_description TEXT ,\
                                   long_description TEXT ,\
                                   FOREIGN KEY(elf) REFERENCES elfs(id),\
 								  FOREIGN KEY(artifact) REFERENCES artifacts(id)\
                                   FOREIGN KEY(target_symbol) REFERENCES symbols(id)\
                                   FOREIGN KEY(encoding) REFERENCES encodings(id)\
-                                  UNIQUE(name));"
+                                  FOREIGN KEY(namespace) REFERENCES namespaces(id)\
+                                  UNIQUE(name, namespace));"
 
 #define CREATE_DIMENSION_TABLE \
     "CREATE TABLE IF NOT EXISTS dimension_lists (\
@@ -156,6 +158,15 @@
                                   encoding TEXT NOT NULL,\
                                   UNIQUE (encoding));"
 
+#define CREATE_NAMESPACES_TABLE \
+    "CREATE TABLE IF NOT EXISTS namespaces(\
+                                  id INTEGER PRIMARY KEY,\
+                                  name TEXT NOT NULL,\
+                                  parent INTEGER ,\
+                                  fully_qualified_name TEXT NOT NULL,\
+                                  FOREIGN KEY (parent) REFERENCES namespaces(id),\
+                                  UNIQUE (fully_qualified_name)); "
+
 //#define CREATE_DATA_OBJECTS_TABLE \
 //    "CREATE TABLE IF NOT EXISTS data_objects(\
 //                                  id INTEGER PRIMARY KEY,\
@@ -194,6 +205,7 @@ class SQLiteDB : public IDataContainer
     int                 createElfSectionsSchema(void);
     int                 createElfSymbolTableSchema(void);
     int                 createEncodingsTableSchema(void);
+    int                 createNamespacesTableSchema(void);
     int                 writeElfToDatabase(ElfFile &inModule);
     int                 writeMacrosToDatabase(ElfFile &inModule);
     int                 writeVariablesToDatabase(ElfFile &inModule);
@@ -205,11 +217,14 @@ class SQLiteDB : public IDataContainer
     int                 writeEnumerationsToDatabase(ElfFile &inModule);
     int                 writeDimensionsListToDatabase(ElfFile &inElf);
     int                 writeEncodingsToDatabase(ElfFile &inElf);
+    int                 writeNamespacesToDatabase(std::vector<Namespace *> &namespaces, std::optional<int> parentID);
+    int                 writeAllNamespacesToDatabase(ElfFile &inElf);
     static int          doesRowExistCallback(void *veryUsed, int argc, char **argv, char **azColName);
-    bool                doesSymbolExist(std::string name);
+    bool                doesSymbolExist(std::string name, Namespace *ns);
     bool                doesArtifactExist(std::string name);
 
     bool                doEncodingsExist();
+    bool                doesNamespaceExistInDB(const std::string &fullyqualifiedName);
 
    public:
     SQLiteDB();

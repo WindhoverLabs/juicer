@@ -55,19 +55,123 @@
 #include "Enumeration.h"
 #include "Field.h"
 #include "IDataContainer.h"
+#include "Namespace.hpp"
 #include "Symbol.h"
 #include "Variable.h"
 
-struct macro_counts_s
+/**
+ * Useful for determining in which namespace a given DIE is located.
+ * @param die The DIE for which we want to determine the namespace.
+ * @param dbg The dwarf debug entry.
+ * @return The fully qualified name of the DIE. e.g. DIE for a struct whose fully qualified name is Universe::MilkyWay::Mars::MShape
+ * (assuming the struct is named MShape and  Universe::MilkyWay::Mars are namespaces)
+ */
+std::optional<std::string> Juicer::getFullyQualifiedNameForDIE(Dwarf_Debug dbg, Dwarf_Die die)
 {
-    long mc_start_file;
-    long mc_end_file;
-    long mc_define;
-    long mc_undef;
-    long mc_extension;
-    long mc_code_zero;
-    long mc_unknown;
-};
+    Dwarf_Error                error = 0;
+    Dwarf_Die                  cu_die;
+    Dwarf_Die                  sib_die;
+    int                        cu_res       = dwarf_siblingof(dbg, NULL, &cu_die, &error);
+
+    Dwarf_Off                  targetOffset = 0;
+
+    Dwarf_Die                  foundDIE     = 0;
+
+    std::vector<Dwarf_Die>     dieList{};
+
+    std::optional<std::string> fullyQualifiedName{std::nullopt};
+
+    for (;;)
+    {
+        foundDIE = getPathForTargetDie(die, dbg, cu_die, 0, dieList);
+
+        if (foundDIE != 0)
+        {
+            break;
+        }
+
+        /* res == DW_DLV_NO_ENTRY */
+        res = dwarf_siblingof(dbg, cu_die, &sib_die, &error);
+        if (res == DW_DLV_ERROR)
+        {
+            logger.logError("Error in dwarf_siblingof , level UNKNOWN.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+            res = JUICER_ERROR;
+        }
+
+        if (res == DW_DLV_NO_ENTRY)
+        {
+            /* Done at this level. */
+            break;
+        }
+
+        /* res == DW_DLV_OK */
+        // if (cu_die != in_die)
+        // {
+        //     dwarf_dealloc(dbg, cu_die, DW_DLA_DIE);
+        // }
+
+        cu_die = sib_die;
+    }
+
+    if (foundDIE)
+    {
+        std::string              fqn{};
+
+        std::vector<std::string> namespaces{};
+
+        for (Dwarf_Die d : dieList)
+        {
+            Dwarf_Attribute attr_struct;
+            Dwarf_Error     error = 0;
+            char           *name  = nullptr;
+            int             res   = 0;
+            std::string     namespaceName{};
+            Dwarf_Half      tag     = 0;
+
+            int             success = dwarf_tag(d, &tag, &error);
+
+            switch (tag)
+            {
+                case DW_TAG_namespace:
+                {
+                    res = dwarf_attr(d, DW_AT_name, &attr_struct, &error);
+                    if (res != DW_DLV_OK)
+                    {
+                        logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+                    }
+
+                    if (res == DW_DLV_OK)
+                    {
+                        res = dwarf_formstring(attr_struct, &name, &error);
+                        if (res != DW_DLV_OK)
+                        {
+                            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+                        }
+                    }
+
+                    namespaceName = name;
+                    namespaces.push_back(namespaceName);
+                    break;
+                }
+            }
+        }
+
+        std::reverse(std::begin(namespaces), std::end(namespaces));
+
+        for (std::string ns : namespaces)
+        {
+            fqn += ns + "::";
+        }
+        if (!fqn.empty())
+        {
+            fqn.pop_back();
+            fqn.pop_back();
+            fullyQualifiedName = fqn;
+        }
+    }
+
+    return fullyQualifiedName;
+}
 
 Juicer::Juicer() {}
 
@@ -413,7 +517,7 @@ int Juicer::readCUList(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Error &error)
                 dbgSourceFiles.insert(dbgSourceFiles.begin(), filePaths, &filePaths[fileCount]);
             }
 
-            return_value = getDieAndSiblings(elf, dbg, cu_die, 0);
+            return_value = getDieAndSiblings(elf, dbg, cu_die, 0, nullptr);
         }
 
         if (JUICER_OK != return_value)
@@ -459,7 +563,7 @@ char *Juicer::dwarfStringToChar(char *dwarfString)
  * it does NOT mean that no array was found. There are cases where an array is found on the die,
  * however, because it has no name we decide to not add it to the elf at all.
  */
-int Juicer::process_DW_TAG_array_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+int Juicer::process_DW_TAG_array_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     Dwarf_Die       dieSubrangeType;
     Dwarf_Unsigned  dwfUpperBound = 0;
@@ -548,7 +652,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug 
              */
             std::string stdString{arrayName};
 
-            Symbol     *arraySymbol = getBaseTypeSymbol(elf, inDie, dimList);
+            Symbol     *arraySymbol = getBaseTypeSymbol(elf, inDie, dimList, currentNamespace);
 
             if (nullptr == arraySymbol)
             {
@@ -559,7 +663,7 @@ int Juicer::process_DW_TAG_array_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug 
             else
             {
                 std::string arrayBaseType{arraySymbol->getName().c_str()};
-                outSymbol = elf.getSymbol(arrayBaseType);
+                outSymbol = elf.getSymbol(arrayBaseType, currentNamespace);
                 outSymbol->addField(stdString, 0, *outSymbol, dimList, elf.isLittleEndian());
             }
         }
@@ -639,7 +743,93 @@ char *Juicer::getFirstAncestorName(Dwarf_Die inDie)
     return outName;
 }
 
-Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
+/**
+ * @brief Add new namespace to elf, if it does not exist.
+ *
+ * @return The new namespace that was added. Not that this namespace may be null if it already exists.
+ */
+Namespace *Juicer::process_DW_TAG_namespace(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, int in_level, Namespace *currentNamespace)
+{
+    Dwarf_Attribute attr_struct;
+    Dwarf_Error     error = 0;
+    char           *name  = nullptr;
+    int             res   = 0;
+    Namespace       ns{};
+    std::string     namespaceName{};
+
+    Namespace      *newParentNamespace = nullptr;
+
+    bool            namespaceExists    = false;
+
+    // Need to figure out if this die has already been processed.
+
+    res                                = dwarf_attr(inDie, DW_AT_name, &attr_struct, &error);
+    if (res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+    }
+
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_formstring(attr_struct, &name, &error);
+        if (res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
+
+        namespaceName                   = name;
+
+        std::string currentNamespaceFQN = name;
+
+        if (currentNamespace)
+        {
+            currentNamespaceFQN = currentNamespace->getFullyQualifiedName() + "::" + name;
+        }
+        // check if namespace already exists
+        for (auto &ns : elf.getNamespaces())
+        {
+            if (currentNamespace != nullptr)
+            {
+                std::string nsFQN = ns->getFullyQualifiedName();
+
+                if (nsFQN == currentNamespaceFQN)
+                {
+                    namespaceExists = true;
+                    break;
+                }
+            }
+
+            else
+            {
+                if (ns->getName() == name)
+                {
+                    namespaceExists = true;
+                    break;
+                }
+            }
+        }
+
+        if (!namespaceExists)
+        {
+            if (res == DW_DLV_OK)
+            {
+                ns.setName(name);
+                ns.setParent(currentNamespace);
+                elf.addNamespace(ns);
+                newParentNamespace = elf.getNamespace(ns.getFullyQualifiedName());
+
+                if (currentNamespace != nullptr)
+                {
+                    currentNamespace->addChild(elf.getNamespace(ns.getFullyQualifiedName()));
+                }
+            }
+        }
+    }
+
+    return newParentNamespace;
+}
+
+Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     Symbol         *outSymbol   = 0;
     Dwarf_Attribute attr_struct = nullptr;
@@ -710,7 +900,7 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
                     Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                     std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                     newArtifact.setMD5(checkSum);
-                    outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
+                    outSymbol = elf.addSymbol(voidType, byteSize, newArtifact, nullptr);
                 }
                 else
                 {
@@ -719,7 +909,7 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
                     Artifact    newArtifact{elf, "NOT_FOUND:" + voidType};
                     std::string checkSum{};
                     newArtifact.setMD5(checkSum);
-                    outSymbol = elf.addSymbol(voidType, byteSize, newArtifact);
+                    outSymbol = elf.addSymbol(voidType, byteSize, newArtifact, nullptr);
                 }
             }
         }
@@ -787,14 +977,14 @@ Symbol *Juicer::process_DW_TAG_pointer_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf
             Artifact    newArtifact{elf, "NOT_FOUND:" + name};
             std::string checkSum{};
             newArtifact.setMD5(checkSum);
-            outSymbol = elf.addSymbol(name, byteSize, newArtifact);
+            outSymbol = elf.addSymbol(name, byteSize, newArtifact, currentNamespace);
         }
     }
 
     return outSymbol;
 }
 
-Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
+Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     Symbol         *outSymbol   = 0;
     Dwarf_Attribute attr_struct = nullptr;
@@ -884,7 +1074,7 @@ Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwar
 
                         DimensionList dimList{};
                         // TODO:Really don't like the pattern of passing an empty object to getBaseTypeSymbol...
-                        Symbol       *s = getBaseTypeSymbol(elf, inDie, dimList);
+                        Symbol       *s = getBaseTypeSymbol(elf, inDie, dimList, currentNamespace);
 
                         if (s != nullptr)
                         {
@@ -914,7 +1104,7 @@ Symbol *Juicer::process_DW_TAG_variable_type(ElfFile &elf, Dwarf_Debug dbg, Dwar
     return outSymbol;
 }
 
-Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &dimList)
+Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &dimList, Namespace *currentNamespace)
 {
     int             res = DW_DLV_OK;
     Dwarf_Attribute attr_struct;
@@ -971,7 +1161,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
         {
             case DW_TAG_pointer_type:
             {
-                outSymbol = process_DW_TAG_pointer_type(elf, dbg, typeDie);
+                outSymbol = process_DW_TAG_pointer_type(elf, dbg, typeDie, currentNamespace);
                 break;
             }
 
@@ -1047,10 +1237,13 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
                 if (res == DW_DLV_OK)
                 {
-                    std::string cName{""};
+                    std::optional<std::string> fqn;
+                    std::string                cName{""};
                     if (dieName != nullptr)
                     {
                         cName = dieName;
+
+                        fqn   = getFullyQualifiedNameForDIE(dbg, typeDie);
                     }
                     else
                     {
@@ -1078,7 +1271,8 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                          * cur_die and as we read different kinds of tags/attributes(in particular type-related),
                          * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
                          *
-                         * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                         * Notice that in
+                         * https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
                          *
                          * This is just a theory, however. In the future we may revisit this
                          * to figure out the root cause of this.
@@ -1099,20 +1293,41 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            if (cName == "MShape")
+                            {
+                                std::cout << "break here";
+                            }
+                            if (fqn.has_value())
+                            {
+                                outSymbol = elf.addSymbol(cName, byteSize, newArtifact, elf.getNamespace(fqn.value()));
+                            }
+                            else
+                            {
+                                outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
+                            }
+                            // outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                         else
                         {
                             Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                             std::string checkSum{};
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            if (fqn.has_value())
+                            {
+                                outSymbol = elf.addSymbol(cName, byteSize, newArtifact, elf.getNamespace(fqn.value()));
+                            }
+                            else
+                            {
+                                outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
+                            }
+
+                            // outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                     }
 
                     if (nullptr != outSymbol)
                     {
-                        process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie);
+                        process_DW_TAG_structure_type(elf, *outSymbol, dbg, typeDie, currentNamespace);
                     }
                 }
                 else
@@ -1123,20 +1338,20 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                     Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                     std::string checkSum{};
                     newArtifact.setMD5(checkSum);
-                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                    outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                 }
                 break;
             }
 
             case DW_TAG_base_type:
             {
-                outSymbol = process_DW_TAG_base_type(elf, dbg, typeDie);
+                outSymbol = process_DW_TAG_base_type(elf, dbg, typeDie, currentNamespace);
                 break;
             }
 
             case DW_TAG_typedef:
             {
-                outSymbol = process_DW_TAG_typedef(elf, dbg, typeDie);
+                outSymbol = process_DW_TAG_typedef(elf, dbg, typeDie, currentNamespace);
 
                 break;
             }
@@ -1251,7 +1466,8 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                          * cur_die and as we read different kinds of tags/attributes(in particular type-related),
                          * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
                          *
-                         * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                         * Notice that in
+                         * https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
                          *
                          * This is just a theory, however. In the future we may revisit this
                          * to figure out the root cause of this.
@@ -1272,14 +1488,14 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                         else
                         {
                             Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                             std::string checkSum{};
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                     }
 
@@ -1288,7 +1504,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                         Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                         std::string checkSum{};
                         newArtifact.setMD5(checkSum);
-                        outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                        outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                     }
 
                     process_DW_TAG_enumeration_type(elf, *outSymbol, dbg, typeDie);
@@ -1300,7 +1516,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
             {
                 /* First get the base type itself. */
 
-                outSymbol = getBaseTypeSymbol(elf, typeDie, dimList);
+                outSymbol = getBaseTypeSymbol(elf, typeDie, dimList, currentNamespace);
 
                 /* Set the multiplicity argument. */
                 if (res == DW_DLV_OK)
@@ -1323,7 +1539,7 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                 /* Get the type attribute. */
                 res = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
 
-                getBaseTypeSymbol(elf, typeDie, dimList);
+                getBaseTypeSymbol(elf, typeDie, dimList, currentNamespace);
 
                 break;
             }
@@ -1416,7 +1632,8 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                          * cur_die and as we read different kinds of tags/attributes(in particular type-related),
                          * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
                          *
-                         * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                         * Notice that in
+                         * https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
                          *
                          * This is just a theory, however. In the future we may revisit this
                          * to figure out the root cause of this.
@@ -1437,20 +1654,20 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                         else
                         {
                             Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                             std::string checkSum{};
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                         }
                     }
 
                     if (nullptr != outSymbol)
                     {
-                        process_DW_TAG_union_type(elf, *outSymbol, dbg, typeDie);
+                        process_DW_TAG_union_type(elf, *outSymbol, dbg, typeDie, currentNamespace);
                     }
                 }
 
@@ -3232,7 +3449,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
     // }
 }
 
-Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
+Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     int             res      = DW_DLV_OK;
     Dwarf_Unsigned  byteSize = 0;
@@ -3286,7 +3503,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
         }
     }
 
-    outSymbol = elf.getSymbol(cName);
+    outSymbol = elf.getSymbol(cName, currentNamespace);
 
     if (outSymbol == 0)
     {
@@ -3297,7 +3514,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
         {
             /* See if we already have this symbol. */
             cName     = dieName;
-            outSymbol = elf.getSymbol(cName);
+            outSymbol = elf.getSymbol(cName, currentNamespace);
             if (outSymbol == 0)
             {
                 /* No.  This is new.  Process it. */
@@ -3337,7 +3554,8 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                          * cur_die and as we read different kinds of tags/attributes(in particular type-related),
                          * the libdwarf library is modifying the die when I call dwarf_srcfiles on it.
                          *
-                         * Notice that in https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
+                         * Notice that in
+                         * https://penguin.windhoverlabs.lan/gitlab/ground-systems/libdwarf/-/blob/main/libdwarf/libdwarf/dwarf_die_deliv.c#L1365
                          *
                          * This is just a theory, however. In the future we may revisit this
                          * to figure out the root cause of this.
@@ -3358,14 +3576,14 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                             Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                             std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, currentNamespace);
                         }
                         else
                         {
                             Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
                             std::string checkSum{};
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, currentNamespace);
                         }
                     }
 
@@ -3377,7 +3595,7 @@ Symbol *Juicer::process_DW_TAG_base_type(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Di
                         Artifact    newArtifact{elf, "NOT_FOUND:" + cName};
                         std::string checkSum{};
                         newArtifact.setMD5(checkSum);
-                        outSymbol = elf.addSymbol(cName, byteSize, newArtifact);
+                        outSymbol = elf.addSymbol(cName, byteSize, newArtifact, currentNamespace);
                     }
                 }
             }
@@ -3548,7 +3766,7 @@ void Juicer::process_DW_TAG_enumeration_type(ElfFile &elf, Symbol &symbol, Dwarf
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie)
+Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     int             res            = DW_DLV_OK;
     uint32_t        byteSize       = 0;
@@ -3582,7 +3800,7 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
     {
         DimensionList dimensionList{};
 
-        baseTypeSymbol = getBaseTypeSymbol(elf, inDie, dimensionList);
+        baseTypeSymbol = getBaseTypeSymbol(elf, inDie, dimensionList, currentNamespace);
 
         if (baseTypeSymbol == 0)
         {
@@ -3648,14 +3866,14 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
                 Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
+                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol, currentNamespace);
             }
             else
             {
                 Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
                 std::string checkSum{};
                 newArtifact.setMD5(checkSum);
-                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol);
+                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, baseTypeSymbol, currentNamespace);
             }
         }
     }
@@ -3670,7 +3888,7 @@ Symbol *Juicer::process_DW_TAG_typedef(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die 
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     int             res         = DW_DLV_OK;
     Dwarf_Attribute attr_struct = nullptr;
@@ -3902,7 +4120,10 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
                         /* Get the base type die. */
                         if (res == DW_DLV_OK)
                         {
-                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList);
+                            std::string sMemberName = memberName;
+                            /* Actually retrieve that DIE's parents (which, ironically, may be empty if it's a CU). */
+                            Dwarf_Off  *parents     = NULL;
+                            memberBaseTypeSymbol    = getBaseTypeSymbol(elf, memberDie, dimensionList, currentNamespace);
 
                             if (memberBaseTypeSymbol == 0)
                             {
@@ -3972,7 +4193,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie)
+void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug dbg, Dwarf_Die inDie, Namespace *currentNamespace)
 {
     int             res         = DW_DLV_OK;
     Dwarf_Attribute attr_struct = nullptr;
@@ -4061,7 +4282,7 @@ void Juicer::process_DW_TAG_union_type(ElfFile &elf, Symbol &symbol, Dwarf_Debug
                         /* Get the base type die. */
                         if (res == DW_DLV_OK)
                         {
-                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList);
+                            memberBaseTypeSymbol = getBaseTypeSymbol(elf, memberDie, dimensionList, currentNamespace);
 
                             if (memberBaseTypeSymbol == 0)
                             {
@@ -4169,7 +4390,7 @@ void Juicer::addPaddingToStruct(Symbol &symbol)
 
                 paddingType           += std::to_string(paddingSize * 8);
 
-                Symbol *paddingSymbol  = symbol.getElf().getSymbol(paddingType);
+                Symbol *paddingSymbol  = symbol.getElf().getSymbol(paddingType, nullptr);
 
                 if (paddingSymbol == nullptr)
                 {
@@ -4177,7 +4398,7 @@ void Juicer::addPaddingToStruct(Symbol &symbol)
                     std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                     newArtifact.setMD5(checkSum);
 
-                    paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize, newArtifact);
+                    paddingSymbol = symbol.getElf().addSymbol(paddingType, paddingSize, newArtifact, nullptr);
                 }
 
                 auto &&fields    = symbol.getFields();
@@ -4232,14 +4453,14 @@ void Juicer::addPaddingEndToStruct(Symbol &symbol)
         {
             paddingType           += std::to_string(sizeDelta * 8);
 
-            Symbol *paddingSymbol  = symbol.getElf().getSymbol(paddingType);
+            Symbol *paddingSymbol  = symbol.getElf().getSymbol(paddingType, nullptr);
 
             if (paddingSymbol == nullptr)
             {
                 Artifact    newArtifact{symbol.getElf(), symbol.getArtifact().getFilePath()};
                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                 newArtifact.setMD5(checkSum);
-                paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta, newArtifact);
+                paddingSymbol = symbol.getElf().addSymbol(paddingType, sizeDelta, newArtifact, (Namespace *)nullptr);
             }
 
             uint32_t newFieldByteOffset = symbol.getFields().back()->getByteOffset().value() + symbol.getFields().back()->getType().getByteSize();
@@ -4316,13 +4537,160 @@ bool Juicer::isDWARFVersionSupported(Dwarf_Die inDie)
 }
 
 /**
+ * @brief Searches for the target die and stores the "path" to it in the dieList. It starts from the in_die and goes through all its children and siblings.
+ * For example a namespaced die such as Universe::MilkyWay::Mars::MShape will be stored as a vector of Dwarf_Die objects in DieList, including the
+ * DW_TAG_compile_unit root node. So for our example:
+ *
+ * This is only needed because, unfortunately, libdwarf does not provide a way to get the parent of a die.
+ * This is very useful for finding the namespace of a die (struct, class,).
+ *
+ * */
+
+Dwarf_Die Juicer::getPathForTargetDie(Dwarf_Die targetDie, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, std::vector<Dwarf_Die> &dieList)
+{
+    int             res         = DW_DLV_ERROR;
+    Dwarf_Die       cur_die     = in_die;
+    Dwarf_Die       child       = 0;
+    Dwarf_Die       returnedDie = 0;
+    Dwarf_Error     error       = 0;
+    char           *dieName;
+    Dwarf_Attribute attr_struct;
+    int             return_value       = JUICER_OK;
+
+    Symbol         *outSymbol          = nullptr;
+
+    Namespace      *newParentNamespace = nullptr;
+
+    Dwarf_Die       sib_die            = 0;
+    Dwarf_Half      tag                = 0;
+    Dwarf_Off       offset             = 0;
+    Dwarf_Off       targetOffset       = 0;
+
+    res                                = dwarf_dieoffset(cur_die, &offset, &error);
+
+    if (res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_dieoffset , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+        return_value = JUICER_ERROR;
+    }
+
+    res = dwarf_dieoffset(targetDie, &targetOffset, &error);
+
+    if (targetOffset == offset)
+    {
+        //  return whether the target die is found or not
+        dieList.push_back(cur_die);
+
+        // std::string namespaceName{};
+        // char       *name = NULL;
+
+        // // Need to figure out if this die has already been processed.
+
+        // res              = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
+        // if (res != DW_DLV_OK)
+        // {
+        //     logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+        // }
+
+        // if (res == DW_DLV_OK)
+        // {
+        //     res = dwarf_formstring(attr_struct, &name, &error);
+        //     if (res != DW_DLV_OK)
+        //     {
+        //         logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        //     }
+
+        //     // dieList.push_back(name);
+        // }
+
+        // namespaceName = name;
+
+        // std::cout << "namespaceName#2:" << namespaceName << std::endl;
+
+        return cur_die;
+    }
+
+    std::string namespaceName{};
+    char       *name = NULL;
+
+    // Need to figure out if this die has already been processed.
+
+    res              = dwarf_attr(cur_die, DW_AT_name, &attr_struct, &error);
+    if (res != DW_DLV_OK)
+    {
+        logger.logError("Error in dwarf_attr(DW_AT_name).  %u  errno=%u %s", __LINE__, dwarf_errno(error), dwarf_errmsg(error));
+    }
+
+    if (res == DW_DLV_OK)
+    {
+        res = dwarf_formstring(attr_struct, &name, &error);
+        if (res != DW_DLV_OK)
+        {
+            logger.logError("Error in dwarf_formstring.  errno=%u %s", dwarf_errno(error), dwarf_errmsg(error));
+        }
+
+        namespaceName = name;
+    }
+
+    // iterate through all children at this level
+
+    res = dwarf_child(cur_die, &child, &error);
+    if (res == DW_DLV_ERROR)
+    {
+        logger.logError("Error in dwarf_child , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+        return_value = JUICER_ERROR;
+    }
+    else if (res == DW_DLV_OK)
+    {
+        returnedDie = getPathForTargetDie(targetDie, dbg, child, in_level + 1, dieList);
+        if (returnedDie != 0)
+        {
+            std::cout << "namespaceName#3:" << namespaceName << std::endl;
+
+            dieList.push_back(cur_die);
+        }
+        else
+        {
+            for (;;)
+            {
+                /* res == DW_DLV_NO_ENTRY */
+                res = dwarf_siblingof(dbg, child, &sib_die, &error);
+                if (res == DW_DLV_ERROR)
+                {
+                    logger.logError("Error in dwarf_siblingof , level %d.  errno=%u %s", in_level, dwarf_errno(error), dwarf_errmsg(error));
+                    return_value = JUICER_ERROR;
+                    break;
+                }
+
+                if (res == DW_DLV_NO_ENTRY)
+                {
+                    /* Done at this level. */
+                    break;
+                }
+
+                child       = sib_die;
+
+                returnedDie = getPathForTargetDie(targetDie, dbg, child, in_level + 1, dieList);
+                if (returnedDie != 0)
+                {
+                    dieList.push_back(cur_die);
+                    break;
+                }
+            }
+        }
+    }
+
+    return returnedDie;
+}
+
+/**
  * @brief Inspects the data on the die and its own children recursively.
  * @param in_die the die entry that has the dwarf data.
  * @param in_level The current level on the dbg structure.
  * @return 0 if the die, its children and siblings are scanned successfully.
  * 1 if there is a problem with dies or any of its children.
  */
-int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level)
+int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, int in_level, Namespace *currentNamespace)
 {
     int             res     = DW_DLV_ERROR;
     Dwarf_Die       cur_die = in_die;
@@ -4333,6 +4701,9 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
     int             return_value = JUICER_OK;
 
     Symbol         *outSymbol    = nullptr;
+
+    std::string     namespaceName{""};
+    Namespace      *newParentNamespace = nullptr;
 
     for (;;)
     {
@@ -4372,14 +4743,14 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
         {
             case DW_TAG_base_type:
             {
-                process_DW_TAG_base_type(elf, dbg, cur_die);
+                process_DW_TAG_base_type(elf, dbg, cur_die, currentNamespace);
 
                 break;
             }
 
             case DW_TAG_typedef:
             {
-                process_DW_TAG_typedef(elf, dbg, cur_die);
+                process_DW_TAG_typedef(elf, dbg, cur_die, currentNamespace);
 
                 break;
             }
@@ -4444,14 +4815,14 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                                 Artifact    newArtifact{elf, getdbgSourceFile(elf, pathIndex).value_or(std::string{"NOT_FOUND:"})};
                                 std::string checkSum = generateMD5SumForFile(newArtifact.getFilePath());
                                 newArtifact.setMD5(checkSum);
-                                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, currentNamespace);
                             }
                             else
                             {
                                 Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
                                 std::string checkSum{};
                                 newArtifact.setMD5(checkSum);
-                                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                                outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, currentNamespace);
                             }
                         }
                         else
@@ -4459,10 +4830,10 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
                             Artifact    newArtifact{elf, "NOT_FOUND:" + sDieName};
                             std::string checkSum{};
                             newArtifact.setMD5(checkSum);
-                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact);
+                            outSymbol = elf.addSymbol(sDieName, byteSize, newArtifact, currentNamespace);
                         }
 
-                        process_DW_TAG_structure_type(elf, *outSymbol, dbg, cur_die);
+                        process_DW_TAG_structure_type(elf, *outSymbol, dbg, cur_die, currentNamespace);
                     }
                 }
 
@@ -4472,7 +4843,7 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
             {
                 Symbol s{elf};
 
-                res = process_DW_TAG_array_type(elf, s, dbg, cur_die);
+                res = process_DW_TAG_array_type(elf, s, dbg, cur_die, currentNamespace);
 
                 break;
             }
@@ -4481,11 +4852,19 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
             {
                 if (extras)
                 {
-                    process_DW_TAG_variable_type(elf, dbg, cur_die);
+                    process_DW_TAG_variable_type(elf, dbg, cur_die, currentNamespace);
                 }
                 break;
             }
+
+            case DW_TAG_namespace:
+            {
+                newParentNamespace = process_DW_TAG_namespace(elf, dbg, cur_die, in_level, currentNamespace);
+                break;
+            }
         }
+
+        // iterate through all children at this level
 
         res = dwarf_child(cur_die, &child, &error);
         if (res == DW_DLV_ERROR)
@@ -4495,7 +4874,7 @@ int Juicer::getDieAndSiblings(ElfFile &elf, Dwarf_Debug dbg, Dwarf_Die in_die, i
         }
         else if (res == DW_DLV_OK)
         {
-            getDieAndSiblings(elf, dbg, child, in_level + 1);
+            getDieAndSiblings(elf, dbg, child, in_level + 1, newParentNamespace);
         }
 
         /* res == DW_DLV_NO_ENTRY */
@@ -4739,7 +5118,8 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
                                                     }
 
                                                     logger.logInfo(
-                                                        "Found symbol %s with size: %d, st_value:%u, st_name:%u, st_info:%u, st_other:%u, st_shndx:%u\n",
+                                                        "Found symbol %s with size: %d, st_value:%u, st_name:%u, st_info:%u, st_other:%u, "
+                                                        "st_shndx:%u\n",
                                                         name.c_str(), symbol->st_size, symbol->st_value, symbol->st_name, symbol->st_info, symbol->st_other,
                                                         symbol->st_shndx);
 
@@ -4752,8 +5132,10 @@ std::map<std::string, std::vector<uint8_t>> Juicer::getObjDataFromElf(ElfFile *e
 
                                                     if (symbolSectionHeader != nullptr)
                                                     {
-                                                        //                                                    std::cout << "symbol data section file offset-->"
-                                                        //                                                    << symbolSectionHeader->sh_offset << std::endl;
+                                                        //                                                    std::cout << "symbol data section file
+                                                        //                                                    offset-->"
+                                                        //                                                    << symbolSectionHeader->sh_offset <<
+                                                        //                                                    std::endl;
                                                         symbolSectionFileOffset = symbolSectionHeader->sh_offset;
                                                     }
 

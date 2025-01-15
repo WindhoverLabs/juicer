@@ -82,17 +82,27 @@ int SQLiteDB::doesRowExistCallback(void* count, int argc, char** argv, char** az
  *@note Please note that this function assumes that ALL symbols in our table
  *are universally unique across all Elf files.
  */
-bool SQLiteDB::doesSymbolExist(std::string name)
+bool SQLiteDB::doesSymbolExist(std::string name, Namespace* ns)
 {
-    int32_t     row_count    = 0;
+    int32_t row_count    = 0;
 
-    int         rc           = SQLITE_OK;
+    int     rc           = SQLITE_OK;
 
-    char*       errorMessage = nullptr;
+    char*   errorMessage = nullptr;
+
+    int     namespace_id = -1;
+
+    if (ns != nullptr)
+    {
+        namespace_id = ns->getId().value();
+    }
 
     std::string countRowsQuery{"SELECT COUNT(*) FROM symbols"};
     countRowsQuery += " WHERE name=\"";
-    countRowsQuery += name + "\";";
+    countRowsQuery += name + "\"";
+    countRowsQuery += " AND namespace=";
+    countRowsQuery += std::to_string(namespace_id);
+    countRowsQuery += ";";
 
     rc              = sqlite3_exec(database, countRowsQuery.c_str(), SQLiteDB::doesRowExistCallback, &row_count, &errorMessage);
 
@@ -315,7 +325,7 @@ int SQLiteDB::write(ElfFile& inElf)
                 else
                 {
                     logger.logDebug(
-                        "There was an error while writing macro entries to the"
+                        "There was an error while writing Artifact entries to the"
                         " database.");
                     rc = SQLITEDB_ERROR;
                 }
@@ -333,13 +343,29 @@ int SQLiteDB::write(ElfFile& inElf)
             if (SQLITEDB_ERROR != rc)
             {
                 logger.logDebug(
-                    "Variable entries were written to the variables schema "
+                    "Encoding entries were written to the Encodings schema "
                     "with SQLITE_OK status.");
+
+                rc = writeAllNamespacesToDatabase(inElf);
+
+                if (SQLITEDB_ERROR != rc)
+                {
+                    logger.logDebug(
+                        "Namespace entries were written to the namespaces schema "
+                        "with SQLITE_OK status.");
+                }
+                else
+                {
+                    logger.logDebug(
+                        "There was an error while writing namespace entries to the"
+                        " database.");
+                    rc = SQLITEDB_ERROR;
+                }
             }
             else
             {
                 logger.logDebug(
-                    "There was an error while writing variable entries to the"
+                    "There was an error while writing Encoding entries to the"
                     " database.");
                 rc = SQLITEDB_ERROR;
             }
@@ -354,13 +380,27 @@ int SQLiteDB::write(ElfFile& inElf)
 
                 rc = writeFieldsToDatabase(inElf);
 
-                writeDimensionsListToDatabase(inElf);
-
                 if (SQLITEDB_ERROR != rc)
                 {
                     logger.logDebug(
                         "Field entries were written to the fields schema "
                         "with SQLITE_OK status.");
+
+                    rc = writeDimensionsListToDatabase(inElf);
+
+                    if (SQLITEDB_ERROR != rc)
+                    {
+                        logger.logDebug(
+                            "Field entries were written to the dimension_lists schema "
+                            "with SQLITE_OK status.");
+                    }
+                    else
+                    {
+                        logger.logDebug(
+                            "There was an error while writing dimension_lists entries to the"
+                            " database.");
+                        rc = SQLITEDB_ERROR;
+                    }
 
                     rc = writeEnumerationsToDatabase(inElf);
 
@@ -383,7 +423,7 @@ int SQLiteDB::write(ElfFile& inElf)
                             if (SQLITEDB_ERROR != rc)
                             {
                                 logger.logDebug(
-                                    "Variable entries were written to the variables schema "
+                                    "Elf Sections were written to the variables schema "
                                     "with SQLITE_OK status.");
 
                                 rc = writeElfSymboltableSymbolsToDatabase(inElf);
@@ -391,7 +431,7 @@ int SQLiteDB::write(ElfFile& inElf)
                                 if (SQLITEDB_ERROR != rc)
                                 {
                                     logger.logDebug(
-                                        "Variable entries were written to the variables schema "
+                                        "Elf Symbol Table Symbols entries were written to the variables schema "
                                         "with SQLITE_OK status.");
                                 }
                                 else
@@ -1139,7 +1179,12 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 
     for (auto&& symbol : inElf.getSymbols())
     {
-        bool symbolExists = doesSymbolExist(symbol->getName());
+        bool symbolExists = doesSymbolExist(symbol->getName(), symbol->getNamespace());
+
+        if (symbol->getName() == "Square")
+        {
+            printf("Break here...\n");
+        }
 
         /**
          *First check if the symbol already exists in the database.
@@ -1151,7 +1196,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
         {
             std::map<std::string, std::vector<std::string>> symbolsMap{};
 
-            std::string                                     getSymbolIdQuery{"SELECT * FROM symbols where name="};
+            std::string                                     getSymbolIdQuery{"SELECT id FROM symbols where name="};
             getSymbolIdQuery += "\"";
             getSymbolIdQuery += symbol->getName();
 
@@ -1182,7 +1227,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
             if (!symbol->getEncoding())
             {
                 writeSymbolQuery +=
-                    "INSERT INTO symbols(elf, name, byte_size, artifact, long_description, short_description) "
+                    "INSERT INTO symbols(elf, name, byte_size, artifact, namespace, long_description, short_description) "
                     "VALUES(";
                 writeSymbolQuery += std::to_string(symbol->getElf().getId());
                 writeSymbolQuery += ",\"";
@@ -1192,6 +1237,17 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
                 writeSymbolQuery += std::to_string(symbol->getByteSize());
                 writeSymbolQuery += ",";
                 writeSymbolQuery += std::to_string(symbol->getArtifact().getId());
+
+                writeSymbolQuery += ",";
+
+                if (symbol->getNamespace() != nullptr)
+                {
+                    writeSymbolQuery += std::to_string(symbol->getNamespace()->getId().value());
+                }
+                else
+                {
+                    writeSymbolQuery += "-1";
+                }
 
                 writeSymbolQuery += ",\"";
                 writeSymbolQuery += symbol->getLongDescription();
@@ -1203,7 +1259,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 
                 writeSymbolQuery += "\"";
 
-                writeSymbolQuery += ")";
+                writeSymbolQuery += ");";
 
                 rc                = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL, &errorMessage);
 
@@ -1231,7 +1287,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
             else
             {
                 writeSymbolQuery +=
-                    "INSERT INTO symbols(elf, name, byte_size, encoding, artifact, long_description, short_description) "
+                    "INSERT INTO symbols(elf, name, byte_size, encoding, artifact, namespace, long_description, short_description) "
                     "VALUES(";
                 writeSymbolQuery += std::to_string(symbol->getElf().getId());
                 writeSymbolQuery += ",\"";
@@ -1247,6 +1303,17 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 
                 writeSymbolQuery += std::to_string(symbol->getArtifact().getId());
 
+                writeSymbolQuery += ",";
+
+                if (symbol->getNamespace() != nullptr)
+                {
+                    writeSymbolQuery += std::to_string(symbol->getNamespace()->getId().value());
+                }
+                else
+                {
+                    writeSymbolQuery += "-1";
+                }
+
                 writeSymbolQuery += ",\"";
                 writeSymbolQuery += symbol->getLongDescription();
 
@@ -1257,7 +1324,7 @@ int SQLiteDB::writeSymbolsToDatabase(ElfFile& inElf)
 
                 writeSymbolQuery += "\"";
 
-                writeSymbolQuery += ")";
+                writeSymbolQuery += ");";
 
                 rc                = sqlite3_exec(database, writeSymbolQuery.c_str(), NULL, NULL, &errorMessage);
 
@@ -1848,6 +1915,162 @@ int SQLiteDB::writeEncodingsToDatabase(ElfFile& inElf)
     return rc;
 }
 
+bool SQLiteDB::doesNamespaceExistInDB(const std::string& fullyqualifiedName)
+{
+    // Update query to also check for parent and child
+
+    std::string query        = "SELECT COUNT(*) FROM namespaces WHERE fully_qualified_name = \"" + fullyqualifiedName + "\"  ;";
+
+    int         count        = 0;
+    char*       errorMessage = nullptr;
+
+    int         rc           = sqlite3_exec(
+        database, query.c_str(),
+        [](void* data, int argc, char** argv, char** azColName) -> int
+        {
+            int* count = static_cast<int*>(data);
+            *count     = std::stoi(argv[0]);
+            return 0;
+        },
+        &count, &errorMessage);
+
+    if (rc != SQLITE_OK)
+    {
+        logger.logError("SQL error: %s", errorMessage);
+        sqlite3_free(errorMessage);
+        return false;
+    }
+
+    return count > 0;
+}
+
+int SQLiteDB::writeNamespacesToDatabase(std::vector<Namespace*>& namespaces, std::optional<int> parentID)
+{
+    int           rc           = SQLITEDB_OK;
+    char*         errorMessage = NULL;
+
+    sqlite3_int64 lastRowId    = -1;
+
+    for (auto& namespace_ : namespaces)
+    {
+        // Check if namespace already exists in database
+        bool namespaceExists = doesNamespaceExistInDB(namespace_->getFullyQualifiedName());
+
+        if (namespaceExists)
+        {
+            logger.logDebug("Namespace %s already exists in the database.", namespace_->getFullyQualifiedName().c_str());
+
+            std::map<std::string, std::vector<std::string>> namespacesMap{};
+
+            std::string                                     getNamespaceIdQuery{"SELECT id FROM namespaces where fully_qualified_name="};
+            getNamespaceIdQuery += "\"";
+            getNamespaceIdQuery += namespace_->getFullyQualifiedName();
+
+            getNamespaceIdQuery += "\";";
+            rc                   = sqlite3_exec(database, getNamespaceIdQuery.c_str(), SQLiteDB::selectCallback, &namespacesMap, &errorMessage);
+
+            if (SQLITE_OK == rc)
+            {
+                /**
+                 * We know there is only one element in our map, since symbol names are unique.
+                 */
+                for (auto pair : namespacesMap)
+                {
+                    namespace_->setId(std::stoi(pair.first));
+                }
+            }
+            continue;
+        }
+
+        sqlite3_stmt* stmt;
+        const char*   sql = "INSERT INTO namespaces (name, parent, fully_qualified_name) VALUES (?,?,?);";
+
+        // Prepare the SQL statement
+        rc                = sqlite3_prepare_v2(database, sql, -1, &stmt, NULL);
+
+        if (rc != SQLITE_OK)
+        {
+            std::cerr << "SQL error: " << sqlite3_errmsg(database) << std::endl;
+        }
+        else
+        {
+            // Bind values to placeholders
+            sqlite3_bind_text(stmt, 1, namespace_->getName().c_str(), -1, SQLITE_STATIC);
+
+            sqlite3_bind_int(stmt, 2, parentID.value_or(-1));
+
+            std::string fqn = namespace_->getFullyQualifiedName();
+
+            sqlite3_bind_text(stmt, 3, fqn.c_str(), -1, SQLITE_STATIC);
+
+            rc = sqlite3_step(stmt);
+
+            // Execute the SQL statement
+            if (rc != SQLITE_DONE)
+            {
+                const char* errorMessage = sqlite3_errmsg(database);
+                if (SQLITE_OK == rc)
+                {
+                    logger.logDebug(
+                        "Elf values were written to the encodings schema with "
+                        "SQLITE_OK status.");
+                }
+                else
+                {
+                    if (sqlite3_extended_errcode(database) == SQLITE_CONSTRAINT_UNIQUE)
+                    {
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITE_OK;
+                    }
+                    else
+                    {
+                        logger.logDebug("There was an error while writing data to the encodings table.");
+                        logger.logDebug("%s.", errorMessage);
+                        rc = SQLITEDB_ERROR;
+                    }
+                }
+            }
+
+            // Finalize the statement
+            rc = sqlite3_finalize(stmt);
+            if (rc != SQLITE_OK)
+            {
+                logger.logDebug("There was an error while finalizing the sql statement for encodings table.");
+            }
+            else
+            {
+                lastRowId = sqlite3_last_insert_rowid(database);
+
+                namespace_->setId(lastRowId);
+            }
+
+            if (namespace_->getChildren().size() > 0)
+            {
+                int lastRowID = writeNamespacesToDatabase(namespace_->getChildren(), namespace_->getId());
+            }
+        }
+    }
+
+    return lastRowId;
+}
+
+int SQLiteDB::writeAllNamespacesToDatabase(ElfFile& inElf)
+{
+    int                     rc           = SQLITEDB_OK;
+    char*                   errorMessage = NULL;
+
+    std::vector<Namespace*> namespacesPointers{};
+
+    for (auto&& namespace_ : inElf.getNamespaces())
+    {
+        namespacesPointers.push_back(namespace_.get());
+    }
+
+    writeNamespacesToDatabase(namespacesPointers, std::nullopt);
+
+    return rc;
+}
+
 /**
  *@brief This method creates all of the schemas that will be needed to store
  *the DWARF and ELF data.
@@ -1939,6 +2162,20 @@ int SQLiteDB::createSchemas(void)
                                                 logger.logDebug(
                                                     "createEncodingsTableSchema() created the variables schema "
                                                     "successfully.");
+
+                                                rc = createNamespacesTableSchema();
+
+                                                if (rc == SQLITE_OK)
+                                                {
+                                                    logger.logDebug(
+                                                        "createNamespacesTableSchema() created the namespaces schema "
+                                                        "successfully.");
+                                                }
+                                                else
+                                                {
+                                                    logger.logDebug("createNamespacesTableSchema() failed.");
+                                                    rc = SQLITEDB_ERROR;
+                                                }
                                             }
                                             else
                                             {
@@ -2354,6 +2591,30 @@ int SQLiteDB::createEncodingsTableSchema(void)
     else
     {
         logger.logError("Failed to create the artifacts table. '%s'", sqlite3_errmsg(database));
+        rc = SQLITEDB_ERROR;
+    }
+
+    return rc;
+}
+
+int SQLiteDB::createNamespacesTableSchema(void)
+{
+    std::string createNamespacesTableQuery{CREATE_NAMESPACES_TABLE};
+
+    int         rc = SQLITE_OK;
+
+    /*@todo The last argument for sqlite3_exec is an error handler that is not
+     * necessary to pass in, but I really think we should for better error
+     * logging.*/
+    rc             = sqlite3_exec(database, createNamespacesTableQuery.c_str(), NULL, NULL, NULL);
+
+    if (SQLITE_OK == rc)
+    {
+        logger.logDebug("Created table \"namespaces\" with OK status");
+    }
+    else
+    {
+        logger.logError("Failed to create the namespaces table. '%s'", sqlite3_errmsg(database));
         rc = SQLITEDB_ERROR;
     }
 

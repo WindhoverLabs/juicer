@@ -70,24 +70,37 @@ std::string ElfFile::getMD5() const { return md5; }
  *nonetheless. Will re-evaluate. Visit https://en.cppreference.com/w/cpp/utility/optional
  *and https://en.cppreference.com/w/cpp/utility/tuple for details.
  */
-Symbol*     ElfFile::getSymbol(std::string& name)
+Symbol*     ElfFile::getSymbol(std::string& name, Namespace* ns)
 {
     Symbol* returnSymbol = nullptr;
 
     for (auto&& symbol : symbols)
     {
-        if (symbol->getName() == name)
+        if (ns != nullptr && symbol->getNamespace() != nullptr)
         {
-            returnSymbol = symbol.get();
+            if (symbol->getName() == name && symbol->getNamespace()->getFullyQualifiedName() == ns->getFullyQualifiedName())
+            {
+                returnSymbol = symbol.get();
+            }
+        }
+
+        else if (ns == nullptr && symbol->getNamespace() == nullptr)
+        {
+            {
+                if (symbol->getName() == name)
+                {
+                    returnSymbol = symbol.get();
+                }
+            }
         }
     }
 
     return returnSymbol;
 }
 
-Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact, Symbol* targetSymbol)
+Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact, Symbol* targetSymbol, Namespace* symbolNamepace)
 {
-    Symbol* symbol = getSymbol(inName);
+    Symbol* symbol = getSymbol(inName, symbolNamepace);
 
     if (symbol == nullptr)
     {
@@ -102,13 +115,14 @@ Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact ne
     return symbol;
 }
 
-Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact)
+Symbol* ElfFile::addSymbol(std::string& inName, uint32_t inByteSize, Artifact newArtifact, Namespace* symbolNamepace)
 {
-    Symbol* symbol = getSymbol(inName);
+    Symbol* symbol = getSymbol(inName, symbolNamepace);
 
     if (symbol == nullptr)
     {
         std::unique_ptr<Symbol> newSymbol = std::make_unique<Symbol>(*this, inName, inByteSize, newArtifact);
+        newSymbol->setNamespace(symbolNamepace);
 
         symbols.push_back(std::move(newSymbol));
 
@@ -238,4 +252,47 @@ void      ElfFile::setElfClass(int newelfClass)
     }
 }
 
-int ElfFile::getElfClass() { return elfClass; }
+int  ElfFile::getElfClass() { return elfClass; }
+
+void ElfFile::addNamespace(Namespace newNamespace)
+{
+    // Check if the namespace already exists
+    // for (auto&& namespace_ : namespaces)
+    // {
+    //     if (namespace_->getName() == newNamespace.getName())
+    //     {
+    //         // Logger::getInstance().logError("Namespace already exists in the list");
+    //         return;
+    //     }
+    // }
+    namespaces.push_back(std::make_unique<Namespace>(newNamespace));
+}
+
+void ElfFile::addNamespace(std::unique_ptr<Namespace> newNamespace)
+{
+    // Check if the namespace already exists
+    for (auto&& namespace_ : namespaces)
+    {
+        if (namespace_->getFullyQualifiedName() == newNamespace->getFullyQualifiedName())
+        {
+            // Logger::getInstance().logError("Namespace already exists in the list");
+            return;
+        }
+    }
+    namespaces.push_back(std::move(newNamespace));
+}
+
+Namespace* ElfFile::getNamespace(std::string name)
+{
+    for (auto&& namespace_ : namespaces)
+    {
+        if (namespace_->getFullyQualifiedName() == name)
+        {
+            return namespace_.get();
+        }
+    }
+
+    return nullptr;
+}
+
+std::vector<std::unique_ptr<Namespace>>& ElfFile::getNamespaces() { return namespaces; }

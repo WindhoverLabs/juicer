@@ -1,0 +1,13 @@
+diff --git a/src/Juicer.h b/src/Juicer.h
+index 61353c0c..297ab716 100644
+--- a/src/Juicer.h
++++ b/src/Juicer.h
+@@ -150,6 +150,8 @@ class Juicer
+     DefineMacro getDefineMacroFromString(std::string macro_string);
+     std::map<std::string, std::vector<uint8_t>> getObjDataFromElf(ElfFile* elfFileObj);
+ 
++    std::string generateRandomName(int length);
++
+     bool                                        extras;
+ 
+     unsigned int                                groupNumber{0};
