@@ -1503,7 +1503,7 @@ void Juicer::DisplayDie(Dwarf_Die inDie, uint32_t level)
     char             output[2000];
     char             line[255];
     Dwarf_Error      error = 0;
-
+    // TODO
     // if (inDie != 0)
     // {
     //     res = dwarf_tag(inDie, &tag, &error);
@@ -3777,7 +3777,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
                             }
                             else
                             {
-                                memberLocation = (uint32_t)udata;
+                                memberLocation = udata;
                             }
                         }
 
