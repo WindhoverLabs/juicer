@@ -16,7 +16,7 @@
 #include "IDataContainer.h"
 #include "Juicer.h"
 #include "SQLiteDB.h"
-#include "catch.hpp"
+#include "catch_amalgamated.hpp"
 #include "test_file1.h"
 
 /**

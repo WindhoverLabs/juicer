@@ -4,8 +4,6 @@
  *  Created on: Aug 21, 2020
  *      Author: vagrant
  */
-#include <catch.hpp>
-
 #include "IDataContainer.h"
 
 /**

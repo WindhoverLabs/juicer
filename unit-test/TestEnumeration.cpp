@@ -5,7 +5,7 @@
  *      Author: vagrant
  */
 #include "Enumeration.h"
-#include "catch.hpp"
+#include "catch_amalgamated.hpp"
 
 /**
  * @brief Unit tests for Enumeration class.

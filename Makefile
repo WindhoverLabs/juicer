@@ -1,3 +1,5 @@
+CATCH2_LIB_DIR?=$(CURDIR)/Catch2/build/src
+
 mkfile_path  := $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 ROOT_DIR     := $(shell cd $(shell dirname $(mkfile_path)); pwd)
 BUILD_DIR    := $(ROOT_DIR)/build
@@ -17,7 +19,7 @@ UT_SRC_DIR := $(ROOT_DIR)/unit-test
 UT_OBJ_DIR := $(BUILD_DIR)/ut_obj
 UT_OBJ_32BIT_DIR := $(BUILD_DIR)/ut_obj_32
 UT_BIN_DIR := $(BUILD_DIR)
-UT_INCLUDES := -I$(CATCH2_DIR)/single_include/catch2
+UT_INCLUDES := -I$(CATCH2_DIR)/extras
 
 
 # Target files
@@ -40,7 +42,6 @@ UT_OBJ_32     := $(UT_OBJ_32:$(UT_SRC_DIR)/test_file%.cpp=$(UT_OBJ_32BIT_DIR)/te
 
 GIT_VERSION   := "$(shell git describe --tags --abbrev=0)($(shell  git rev-parse --short HEAD))"
 
-
 # Set target flags
 CPPFLAGS            := -MMD -MP -std=c++17 -fmessage-length=0 $(INCLUDES)
 CFLAGS              := -Wall -g3 -DJUICER_VERSION=\"$(GIT_VERSION)\"
@@ -52,14 +53,15 @@ LDLIBS              := -lm -ldwarf -lsqlite3 -lelf -lcrypto
 UT_CPPFLAGS            := $(CPPFLAGS) $(UT_INCLUDES)
 UT_CFLAGS              := $(CFLAGS) --coverage
 UT_CFLAGS_32BIT        := $(CFLAGS_32BIT) --coverage
-UT_LDFLAGS             := $(LDFLAGS)
-UT_LDLIBS              := $(LDLIBS) -lgcov
+UT_LDFLAGS             := $(LDFLAGS) -L$(CATCH2_LIB_DIR)
+UT_LDLIBS              := $(LDLIBS) -lgcov -lCatch2Main -lCatch2
 
 # Set tools
 CC          := g++
 LD          := g++
 
 .PHONY: all clean run-tests coverage docs
+
 
 # Target recipes
 $(EXE): $(OBJ)
@@ -104,7 +106,7 @@ $(UT_OBJ_32BIT_DIR):
 	mkdir -p $@
 
 
-run-tests: $(UT_EXE_32BIT) | $(UT_EXE)
+run-tests: build_catch2 $(UT_EXE_32BIT) | $(UT_EXE)
 	-(cd $(BUILD_DIR); $(UT_EXE))
 	
 
@@ -112,12 +114,24 @@ build-tests: | $(UT_EXE)
 
 coverage: $(COVERAGE_DIR)/index.html
 
+# Configure the Catch2 project with CMake.
+configure_catch2:
+	@echo "Creating build directory..."
+	@mkdir -p $(CATCH2_DIR)/build
+	@echo "Configuring project with CMake..."
+	@cd $(CATCH2_DIR)/build && cmake ..
+
+# Build the Catch2 project.
+build_catch2: configure_catch2
+	@echo "Building project..."
+	@$(MAKE) -C $(CATCH2_DIR)/build
+
 $(COVERAGE_DIR)/index.html: | run-tests
 	mkdir -p $(COVERAGE_DIR)
 	(cd $(COVERAGE_DIR); gcovr $(ROOT_DIR) --root $(ROOT_DIR) --object-directory $(UT_OBJ_DIR) --filter $(ROOT_DIR)/src/ --html --html-details -o index.html)
 
 
-all: $(EXE) $(UT_EXE) $(UT_EXE_32BIT)
+all: build_catch2 $(EXE) $(UT_EXE) $(UT_EXE_32BIT)
 
 clean:
 	@$(RM) -Rf $(BUILD_DIR)

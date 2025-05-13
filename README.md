@@ -28,6 +28,7 @@
 * `g++>=5.4.0`
 * `gcovr`
 * `libarchive-zip-perl` (Needed for unit test verification of crc32)
+* `cmake 3.22.1`
 
 
 ## Building it <a name="building_it"></a>
@@ -102,7 +103,7 @@ To include macros in the output, make sure to pass "-g3" when compiling:
 
 
 ```
-g++ -std=c++14  elf_file.cpp -g -g3 -c -o elf_file
+g++ -std=c++14  elf_file.cpp -g3 -c -o elf_file
 ```
 NOTE:Please beware that compiler switchess may have different names for different compilers. 
 Here we use gcc as an example since it is a compiler that is accessible to most teams.
@@ -266,22 +267,9 @@ that tests the correctness of an ElfFile's name on `Testing/TestElfFile.cpp`:
 This test called "Test name correctness" will construct a very simple ElfFile object and check that when we set a name with `setName` we get the same exact name back when we call `getName`. The `REQUIRE` macro is the actual assertion that verifies this. If the test fails(meaning the `REQUIRE` macro is false), then our test and any other tests that follow stop executing. Catch2 has more interesting features like `CHECK` and syntax like `WHEN` for behavior-driven development that
 you can read all about in the link above.
 	
-Note that we don't define a `main` function here so we define one very easily in `Testing/main.cpp`:
-
-	/*This tells Catch to provide a main() - only do this in one cpp file*/
-	#define CATCH_CONFIG_MAIN
-	
-	
-	/**This disables coloring output so that Eclipse CDT(Version: 9.7.0.201903092251)
-	 *will be able to render it. If you really like colored output, you'll have to use
-	 *something else other than Eclipse's console(such as GNOME shell) to run the tests
-	 *and comment out the CATCH_CONFIG_COLOUR_NONE macro.
-	 */
-	#define CATCH_CONFIG_COLOUR_NONE
-	
-	#include "catch.hpp"
-	
-Yes, that's it! Catch2 will read the `CATCH_CONFIG_MAIN` and generate a `main` function for you. The `CATCH_CONFIG_COLOUR_NONE` is not necessary to run Catch2, but if you run into problems where the output will not render properly because it is colored(like in Eclipse), then you might find this macro useful. 
+Note that we don't define a `main`; the library `Catch2Main` provides a main for unit tests, which is built and linked when building unit tests.
+Some platforms/software(e.g. some versions of Eclipse), may have issue with colored output. In that case color can be turned off by passing 
+`--colour-mode none` to `./juicer-ut`.
 
 
 Now all you have to do is build your project on Eclipse(or from the terminal) and then run all of your tests.
