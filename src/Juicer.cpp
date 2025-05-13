@@ -4200,8 +4200,7 @@ void Juicer::addPaddingToStruct(Symbol &symbol)
 
                 auto   fields_it = fields.begin();
 
-                fields.insert(fields_it + i,
-                              std::make_unique<Field>(symbol, spareName, memberLocation, *paddingSymbol, symbol.getElf().isLittleEndian()));
+                fields.insert(fields_it + i, std::make_unique<Field>(symbol, spareName, memberLocation, *paddingSymbol, symbol.getElf().isLittleEndian()));
 
                 fieldsSize++;
                 i++;
