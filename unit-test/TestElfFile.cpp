@@ -8,7 +8,7 @@
 #include <limits.h>
 
 #include "../src/ElfFile.h"
-#include "catch.hpp"
+#include "catch_amalgamated.hpp"
 
 /**
  *@todo This testing module is not done yet.

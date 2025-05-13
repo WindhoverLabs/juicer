@@ -10,7 +10,7 @@
 
 #include "Enumeration.h"
 #include "Field.h"
-#include "catch.hpp"
+#include "catch_amalgamated.hpp"
 
 /**
  *@todo This testing elf is not done yet.
