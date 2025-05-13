@@ -1319,7 +1319,6 @@ Symbol *Juicer::getBaseTypeSymbol(ElfFile &elf, Dwarf_Die inDie, DimensionList &
 
             case DW_TAG_const_type:
             {
-                /* TODO */
                 /* Get the type attribute. */
                 res       = dwarf_attr(inDie, DW_AT_type, &attr_struct, &error);
 
@@ -3805,7 +3804,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
                                     }
                                     else
                                     {
-                                        memberLocation = (uint32_t)udata;
+                                        memberLocation = udata;
                                     }
 
                                     break;
@@ -3822,7 +3821,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
                                     }
                                     else
                                     {
-                                        memberLocation = (uint32_t)udata;
+                                        memberLocation = udata;
                                     }
 
                                     break;
@@ -3841,7 +3840,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
                                     }
                                     else
                                     {
-                                        memberLocation = (uint32_t)udata;
+                                        memberLocation = udata;
                                     }
 
                                     break;
@@ -3935,7 +3934,7 @@ void Juicer::process_DW_TAG_structure_type(ElfFile &elf, Symbol &symbol, Dwarf_D
                         {
                             std::string sMemberName = memberName;
 
-                            Field       memberField{symbol, sMemberName, (uint32_t)memberLocation, *memberBaseTypeSymbol, dimensionList, elf.isLittleEndian()};
+                            Field       memberField{symbol, sMemberName, memberLocation, *memberBaseTypeSymbol, dimensionList, elf.isLittleEndian()};
 
                             addBitFields(memberDie, memberField);
                             symbol.addField(memberField);
@@ -4202,7 +4201,7 @@ void Juicer::addPaddingToStruct(Symbol &symbol)
                 auto   fields_it = fields.begin();
 
                 fields.insert(fields_it + i,
-                              std::make_unique<Field>(symbol, spareName, (uint32_t)memberLocation, *paddingSymbol, symbol.getElf().isLittleEndian()));
+                              std::make_unique<Field>(symbol, spareName, memberLocation, *paddingSymbol, symbol.getElf().isLittleEndian()));
 
                 fieldsSize++;
                 i++;
